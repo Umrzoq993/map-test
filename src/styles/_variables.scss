@@ -1,0 +1,56 @@
+@use "sass:color";
+
+$font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+  "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+
+$primary: #3b82f6;
+$primary-600: #2563eb;
+$primary-50: #eff6ff;
+
+$bg-body: #f5f7fb;
+$surface: #ffffff;
+$border: #e9ecf1;
+
+$text-color: #1f2937;
+$muted: #6b7280;
+$heading: #111827;
+
+$success: #16a34a;
+$warning: #f59e0b;
+$danger: #ef4444;
+
+$radius: 14px;
+$radius-sm: 10px;
+
+$shadow-sm: 0 4px 16px rgba(16, 24, 40, 0.06);
+$shadow-md: 0 10px 24px rgba(16, 24, 40, 0.08);
+
+$sidebar-w: 260px;
+$sidebar-w-collapsed: 80px;
+
+$z-header: 5;
+/* drawer eng tepada turishi uchun yuqori qiymat */
+$z-overlay: 2000;
+
+$bp-lg: 1024px;
+
+/* ===== DARK THEME TOKENS ===== */
+$dark-body: #0f172a;
+$dark-surface: #0b1224;
+$dark-border: #1b2440;
+
+$dark-text: #e5e7eb;
+$dark-muted: #94a3b8;
+$dark-heading: #f8fafc;
+
+/* Sidebar holatlari */
+$sidebar-dark-bg: $dark-surface;
+$sidebar-dark-hover: color.mix(#fff, $sidebar-dark-bg, 6%);
+$sidebar-dark-active-bg: rgba($primary, 0.14);
+$sidebar-dark-active-text: #bfdbfe;
+$sidebar-dark-indicator: $primary;
+
+/* Badge */
+$badge-dark-bg: rgba($primary, 0.22);
+$badge-dark-text: #dbeafe;
+$badge-dark-border: transparent;

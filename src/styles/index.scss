@@ -1,0 +1,96 @@
+@use "./variables" as *;
+@use "./mixins" as *;
+@use "./layout";
+@use "./sidebar";
+@use "./map";
+
+/* Reset / base */
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: $font-family;
+  color: $text-color;
+  background: $bg-body;
+  line-height: 1.5;
+}
+
+/* Utilities */
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+.card {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 14px;
+  box-shadow: $shadow-sm;
+  padding: 16px;
+}
+h1,
+h2,
+h3 {
+  color: $heading;
+  margin: 0 0 10px;
+}
+
+/* ====== DARK MODE (layout & cards) ====== */
+body.theme-dark {
+  background: $dark-body;
+}
+body.theme-dark .app-main {
+  background: $dark-body;
+}
+
+body.theme-dark .app-header {
+  background: $dark-surface;
+  border-bottom-color: $dark-border;
+
+  .hamburger {
+    background: $dark-surface;
+    border-color: $dark-border;
+    color: $dark-text;
+  }
+  .brand {
+    color: $dark-heading;
+  }
+  .spacer {
+    color: $dark-muted;
+  }
+}
+body.theme-dark .app-content {
+  color: $dark-text;
+}
+
+body.theme-dark .card {
+  background: $dark-surface;
+  border-color: $dark-border;
+  box-shadow: none;
+  color: $dark-text;
+}
+
+/* ====== MAP DARK ====== */
+body.theme-dark .map-wrapper .leaflet-container {
+  border-color: $dark-border;
+  box-shadow: none;
+}
+body.theme-dark .map-wrapper .panel .panel-col {
+  background: $dark-surface;
+  border-color: $dark-border;
+  color: $dark-text;
+}
+body.theme-dark .map-wrapper .panel .panel-actions button {
+  background: $dark-surface;
+  border-color: $dark-border;
+  color: $dark-text;
+  &:hover {
+    background: $sidebar-dark-hover;
+  }
+}

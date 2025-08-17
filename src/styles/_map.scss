@@ -1,0 +1,231 @@
+@use "./variables" as *;
+@use "sass:color";
+
+.map-wrapper {
+  .leaflet-container {
+    border-radius: $radius;
+    border: 1px solid $border;
+    box-shadow: $shadow-sm;
+  }
+
+  .panel {
+    margin-top: 12px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr 1fr;
+
+    @media (max-width: $bp-lg) {
+      grid-template-columns: 1fr;
+    }
+
+    .panel-col {
+      background: $surface;
+      border: 1px solid $border;
+      border-radius: $radius;
+      box-shadow: $shadow-sm;
+      padding: 16px;
+    }
+    h4 {
+      margin: 0 0 8px;
+      color: $heading;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        monospace;
+      font-size: 12px;
+      resize: vertical;
+    }
+    .panel-actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      button {
+        appearance: none;
+        cursor: pointer;
+        border: 1px solid $border;
+        background: $surface;
+        border-radius: $radius-sm;
+        padding: 8px 12px;
+        transition: 0.15s;
+        &:hover {
+          background: #fafafa;
+        }
+      }
+      a {
+        text-decoration: none;
+      }
+      button[disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+.org-tree-card {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 320px;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  &__header {
+    padding: 10px 12px;
+    font-weight: 700;
+    border-bottom: 1px solid $border;
+  }
+  &__body {
+    max-height: 320px;
+    overflow: auto;
+    padding: 8px 10px;
+  }
+  &__hint {
+    border-top: 1px solid $border;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: $muted;
+    background: #fafcff;
+  }
+
+  /* rc-tree ni biroz tozalaymiz */
+  .rc-tree {
+    font-size: 14px;
+    .rc-tree-node-content-wrapper:hover {
+      background: transparent;
+    }
+    .rc-tree-checkbox {
+      margin-inline-end: 6px;
+    }
+  }
+}
+
+/* Dark mode */
+body.theme-dark .org-tree-card {
+  background: $dark-surface;
+  border-color: $dark-border;
+  color: $dark-text;
+
+  &__header {
+    border-bottom-color: $dark-border;
+  }
+  &__hint {
+    border-top-color: $dark-border;
+    background: color.mix(#000, $dark-surface, 6%);
+    color: $dark-muted;
+  }
+
+  .rc-tree {
+    .rc-tree-treenode:hover > .rc-tree-node-content-wrapper {
+      background: transparent;
+    }
+    .rc-tree-checkbox-inner {
+      background: $dark-surface;
+      border-color: $dark-border;
+    }
+    .rc-tree-switcher-icon,
+    .rc-tree-icon__customize svg {
+      color: $dark-text;
+    }
+  }
+}
+
+.org-tree-card {
+  position: absolute;
+  top: 12px;
+  left: 12px; /* chap o'rniga o'ng tomonga ko'chirdik */
+  right: auto;
+  width: 320px;
+  z-index: 1200; /* mobile overlay (z=40) dan past, mapdan yuqori */
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+
+  &.is-hidden {
+    transform: translateY(-8px);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &__header {
+    padding: 10px 12px;
+    font-weight: 700;
+    border-bottom: 1px solid $border;
+  }
+  &__body {
+    max-height: 320px;
+    overflow: auto;
+    padding: 8px 10px;
+  }
+  &__hint {
+    border-top: 1px solid $border;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: $muted;
+    background: #fafcff;
+  }
+
+  .rc-tree {
+    font-size: 14px;
+    .rc-tree-node-content-wrapper:hover {
+      background: transparent;
+    }
+    .rc-tree-checkbox {
+      margin-inline-end: 6px;
+    }
+  }
+}
+
+/* Mobile: pastdan chiqadigan kartaga aylantiramiz */
+@media (max-width: $bp-lg) {
+  .org-tree-card {
+    top: auto;
+    right: 50%;
+    left: 50%;
+    bottom: 12px;
+    width: min(92vw, 520px);
+    transform: translateX(-50%);
+  }
+}
+
+/* Dark mode */
+body.theme-dark .org-tree-card {
+  background: $dark-surface;
+  border-color: $dark-border;
+  color: $dark-text;
+
+  &__header {
+    border-bottom-color: $dark-border;
+  }
+  &__hint {
+    border-top-color: $dark-border;
+    background: color.mix(#000, $dark-surface, 6%);
+    color: $dark-muted;
+  }
+
+  .rc-tree {
+    .rc-tree-treenode:hover > .rc-tree-node-content-wrapper {
+      background: transparent;
+    }
+    .rc-tree-checkbox-inner {
+      background: $dark-surface;
+      border-color: $dark-border;
+    }
+    .rc-tree-switcher-icon,
+    .rc-tree-icon__customize svg {
+      color: $dark-text;
+    }
+  }
+}
