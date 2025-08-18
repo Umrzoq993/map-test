@@ -1,4 +1,3 @@
-// src/components/MapDraw.jsx
 import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import {
   MapContainer,
@@ -42,19 +41,8 @@ function MapFlyer({ target }) {
     }, 650);
 
     return () => clearTimeout(t);
-  }, [target?.ts]); // ts: bir xil nuqtani qayta tanlaganda ham ishga tushsin
+  }, [target?.ts]); // ts -> bir xil joyni qayta tanlashda ham qayta ishga tushadi
 
-  return null;
-}
-
-/** Bir nechta marker bo'lsa, hammasini qamrab olish (fitBounds) */
-function MapFitter({ points }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!points || points.length < 2) return;
-    const bounds = L.latLngBounds(points);
-    map.flyToBounds(bounds, { padding: [32, 32], duration: 1.0 });
-  }, [points]);
   return null;
 }
 
@@ -64,7 +52,7 @@ export default function MapDraw({
   height = "calc(100vh - 100px)",
   dark = false,
   orgTree = [], // [{ key, title, pos:[lat,lng], zoom?, children:[] }]
-  hideTree = false, // drawer ochiq bo‘lsa true — tree overlay yashiriladi
+  hideTree = false, // drawer ochiq bo‘lsa true berib, tree ni yashirasiz
 }) {
   const featureGroupRef = useRef(null);
 
@@ -72,6 +60,16 @@ export default function MapDraw({
   const [checkedKeys, setCheckedKeys] = useState([]); // checkbox holati
   const [selectedKeys, setSelectedKeys] = useState([]); // tanlangan node
   const [navTarget, setNavTarget] = useState(null); // {lat,lng,zoom,ts}
+
+  // 🔎 Qidiruv holati: input + debounce qilingan query
+  const [searchInput, setSearchInput] = useState("");
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setQuery(searchInput.trim()), 300); // debounce 300ms
+    return () => clearTimeout(id);
+  }, [searchInput]);
+
+  const onClearSearch = () => setSearchInput("");
 
   // Draw → GeoJSON panel
   const updateGeoJSON = useCallback(() => {
@@ -96,6 +94,70 @@ export default function MapDraw({
     return out;
   }, [orgTree]);
 
+  // Matnni highlight qilish (title ichida mos bo‘lagini <mark> bilan)
+  const highlight = (text, q) => {
+    if (!q) return text;
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    if (i === -1) return text;
+    const before = text.slice(0, i);
+    const hit = text.slice(i, i + q.length);
+    const after = text.slice(i + q.length);
+    return (
+      <span>
+        {before}
+        <mark>{hit}</mark>
+        {after}
+      </span>
+    );
+  };
+
+  // REAL FILTER: faqat mos tugunlar va ularning ajdodlari qoladi
+  const [expandedKeys, setExpandedKeys] = useState(undefined);
+  const { filteredTree, visibleKeySet } = useMemo(() => {
+    const q = query.toLowerCase();
+    if (!q) return { filteredTree: orgTree, visibleKeySet: null };
+
+    const visible = new Set();
+    const prune = (nodes) => {
+      const res = [];
+      for (const n of nodes) {
+        const keyStr = String(n.key);
+        const titleStr = typeof n.title === "string" ? n.title : "";
+        const selfMatch = titleStr.toLowerCase().includes(q);
+        const childPruned = n.children ? prune(n.children) : null;
+
+        if (selfMatch || (childPruned && childPruned.length)) {
+          visible.add(keyStr);
+          res.push({
+            ...n,
+            children:
+              childPruned && childPruned.length ? childPruned : undefined,
+          });
+        }
+      }
+      return res;
+    };
+    const filtered = prune(orgTree);
+    return { filteredTree: filtered, visibleKeySet: visible };
+  }, [orgTree, query]);
+
+  // Qidiruv paytida auto-expand: ko‘rinadigan barcha tugunlar ochiladi
+  useEffect(() => {
+    if (visibleKeySet) setExpandedKeys(Array.from(visibleKeySet));
+    else setExpandedKeys(undefined);
+  }, [visibleKeySet]);
+
+  // rc-tree uchun data (REAL FILTER + highlight)
+  const rcData = useMemo(() => {
+    const q = query;
+    const mapNode = (n) => ({
+      key: String(n.key),
+      title: typeof n.title === "string" ? highlight(n.title, q) : n.title,
+      children: n.children ? n.children.map(mapNode) : undefined,
+    });
+    return (filteredTree || []).map(mapNode);
+  }, [filteredTree, query]);
+
   // Checkbox’larga mos markerlar
   const visibleMarkers = useMemo(
     () => flatNodes.filter((n) => n.pos && checkedKeys.includes(String(n.key))),
@@ -118,20 +180,10 @@ export default function MapDraw({
       });
     }
   };
-
-  // rc-tree uchun soddalashtirilgan data
-  const rcData = useMemo(() => {
-    const mapNode = (n) => ({
-      key: String(n.key),
-      title: n.title,
-      children: n.children ? n.children.map(mapNode) : undefined,
-    });
-    return orgTree.map(mapNode);
-  }, [orgTree]);
-
-  const geojsonPretty = geojson ? JSON.stringify(geojson, null, 2) : "";
+  const onTreeExpand = (keys) => setExpandedKeys(keys);
 
   // GeoJSON import
+  const geojsonPretty = geojson ? JSON.stringify(geojson, null, 2) : "";
   const importFromTextarea = () => {
     const text = document.getElementById("gj-input")?.value;
     try {
@@ -154,7 +206,6 @@ export default function MapDraw({
         zoom={zoom}
         style={{ height, width: "100%" }}
       >
-        {/* Dark/Light tile */}
         <TileLayer
           url={
             dark
@@ -164,23 +215,20 @@ export default function MapDraw({
           attribution="&copy; OSM &copy; Carto"
         />
 
-        {/* Uchirish nazoratchisi — navTarget o‘zgarsa animatsiya qiladi */}
+        {/* Nav target bo‘lsa animatsiya */}
         <MapFlyer target={navTarget} />
 
-        {/* 2+ marker bo‘lsa hammasini qamrab oladi */}
-        <MapFitter points={visibleMarkers.map((n) => n.pos)} />
-
-        {/* Checkbox bilan boshqariladigan markerlar */}
+        {/* Checkbox markerlar */}
         {visibleMarkers.map((n) => (
           <Marker key={n.key} position={n.pos}>
             <Popup>{n.title}</Popup>
           </Marker>
         ))}
 
-        {/* Draw qatlami */}
+        {/* Draw */}
         <FeatureGroup ref={featureGroupRef}>
           <EditControl
-            position="topright" // toolbar o‘ng-yuqorida
+            position="topright"
             onCreated={onCreated}
             onEdited={onEdited}
             onDeleted={onDeleted}
@@ -196,24 +244,60 @@ export default function MapDraw({
         </FeatureGroup>
       </MapContainer>
 
-      {/* Org tree — overlay karta (z-index SCSS’da) */}
+      {/* Org tree — REAL FILTER overlay */}
       <div className={`org-tree-card ${hideTree ? "is-hidden" : ""}`}>
-        <div className="org-tree-card__header">Tashkilot tuzilmasi</div>
-        <div className="org-tree-card__body">
-          <Tree
-            checkable
-            selectable
-            treeData={rcData}
-            checkedKeys={checkedKeys}
-            selectedKeys={selectedKeys}
-            onCheck={onTreeCheck}
-            onSelect={onTreeSelect}
-            defaultExpandAll
-            virtual={false}
-          />
+        <div className="org-tree-card__header">
+          Tashkilot tuzilmasi
+          <div className="org-tree-search-wrap">
+            <input
+              className="org-tree-search"
+              type="text"
+              placeholder="Qidirish..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") onClearSearch();
+                if (e.key === "Enter") setQuery(searchInput.trim()); // Enter bosilsa darhol qidir
+              }}
+            />
+            {searchInput && (
+              <button
+                className="org-tree-search__clear"
+                onClick={onClearSearch}
+                aria-label="Qidiruvni tozalash"
+              >
+                ×
+              </button>
+            )}
+          </div>
         </div>
+
+        <div className="org-tree-card__body">
+          {rcData.length ? (
+            <Tree
+              checkable
+              selectable
+              treeData={rcData}
+              checkedKeys={checkedKeys}
+              selectedKeys={selectedKeys}
+              expandedKeys={expandedKeys}
+              onExpand={onTreeExpand}
+              onCheck={onTreeCheck}
+              onSelect={onTreeSelect}
+              defaultExpandAll={!query}
+              autoExpandParent
+              virtual={false}
+            />
+          ) : (
+            <div style={{ fontSize: 13, color: "#888" }}>
+              Hech narsa topilmadi{query ? `: "${query}"` : ""}
+            </div>
+          )}
+        </div>
+
         <div className="org-tree-card__hint">
-          ✔ marker ko‘rsatadi · 1× click → joyga uchish
+          ✔ marker ko‘rsatadi · 1× click → joyga uchish · Qidiruv: faqat mos
+          tugunlar va ajdodlari ko‘rinadi
         </div>
       </div>
 

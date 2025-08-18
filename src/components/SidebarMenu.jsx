@@ -32,7 +32,6 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
     >
       <div className="sidebar-header">
         <h2>Agro Map</h2>
-        <small>react-pro-sidebar v2</small>
       </div>
 
       <Menu>
@@ -90,8 +89,6 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
           </MenuItem>
         </SubMenu>
       </Menu>
-
-      <div className="sidebar-footer">v1.0</div>
     </Sidebar>
   );
 }
