@@ -12,26 +12,30 @@ import L from "leaflet";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
 
-/** Ichki "uchirish" komponenti: target o‘zgarsa, zoom-out → flyTo bajaradi */
-function MapFlyer({ target }) {
-  const map = useMap();
+import { getLatestDrawing, saveDrawing } from "../api/drawings";
+import {
+  fetchFacilities,
+  deleteFacility,
+  patchFacility,
+} from "../api/facilities"; // ⬅️ qo'shildi
+import { iconFor } from "./mapIcons";
 
+/** FlyTo: async EMAS; yon ta'sirlar useEffect ichida */
+function MapFlyer({ target } = {}) {
+  const map = useMap();
   useEffect(() => {
-    if (!target) return;
+    if (!target || typeof target !== "object") return;
     const { lat, lng, zoom = 13 } = target;
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    if (typeof lat !== "number" || typeof lng !== "number") return;
 
     const curZoom = map.getZoom();
     const midZoom = Math.max(3, curZoom - 3);
 
-    // 1) Tepaga chiqish (zoom-out)
     map.flyTo(map.getCenter(), midZoom, {
       duration: 0.6,
       easeLinearity: 0.15,
       animate: true,
     });
-
-    // 2) Keyin manzilga uchish
     const t = setTimeout(() => {
       map.flyTo([lat, lng], zoom, {
         duration: 1.2,
@@ -41,7 +45,34 @@ function MapFlyer({ target }) {
     }, 650);
 
     return () => clearTimeout(t);
-  }, [target?.ts]); // ts -> bir xil joyni qayta tanlashda ham qayta ishga tushadi
+  }, [target?.ts]);
+  return null;
+}
+
+/** Viewport watcher: moveend da BBOX yuboradi ("minLng,minLat,maxLng,maxLat") */
+function ViewportWatcher({ onBboxChange }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+
+    const toBBox = (b) =>
+      `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`;
+
+    const update = () => {
+      const b = map.getBounds();
+      onBboxChange(toBBox(b));
+    };
+
+    map.whenReady(update);
+    map.on("moveend", update);
+    map.on("zoomend", update);
+
+    return () => {
+      map.off("moveend", update);
+      map.off("zoomend", update);
+    };
+  }, [map, onBboxChange]);
 
   return null;
 }
@@ -52,24 +83,55 @@ export default function MapDraw({
   height = "calc(100vh - 100px)",
   dark = false,
   orgTree = [], // [{ key, title, pos:[lat,lng], zoom?, children:[] }]
-  hideTree = false, // drawer ochiq bo‘lsa true berib, tree ni yashirasiz
+  hideTree = false, // drawer ochiq bo‘lsa true qilib tree overlay'ni yashirish
 }) {
   const featureGroupRef = useRef(null);
 
+  // Draw qatlami uchun state
   const [geojson, setGeojson] = useState(null);
-  const [checkedKeys, setCheckedKeys] = useState([]); // checkbox holati
-  const [selectedKeys, setSelectedKeys] = useState([]); // tanlangan node
+
+  // Tree state’lari
+  const [checkedKeys, setCheckedKeys] = useState([]);
+  const [selectedKeys, setSelectedKeys] = useState([]);
   const [navTarget, setNavTarget] = useState(null); // {lat,lng,zoom,ts}
 
-  // 🔎 Qidiruv holati: input + debounce qilingan query
+  // 🔎 Qidiruv: input (debounce bilan) -> query
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   useEffect(() => {
-    const id = setTimeout(() => setQuery(searchInput.trim()), 300); // debounce 300ms
+    const id = setTimeout(() => setQuery(searchInput.trim()), 300);
     return () => clearTimeout(id);
   }, [searchInput]);
-
   const onClearSearch = () => setSearchInput("");
+
+  // Viewport BBOX
+  const [bbox, setBbox] = useState(null); // "minLng,minLat,maxLng,maxLat"
+
+  // Facilities (obyektlar) va filter
+  const [facilities, setFacilities] = useState([]);
+  const [typeFilter, setTypeFilter] = useState({
+    GREENHOUSE: true,
+    COWSHED: true,
+    STABLE: true,
+    FISHFARM: true,
+    WAREHOUSE: false,
+    ORCHARD: false,
+    FIELD: false,
+    POULTRY: false,
+    APIARY: false,
+  });
+
+  // 🔁 Reload trigger — fetchni majburan qayta ishlatish uchun
+  const [reloadKey, setReloadKey] = useState(0); // ⬅️ qo'shildi
+
+  // ✅ Tanlangan turlar ro'yxati (CSV uchun)
+  const enabledTypes = useMemo(
+    () =>
+      Object.entries(typeFilter)
+        .filter(([, v]) => v)
+        .map(([k]) => k),
+    [typeFilter]
+  );
 
   // Draw → GeoJSON panel
   const updateGeoJSON = useCallback(() => {
@@ -81,7 +143,25 @@ export default function MapDraw({
   const onEdited = useCallback(updateGeoJSON, [updateGeoJSON]);
   const onDeleted = useCallback(updateGeoJSON, [updateGeoJSON]);
 
-  // Org daraxtini tekislash (key → node)
+  // Backend'dan oxirgi chizmani yuklash (bor bo‘lsa)
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!getLatestDrawing) return;
+        const latest = await getLatestDrawing();
+        if (!latest?.geojson) return;
+        const fg = featureGroupRef.current;
+        if (!fg) return;
+        fg.clearLayers();
+        L.geoJSON(latest.geojson).eachLayer((lyr) => fg.addLayer(lyr));
+        setGeojson(latest.geojson);
+      } catch (e) {
+        console.error("Load latest drawing failed:", e);
+      }
+    })();
+  }, []);
+
+  // Org daraxtini tekislash (key → node topish uchun)
   const flatNodes = useMemo(() => {
     const out = [];
     const walk = (arr) => {
@@ -94,7 +174,7 @@ export default function MapDraw({
     return out;
   }, [orgTree]);
 
-  // Matnni highlight qilish (title ichida mos bo‘lagini <mark> bilan)
+  // Matnni highlight qilish
   const highlight = (text, q) => {
     if (!q) return text;
     const i = text.toLowerCase().indexOf(q.toLowerCase());
@@ -111,7 +191,7 @@ export default function MapDraw({
     );
   };
 
-  // REAL FILTER: faqat mos tugunlar va ularning ajdodlari qoladi
+  // REAL FILTER: faqat mos tugunlar va ularning ajdodlari ko‘rinadi
   const [expandedKeys, setExpandedKeys] = useState(undefined);
   const { filteredTree, visibleKeySet } = useMemo(() => {
     const q = query.toLowerCase();
@@ -141,13 +221,12 @@ export default function MapDraw({
     return { filteredTree: filtered, visibleKeySet: visible };
   }, [orgTree, query]);
 
-  // Qidiruv paytida auto-expand: ko‘rinadigan barcha tugunlar ochiladi
   useEffect(() => {
     if (visibleKeySet) setExpandedKeys(Array.from(visibleKeySet));
     else setExpandedKeys(undefined);
   }, [visibleKeySet]);
 
-  // rc-tree uchun data (REAL FILTER + highlight)
+  // rc-tree data (highlight bilan)
   const rcData = useMemo(() => {
     const q = query;
     const mapNode = (n) => ({
@@ -158,11 +237,19 @@ export default function MapDraw({
     return (filteredTree || []).map(mapNode);
   }, [filteredTree, query]);
 
-  // Checkbox’larga mos markerlar
+  // Checkbox’larga mos org markerlar (oldingi funksionallik)
   const visibleMarkers = useMemo(
     () => flatNodes.filter((n) => n.pos && checkedKeys.includes(String(n.key))),
     [flatNodes, checkedKeys]
   );
+
+  // Tanlangan orgId (backend tree key = id string)
+  const selectedOrgId = useMemo(() => {
+    const k = selectedKeys?.[0];
+    if (!k) return null;
+    const n = flatNodes.find((x) => String(x.key) === String(k));
+    return n ? Number(n.key) : null;
+  }, [selectedKeys, flatNodes]);
 
   // Tree eventlari
   const onTreeCheck = (keys) => setCheckedKeys(keys.map(String));
@@ -182,7 +269,35 @@ export default function MapDraw({
   };
   const onTreeExpand = (keys) => setExpandedKeys(keys);
 
-  // GeoJSON import
+  // 🔥 BBOX + filter bo‘yicha facilities fetch (debounce 250ms, BIRTA so‘rov)
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!bbox || !selectedOrgId || enabledTypes.length === 0) {
+      setFacilities([]);
+      return;
+    }
+
+    const t = setTimeout(async () => {
+      try {
+        const data = await fetchFacilities({
+          orgId: selectedOrgId,
+          types: enabledTypes, // ko‘p tur bitta paramda (CSV) ketadi — fetch ichida birlashtiriladi
+          bbox,
+        });
+        if (!cancelled) setFacilities(data);
+      } catch (e) {
+        if (!cancelled) console.error("fetchFacilities failed:", e);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [bbox, selectedOrgId, enabledTypes, reloadKey]); // ⬅️ reloadKey qo'shildi
+
+  // GeoJSON import (textarea dan)
   const geojsonPretty = geojson ? JSON.stringify(geojson, null, 2) : "";
   const importFromTextarea = () => {
     const text = document.getElementById("gj-input")?.value;
@@ -191,8 +306,7 @@ export default function MapDraw({
       const fg = featureGroupRef.current;
       if (!fg) return;
       fg.clearLayers();
-      const layer = L.geoJSON(parsed);
-      layer.eachLayer((lyr) => fg.addLayer(lyr));
+      L.geoJSON(parsed).eachLayer((lyr) => fg.addLayer(lyr));
       setGeojson(parsed);
     } catch {
       alert("Noto‘g‘ri JSON!");
@@ -215,15 +329,100 @@ export default function MapDraw({
           attribution="&copy; OSM &copy; Carto"
         />
 
-        {/* Nav target bo‘lsa animatsiya */}
+        {/* Viewport listener: harakatda BBOX yangilanadi */}
+        <ViewportWatcher onBboxChange={setBbox} />
+
+        {/* FlyTo (org tanlanganda) */}
         <MapFlyer target={navTarget} />
 
-        {/* Checkbox markerlar */}
+        {/* Org markerlar (checkbox'lar bo'yicha) */}
         {visibleMarkers.map((n) => (
           <Marker key={n.key} position={n.pos}>
             <Popup>{n.title}</Popup>
           </Marker>
         ))}
+
+        {/* Facilities (bbox + filter) */}
+        {facilities.map((f) =>
+          typeof f.lat === "number" && typeof f.lng === "number" ? (
+            <Marker
+              key={`f-${f.id}`}
+              position={[f.lat, f.lng]}
+              icon={iconFor(f.type)}
+            >
+              <Popup>
+                <div style={{ minWidth: 220 }}>
+                  <div style={{ fontWeight: 700 }}>{f.name}</div>
+                  <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8 }}>
+                    {f.type} • {f.status}
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={async () => {
+                        const newName = window.prompt("Yangi nom:", f.name);
+                        if (newName == null) return; // bekor qilindi
+                        const newStatus = window.prompt(
+                          "Status (ACTIVE/INACTIVE/UNDER_MAINTENANCE):",
+                          f.status
+                        );
+                        if (newStatus == null) return;
+
+                        try {
+                          await patchFacility(f.id, {
+                            name: newName,
+                            status: newStatus,
+                          });
+                          setReloadKey((k) => k + 1); // ro'yxatni yangilash
+                        } catch (e) {
+                          alert("Yangilashda xatolik");
+                          console.error(e);
+                        }
+                      }}
+                      style={{
+                        padding: "6px 10px",
+                        border: "1px solid #e3e6eb",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm(`O'chirilsinmi: ${f.name}?`))
+                          return;
+                        try {
+                          await deleteFacility(f.id);
+                          setReloadKey((k) => k + 1); // ro'yxatni yangilash
+                        } catch (e) {
+                          alert("O'chirishda xatolik");
+                          console.error(e);
+                        }
+                      }}
+                      style={{
+                        padding: "6px 10px",
+                        border: "1px solid #e3e6eb",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        background: "#fff0f0",
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+
+                  {f.attributes?.notes && (
+                    <div style={{ marginTop: 10, fontSize: 12 }}>
+                      {String(f.attributes.notes)}
+                    </div>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          ) : null
+        )}
 
         {/* Draw */}
         <FeatureGroup ref={featureGroupRef}>
@@ -244,7 +443,7 @@ export default function MapDraw({
         </FeatureGroup>
       </MapContainer>
 
-      {/* Org tree — REAL FILTER overlay */}
+      {/* Org tree — overlay (qidiruv + filter) */}
       <div className={`org-tree-card ${hideTree ? "is-hidden" : ""}`}>
         <div className="org-tree-card__header">
           Tashkilot tuzilmasi
@@ -257,7 +456,7 @@ export default function MapDraw({
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Escape") onClearSearch();
-                if (e.key === "Enter") setQuery(searchInput.trim()); // Enter bosilsa darhol qidir
+                if (e.key === "Enter") setQuery(searchInput.trim());
               }}
             />
             {searchInput && (
@@ -296,12 +495,45 @@ export default function MapDraw({
         </div>
 
         <div className="org-tree-card__hint">
-          ✔ marker ko‘rsatadi · 1× click → joyga uchish · Qidiruv: faqat mos
-          tugunlar va ajdodlari ko‘rinadi
+          ✔ marker ko‘rsatadi · 1× click → joyga uchish
+          {bbox && (
+            <div style={{ marginTop: 4, opacity: 0.8 }}>BBOX: {bbox}</div>
+          )}
+        </div>
+
+        {/* Facility turlari filteri */}
+        <div
+          className="org-tree-card__body"
+          style={{ borderTop: "1px solid var(--border,#e9ecf1)" }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Obyekt turlari</div>
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}
+          >
+            {Object.keys(typeFilter).map((k) => (
+              <label
+                key={k}
+                style={{ display: "flex", alignItems: "center", gap: 8 }}
+              >
+                <input
+                  type="checkbox"
+                  checked={typeFilter[k]}
+                  onChange={(e) =>
+                    setTypeFilter((s) => ({ ...s, [k]: e.target.checked }))
+                  }
+                />
+                <span style={{ fontSize: 13 }}>{k}</span>
+              </label>
+            ))}
+          </div>
+          <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+            {selectedOrgId ? `Org #${selectedOrgId}` : "Org tanlang"} • Topildi:{" "}
+            {facilities.length}
+          </div>
         </div>
       </div>
 
-      {/* Pastki panel: GeoJSON import/export */}
+      {/* Pastki panel: GeoJSON import/export + save backend */}
       <div className="panel">
         <div className="panel-col">
           <h4>GeoJSON (readonly)</h4>
@@ -324,6 +556,23 @@ export default function MapDraw({
             >
               <button disabled={!geojsonPretty}>Download .geojson</button>
             </a>
+            <button
+              onClick={async () => {
+                try {
+                  if (!saveDrawing)
+                    return alert("Backend API ulanishi topilmadi.");
+                  const data = geojson || {};
+                  await saveDrawing(data, "map-drawings");
+                  alert("Saqlash muvaffaqiyatli!");
+                } catch (e) {
+                  console.error(e);
+                  alert("Saqlashda xatolik");
+                }
+              }}
+              disabled={!geojson}
+            >
+              Save to backend
+            </button>
           </div>
         </div>
       </div>
