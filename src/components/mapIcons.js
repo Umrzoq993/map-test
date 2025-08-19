@@ -17,9 +17,8 @@ export const iconFor = (type = "WAREHOUSE") =>
     className: "facility-pin",
     html: `<span style="
       display:inline-block;width:12px;height:12px;border-radius:50%;
-      background:${
-        colorMap[type] || "#525252"
-      };border:2px solid white;box-shadow:0 0 0 1px rgba(0,0,0,.25);
+      background:${colorMap[type] || "#525252"};
+      border:2px solid white;box-shadow:0 0 0 1px rgba(0,0,0,.25);
     "></span>`,
     iconSize: [12, 12],
     iconAnchor: [6, 6],

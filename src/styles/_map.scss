@@ -81,10 +81,9 @@
 .org-tree-card {
   position: absolute;
   top: 12px;
-  left: 12px; /* Draw toolbar top-right, tree top-left */
-  right: auto;
+  left: 12px;
   width: 320px;
-  z-index: 1200; /* Leaflet controls (~1000) dan yuqori; drawer (2000)dan past */
+  z-index: 1200; /* Leaflet controls ~1000 */
   background: $surface;
   border: 1px solid $border;
   border-radius: $radius;
@@ -110,26 +109,22 @@
     border-bottom: 1px solid $border;
   }
 
-  /* Qidiruv UI (debounce/clear tugma uchun) */
   .org-tree-search-wrap {
     position: relative;
   }
-
   .org-tree-search {
     width: 100%;
     height: 34px;
-    padding: 0 36px 0 10px; /* o‘ngda “×” tugmasi uchun joy */
+    padding: 0 36px 0 10px;
     border: 1px solid $border;
     border-radius: 8px;
     background: #fff;
     font-size: 14px;
-
     &:focus {
       outline: none;
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
   }
-
   .org-tree-search__clear {
     position: absolute;
     right: 6px;
@@ -150,7 +145,6 @@
     overflow: auto;
     padding: 8px 10px;
   }
-
   &__hint {
     border-top: 1px solid $border;
     padding: 8px 10px;
@@ -159,20 +153,16 @@
     background: #fafcff;
   }
 
-  /* rc-tree kosmetika */
   .rc-tree {
     font-size: 14px;
-
     .rc-tree-node-content-wrapper:hover {
       background: transparent;
     }
-
     .rc-tree-checkbox {
       margin-inline-end: 6px;
     }
   }
 
-  /* Qidiruv natijasida highlight */
   mark {
     background: rgba(59, 130, 246, 0.35);
     color: inherit;
@@ -181,7 +171,6 @@
   }
 }
 
-/* Mobile: pastdan chiqadigan karta (bottom-sheet) */
 @media (max-width: $bp-lg) {
   .org-tree-card {
     top: auto;
@@ -194,65 +183,152 @@
 }
 
 /* =========================
-   DARK MODE OVERRIDES
+   FACILITY CREATE DRAWER
    ========================= */
+.facility-drawer {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: min(360px, 92vw);
+  max-height: calc(100vh - 24px);
+  z-index: 2000;
+  background: $surface;
+  color: $text;
+  border: 1px solid $border;
+  border-radius: $radius;
+  box-shadow: $shadow-md;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  &__header,
+  &__footer {
+    padding: 10px 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  &__header {
+    border-bottom: 1px solid $border;
+  }
+  &__footer {
+    border-top: 1px solid $border;
+    gap: 8px;
+  }
+
+  &__body {
+    padding: 12px;
+    overflow: auto;
+    display: grid;
+    gap: 10px;
+  }
+
+  .fd-close {
+    width: 28px;
+    height: 28px;
+    border: 1px solid $border;
+    background: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .fd-field {
+    display: grid;
+    gap: 6px;
+  }
+  .fd-grid {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .fd-hint {
+    font-size: 12px;
+    color: $muted;
+  }
+  .fd-alert {
+    background: #fff6e5;
+    border: 1px solid #f2d6a2;
+    color: #7a5b18;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .fd-geom {
+    font-size: 13px;
+    color: $muted;
+  }
+
+  input,
+  select,
+  textarea {
+    border: 1px solid $border;
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #fff;
+    font-size: 14px;
+  }
+
+  .fd-primary {
+    margin-left: auto;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid $border;
+    background: #0ea5e9;
+    color: #fff;
+    cursor: pointer;
+  }
+  .fd-secondary {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid $border;
+    background: #fff;
+    cursor: pointer;
+  }
+}
+
+/* Dark */
 body.theme-dark {
-  /* Leaflet konteyner va panel */
   .map-wrapper {
     .leaflet-container {
       border-color: $dark-border;
       box-shadow: none;
     }
-
     .panel {
       .panel-col {
         background: $dark-surface;
         border-color: $dark-border;
         color: $dark-text;
       }
-
-      .panel-actions {
-        button {
-          background: $dark-surface;
-          border-color: $dark-border;
-          color: $dark-text;
-
-          &:hover {
-            background: $sidebar-dark-hover;
-          }
+      .panel-actions button {
+        background: $dark-surface;
+        border-color: $dark-border;
+        color: $dark-text;
+        &:hover {
+          background: $sidebar-dark-hover;
         }
       }
     }
   }
 
-  /* Org tree overlay */
   .org-tree-card {
     background: $dark-surface;
     border-color: $dark-border;
     color: $dark-text;
-
     &__header {
       border-bottom-color: $dark-border;
     }
-
     &__hint {
       border-top-color: $dark-border;
       background: color.mix(#000, $dark-surface, 6%);
       color: $dark-muted;
     }
-
-    .org-tree-search {
-      background: $dark-surface;
-      border-color: $dark-border;
-      color: $dark-text;
-    }
-
+    .org-tree-search,
     .org-tree-search__clear {
       background: $dark-surface;
       border-color: $dark-border;
       color: $dark-text;
     }
-
     .rc-tree {
       .rc-tree-treenode:hover > .rc-tree-node-content-wrapper {
         background: transparent;
@@ -266,9 +342,32 @@ body.theme-dark {
         color: $dark-text;
       }
     }
-
     mark {
       background: rgba(59, 130, 246, 0.25);
+    }
+  }
+
+  .facility-drawer {
+    background: $dark-surface;
+    color: $dark-text;
+    border-color: $dark-border;
+    .fd-close,
+    input,
+    select,
+    textarea,
+    .fd-secondary {
+      background: $dark-surface;
+      color: $dark-text;
+      border-color: $dark-border;
+    }
+    .fd-primary {
+      background: #0284c7;
+      border-color: $dark-border;
+    }
+    .fd-alert {
+      background: color.mix(#000, $dark-surface, 12%);
+      border-color: $dark-border;
+      color: $dark-text;
     }
   }
 }

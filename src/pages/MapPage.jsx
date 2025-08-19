@@ -4,7 +4,7 @@ import { fetchOrgTree } from "../api/org";
 
 export default function MapPage({
   headerHeight = 60,
-  dark,
+  dark = false,
   sidebarOpen = false,
 }) {
   const [orgTree, setOrgTree] = useState([]);
