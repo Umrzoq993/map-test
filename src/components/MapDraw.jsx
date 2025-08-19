@@ -6,6 +6,8 @@ import {
   Marker,
   Popup,
   useMap,
+  GeoJSON,
+  Pane,
 } from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
@@ -19,9 +21,9 @@ import {
   deleteFacility,
   createFacility,
 } from "../api/facilities";
-import { iconFor } from "./mapIcons";
+import { iconFor, typeColor, badgeIconFor } from "./mapIcons";
 
-/** FlyTo: async EMAS; yon ta'sirlar useEffect ichida */
+/** FlyTo: yon ta'sirlar useEffect ichida */
 function MapFlyer({ target } = {}) {
   const map = useMap();
   useEffect(() => {
@@ -46,22 +48,96 @@ function MapFlyer({ target } = {}) {
     }, 650);
 
     return () => clearTimeout(t);
-  }, [target?.ts]); // ts -> retrigger
+  }, [target?.ts]);
   return null;
 }
 
-/** Viewport watcher: moveend da BBOX yuboradi ("minLng,minLat,maxLng,maxLat") */
+/** Viewport watcher: moveend da BBOX ("minLng,minLat,maxLng,maxLat") yangilanadi */
 function ViewportWatcher({ onBboxChange }) {
   const map = useMap();
+
   useEffect(() => {
+    if (!map || typeof onBboxChange !== "function") return;
+
     const toBBox = (b) =>
       `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`;
     const update = () => onBboxChange(toBBox(map.getBounds()));
-    map.whenReady(update);
-    map.on("moveend", update);
-    return () => map.off("moveend", update);
+
+    // Xarita tayyor bo‘lgach bir marta update qilamiz va keyin moveend ni tinglaymiz
+    map.whenReady(() => {
+      update();
+      map.on("moveend", update);
+    });
+
+    return () => {
+      map.off("moveend", update);
+    };
   }, [map, onBboxChange]);
+
   return null;
+}
+
+/** GeoJSON geometry uchun centroid (Polygon/MultiPolygon/Point) */
+function centroidOfGeometry(geometry) {
+  if (!geometry || !geometry.type) return null;
+  if (geometry.type === "Point") {
+    const [lng, lat] = geometry.coordinates || [];
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+    return null;
+  }
+  if (geometry.type === "Polygon") {
+    return centroidOfPolygon(geometry.coordinates);
+  }
+  if (geometry.type === "MultiPolygon") {
+    // eng katta halqaning centroidini olamiz (1-chi poligon ham bo‘lishi mumkin)
+    let best = null;
+    let bestArea = -Infinity;
+    for (const poly of geometry.coordinates || []) {
+      const c = centroidOfPolygon(poly);
+      if (c && c.area > bestArea) {
+        bestArea = c.area;
+        best = { lat: c.lat, lng: c.lng };
+      }
+    }
+    return best;
+  }
+  return null;
+}
+function centroidOfPolygon(rings) {
+  // rings: [outerRing, [holes...]] — bizga outer yetadi
+  if (!rings || !rings[0] || rings[0].length < 3) return null;
+  const outer = rings[0]; // [[lng,lat], ...]
+  let area = 0,
+    cx = 0,
+    cy = 0;
+  for (let i = 0, j = outer.length - 1; i < outer.length; j = i++) {
+    const [x1, y1] = outer[j];
+    const [x2, y2] = outer[i];
+    const f = x1 * y2 - x2 * y1;
+    area += f;
+    cx += (x1 + x2) * f;
+    cy += (y1 + y2) * f;
+  }
+  if (area === 0) {
+    // degan holda bbox center (fallback)
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    for (const [x, y] of outer) {
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+    const lng = (minX + maxX) / 2;
+    const lat = (minY + maxY) / 2;
+    return { lat, lng, area: 0 };
+  }
+  area *= 0.5;
+  cx /= 6 * area;
+  cy /= 6 * area;
+  return { lat: cy, lng: cx, area: Math.abs(area) };
 }
 
 export default function MapDraw({
@@ -69,20 +145,27 @@ export default function MapDraw({
   zoom = 12,
   height = "calc(100vh - 100px)",
   dark = false,
-  orgTree = [], // [{ key, title, pos:[lat,lng], zoom?, children:[] }]
-  hideTree = false, // drawer ochiq bo‘lsa true
+  orgTree = [],
+  hideTree = false,
 }) {
   const featureGroupRef = useRef(null);
 
   // Draw qatlami
   const [geojson, setGeojson] = useState(null);
+  const updateGeoJSON = useCallback(() => {
+    const fg = featureGroupRef.current;
+    if (!fg) return;
+    setGeojson(fg.toGeoJSON());
+  }, []);
+  const onEdited = useCallback(updateGeoJSON, [updateGeoJSON]);
+  const onDeleted = useCallback(updateGeoJSON, [updateGeoJSON]);
 
-  // Org tree
+  // Tree / nav
   const [checkedKeys, setCheckedKeys] = useState([]);
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [navTarget, setNavTarget] = useState(null);
 
-  // Qidiruv (debounce)
+  // Search (debounce)
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   useEffect(() => {
@@ -91,10 +174,10 @@ export default function MapDraw({
   }, [searchInput]);
   const onClearSearch = () => setSearchInput("");
 
-  // BBOX
+  // Viewport BBOX
   const [bbox, setBbox] = useState(null);
 
-  // Facilitylar
+  // Facilities
   const [facilities, setFacilities] = useState([]);
   const [typeFilter, setTypeFilter] = useState({
     GREENHOUSE: true,
@@ -104,7 +187,7 @@ export default function MapDraw({
     WAREHOUSE: false,
     ORCHARD: false,
     FIELD: false,
-    POULTRY: false,
+    POULTRY: true,
     APIARY: false,
   });
   const enabledTypes = useMemo(
@@ -116,59 +199,10 @@ export default function MapDraw({
   );
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Create Facility drawer
-  const [createOpen, setCreateOpen] = useState(false);
-  const [draftGeom, setDraftGeom] = useState(null); // GeoJSON Geometry
-  const [draftCenter, setDraftCenter] = useState(null); // {lat,lng}
-  const [form, setForm] = useState({
-    orgId: null,
-    name: "",
-    type: "GREENHOUSE",
-    status: "ACTIVE",
-    zoom: 15,
-    attributes: { notes: "" },
-  });
+  // Toggles
+  const [showPolys, setShowPolys] = useState(true);
 
-  // Draw → GeoJSON panel
-  const updateGeoJSON = useCallback(() => {
-    const fg = featureGroupRef.current;
-    if (!fg) return;
-    setGeojson(fg.toGeoJSON());
-  }, []);
-  const onEdited = useCallback(updateGeoJSON, [updateGeoJSON]);
-  const onDeleted = useCallback(updateGeoJSON, [updateGeoJSON]);
-
-  // Draw created → Facility create drawer
-  const onCreated = useCallback(
-    (e) => {
-      updateGeoJSON();
-      const layer = e.layer;
-      const type = e.layerType; // "polygon" | "rectangle" | "marker" | ...
-
-      if (!["marker", "polygon", "rectangle"].includes(type)) return;
-
-      const gj = layer.toGeoJSON();
-      const geometry = gj.geometry;
-
-      let lat, lng;
-      if (type === "marker") {
-        const ll = layer.getLatLng();
-        lat = ll.lat;
-        lng = ll.lng;
-      } else {
-        const c = layer.getBounds().getCenter();
-        lat = c.lat;
-        lng = c.lng;
-      }
-
-      setDraftGeom(geometry);
-      setDraftCenter({ lat, lng });
-      setCreateOpen(true);
-    },
-    [updateGeoJSON]
-  );
-
-  // Backend'dan oxirgi chizmani yuklash
+  // Load latest drawing (ixtiyoriy)
   useEffect(() => {
     (async () => {
       try {
@@ -186,7 +220,7 @@ export default function MapDraw({
     })();
   }, []);
 
-  // Org daraxtini tekislash
+  // Flatten org tree
   const flatNodes = useMemo(() => {
     const out = [];
     const walk = (arr) => {
@@ -199,7 +233,6 @@ export default function MapDraw({
     return out;
   }, [orgTree]);
 
-  // Highlight
   const highlight = (text, q) => {
     if (!q) return text;
     const i = text.toLowerCase().indexOf(q.toLowerCase());
@@ -213,7 +246,7 @@ export default function MapDraw({
     );
   };
 
-  // REAL FILTER: faqat mos tugunlar va ajdodlari
+  // Filtered tree for search
   const [expandedKeys, setExpandedKeys] = useState(undefined);
   const { filteredTree, visibleKeySet } = useMemo(() => {
     const q = query.toLowerCase();
@@ -237,33 +270,28 @@ export default function MapDraw({
       }
       return res;
     };
-    const filtered = prune(orgTree);
-    return { filteredTree: filtered, visibleKeySet: visible };
+    return { filteredTree: prune(orgTree), visibleKeySet: visible };
   }, [orgTree, query]);
-
   useEffect(() => {
     if (visibleKeySet) setExpandedKeys(Array.from(visibleKeySet));
     else setExpandedKeys(undefined);
   }, [visibleKeySet]);
 
-  // rc-tree data
   const rcData = useMemo(() => {
-    const q = query;
     const mapNode = (n) => ({
       key: String(n.key),
-      title: typeof n.title === "string" ? highlight(n.title, q) : n.title,
+      title: typeof n.title === "string" ? highlight(n.title, query) : n.title,
       children: n.children ? n.children.map(mapNode) : undefined,
     });
     return (filteredTree || []).map(mapNode);
   }, [filteredTree, query]);
 
-  // Checkbox org markerlar
+  // Org markers
   const visibleMarkers = useMemo(
     () => flatNodes.filter((n) => n.pos && checkedKeys.includes(String(n.key))),
     [flatNodes, checkedKeys]
   );
 
-  // Tanlangan orgId
   const selectedOrgId = useMemo(() => {
     const k = selectedKeys?.[0];
     if (!k) return null;
@@ -271,12 +299,6 @@ export default function MapDraw({
     return n ? Number(n.key) : null;
   }, [selectedKeys, flatNodes]);
 
-  // Tanlangan orgId -> forma
-  useEffect(() => {
-    setForm((f) => ({ ...f, orgId: selectedOrgId || null }));
-  }, [selectedOrgId]);
-
-  // Tree eventlari
   const onTreeCheck = (keys) => setCheckedKeys(keys.map(String));
   const onTreeSelect = (keys) => {
     setSelectedKeys(keys);
@@ -294,7 +316,7 @@ export default function MapDraw({
   };
   const onTreeExpand = (keys) => setExpandedKeys(keys);
 
-  // BBOX + filter bo‘yicha facilities fetch (debounce 250ms, BIRTA so‘rov)
+  // Facilities fetch (BBOX + types + org)
   useEffect(() => {
     let cancelled = false;
     if (!bbox || !selectedOrgId || enabledTypes.length === 0) {
@@ -319,7 +341,157 @@ export default function MapDraw({
     };
   }, [bbox, selectedOrgId, enabledTypes, reloadKey]);
 
-  // GeoJSON import (textarea)
+  // GeoJSON (polygons) for facilities
+  const geoJsonRef = useRef(null);
+  const facilitiesFC = useMemo(() => {
+    const features = facilities
+      .filter((f) => f.geometry && f.geometry.type)
+      .map((f) => ({
+        type: "Feature",
+        geometry: f.geometry,
+        properties: {
+          id: f.id,
+          name: f.name,
+          type: f.type,
+          status: f.status,
+          lat: f.lat,
+          lng: f.lng,
+          zoom: f.zoom,
+        },
+      }));
+    return { type: "FeatureCollection", features };
+  }, [facilities]);
+
+  const polyStyle = useCallback((feature) => {
+    const t = feature?.properties?.type;
+    const col = typeColor(t);
+    return {
+      color: col,
+      weight: 2,
+      fillOpacity: 0.15,
+      fillColor: col,
+      dashArray: "3",
+    };
+  }, []);
+
+  const onEachFacilityFeature = useCallback((feature, layer) => {
+    const props = feature?.properties || {};
+    const name = props.name || "Facility";
+    const type = props.type || "";
+    const status = props.status || "";
+
+    // Popup
+    layer.bindPopup(`
+      <div style="min-width:200px">
+        <div style="font-weight:700">${name}</div>
+        <div style="font-size:12px;opacity:.8">${type} • ${status}</div>
+      </div>
+    `);
+
+    // Hover highlight
+    layer.on("mouseover", () => {
+      layer.setStyle({ weight: 3, fillOpacity: 0.25 });
+      layer.bringToFront();
+    });
+    layer.on("mouseout", () => {
+      if (geoJsonRef.current) geoJsonRef.current.resetStyle(layer);
+    });
+
+    // Click → flyTo
+    layer.on("click", () => {
+      let latlng;
+      if (layer.getBounds) latlng = layer.getBounds().getCenter();
+      else if (layer.getLatLng) latlng = layer.getLatLng();
+      if (latlng) {
+        setNavTarget({
+          lat: latlng.lat,
+          lng: latlng.lng,
+          zoom: props.zoom && Number.isFinite(props.zoom) ? props.zoom : 16,
+          ts: Date.now(),
+        });
+      }
+    });
+  }, []);
+
+  // Centroid markers for polygons
+  const polygonCentroidMarkers = useMemo(() => {
+    return facilities
+      .filter(
+        (f) => f.geometry && f.geometry.type && f.geometry.type !== "Point"
+      )
+      .map((f) => {
+        const c =
+          centroidOfGeometry(f.geometry) ||
+          (Number.isFinite(f.lat) && Number.isFinite(f.lng)
+            ? { lat: f.lat, lng: f.lng }
+            : null);
+        if (!c) return null;
+        return (
+          <Marker
+            key={`fc-${f.id}`}
+            position={[c.lat, c.lng]}
+            icon={badgeIconFor(f.type, 28)}
+            pane="facilities-centroids"
+          >
+            <Popup>
+              <div style={{ minWidth: 220 }}>
+                <div style={{ fontWeight: 700 }}>{f.name}</div>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>
+                  {f.type} • {f.status}
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })
+      .filter(Boolean);
+  }, [facilities]);
+
+  // DRAW → create facility drawer
+  const [createOpen, setCreateOpen] = useState(false);
+  const [draftGeom, setDraftGeom] = useState(null);
+  const [draftCenter, setDraftCenter] = useState(null);
+  const [form, setForm] = useState({
+    orgId: null,
+    name: "",
+    type: "GREENHOUSE",
+    status: "ACTIVE",
+    zoom: 15,
+    attributes: { notes: "" },
+  });
+  useEffect(() => {
+    setForm((f) => ({ ...f, orgId: selectedOrgId || null }));
+  }, [selectedOrgId]);
+
+  const onCreated = useCallback(
+    (e) => {
+      updateGeoJSON();
+      const layer = e.layer;
+      const type = e.layerType;
+      if (!["marker", "polygon", "rectangle"].includes(type)) return;
+
+      const gj = layer.toGeoJSON();
+      const geometry = gj.geometry;
+
+      let lat, lng;
+      if (type === "marker") {
+        const c = layer.getLatLng();
+        lat = c.lat;
+        lng = c.lng;
+      } else {
+        const c = layer.getBounds().getCenter();
+        lat = c.lat;
+        lng = c.lng;
+      }
+
+      setDraftGeom(geometry);
+      setDraftCenter({ lat, lng });
+      setCreateOpen(true);
+    },
+    [updateGeoJSON]
+  );
+
+  // GeoJSON import panel
   const geojsonPretty = geojson ? JSON.stringify(geojson, null, 2) : "";
   const importFromTextarea = () => {
     const text = document.getElementById("gj-input")?.value;
@@ -351,26 +523,61 @@ export default function MapDraw({
           attribution="&copy; OSM &copy; Carto"
         />
 
-        {/* Viewport listener */}
-        <ViewportWatcher onBboxChange={setBbox} />
+        {/* Panes for z-index priority */}
+        <Pane name="facilities-polys" style={{ zIndex: 410 }} />
+        <Pane name="facilities-centroids" style={{ zIndex: 420 }} />
+        <Pane name="facilities-markers" style={{ zIndex: 430 }} />
 
-        {/* FlyTo */}
+        <ViewportWatcher onBboxChange={setBbox} />
         <MapFlyer target={navTarget} />
 
-        {/* Org markerlar */}
+        {/* Org markers (checkbox'lar) */}
         {visibleMarkers.map((n) => (
           <Marker key={n.key} position={n.pos}>
             <Popup>{n.title}</Popup>
           </Marker>
         ))}
 
-        {/* Facilities markers */}
-        {facilities.map((f) =>
-          typeof f.lat === "number" && typeof f.lng === "number" ? (
+        {/* Facilities — polygons */}
+        {showPolys && facilitiesFC.features.length > 0 && (
+          <GeoJSON
+            key={`${selectedOrgId}|${bbox}|${facilitiesFC.features.length}`} // ⬅️ qo‘shildi
+            data={facilitiesFC}
+            style={polyStyle}
+            onEachFeature={onEachFacilityFeature}
+            pane="facilities-polys"
+            ref={geoJsonRef}
+          />
+        )}
+
+        {/* Poligon markazidagi badge iconlar */}
+        {showPolys && polygonCentroidMarkers}
+
+        {/* Facilities — fallback point markers (faqat geometry yo‘q bo‘lsa) */}
+        {facilities.map((f) => {
+          const hasPoly = !!(
+            f.geometry &&
+            f.geometry.type &&
+            f.geometry.type !== "Point"
+          );
+          if (hasPoly) return null; // poligon bor — markaz badge bor, dublikat kerak emas
+          const lat = Number.isFinite(f.lat)
+            ? f.lat
+            : f.geometry?.type === "Point"
+            ? f.geometry.coordinates[1]
+            : null;
+          const lng = Number.isFinite(f.lng)
+            ? f.lng
+            : f.geometry?.type === "Point"
+            ? f.geometry.coordinates[0]
+            : null;
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+          return (
             <Marker
               key={`f-${f.id}`}
-              position={[f.lat, f.lng]}
-              icon={iconFor(f.type)}
+              position={[lat, lng]}
+              icon={badgeIconFor(f.type, 28)} // endi nuqta emas, badge qo‘yamiz
+              pane="facilities-markers"
             >
               <Popup>
                 <div style={{ minWidth: 220 }}>
@@ -429,19 +636,13 @@ export default function MapDraw({
                       Delete
                     </button>
                   </div>
-
-                  {f.attributes?.notes && (
-                    <div style={{ marginTop: 10, fontSize: 12 }}>
-                      {String(f.attributes.notes)}
-                    </div>
-                  )}
                 </div>
               </Popup>
             </Marker>
-          ) : null
-        )}
+          );
+        })}
 
-        {/* Draw */}
+        {/* Draw (chizish) */}
         <FeatureGroup ref={featureGroupRef}>
           <EditControl
             position="topright"
@@ -449,7 +650,7 @@ export default function MapDraw({
             onEdited={onEdited}
             onDeleted={onDeleted}
             draw={{
-              polyline: true,
+              polyline: false,
               polygon: true,
               rectangle: true,
               circle: false,
@@ -460,7 +661,7 @@ export default function MapDraw({
         </FeatureGroup>
       </MapContainer>
 
-      {/* Org tree — overlay */}
+      {/* Org tree — overlay (qidiruv + filter + polys toggle) */}
       <div className={`org-tree-card ${hideTree ? "is-hidden" : ""}`}>
         <div className="org-tree-card__header">
           Tashkilot tuzilmasi
@@ -512,13 +713,12 @@ export default function MapDraw({
         </div>
 
         <div className="org-tree-card__hint">
-          ✔ marker ko‘rsatadi · 1× click → joyga uchish
+          ✔ poligonlar turlarga ko‘ra ranglanadi · markazida ikon ko‘rinadi
           {bbox && (
             <div style={{ marginTop: 4, opacity: 0.8 }}>BBOX: {bbox}</div>
           )}
         </div>
 
-        {/* Facility turlari filteri */}
         <div
           className="org-tree-card__body"
           style={{ borderTop: "1px solid var(--border,#e9ecf1)" }}
@@ -543,6 +743,26 @@ export default function MapDraw({
               </label>
             ))}
           </div>
+
+          <div
+            style={{
+              marginTop: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <input
+              id="show-polys"
+              type="checkbox"
+              checked={showPolys}
+              onChange={(e) => setShowPolys(e.target.checked)}
+            />
+            <label htmlFor="show-polys" style={{ fontSize: 13 }}>
+              Show polygons
+            </label>
+          </div>
+
           <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
             {selectedOrgId ? `Org #${selectedOrgId}` : "Org tanlang"} • Topildi:{" "}
             {facilities.length}
@@ -550,7 +770,7 @@ export default function MapDraw({
         </div>
       </div>
 
-      {/* Create Facility Drawer */}
+      {/* Create Facility Drawer (chizilganda) — avvalgidek */}
       {createOpen && (
         <div className="facility-drawer">
           <div className="facility-drawer__header">
@@ -582,7 +802,7 @@ export default function MapDraw({
                 placeholder="Masalan: 1"
               />
               <div className="fd-hint">
-                Tree’dan tanlaganingizda bu maydon avtomatik to‘ladi.
+                Odatda tree tanlovi bilan avtomatik to‘ladi.
               </div>
             </div>
 
@@ -592,7 +812,7 @@ export default function MapDraw({
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Masalan: Issiqxona A"
+                placeholder="Masalan: Tovuqxona A"
               />
             </div>
 
@@ -706,6 +926,7 @@ export default function MapDraw({
                     alert("Geometriya yo‘q (polygon/marker chizing).");
                     return;
                   }
+
                   const payload = {
                     orgId: form.orgId,
                     name: form.name.trim(),
@@ -717,6 +938,7 @@ export default function MapDraw({
                     attributes: form.attributes || null,
                     geometry: draftGeom,
                   };
+
                   await createFacility(payload);
                   setCreateOpen(false);
                   setDraftGeom(null);
@@ -726,6 +948,7 @@ export default function MapDraw({
                     name: "",
                     attributes: { notes: "" },
                   }));
+
                   const fg = featureGroupRef.current;
                   if (fg) fg.clearLayers();
                   setReloadKey((k) => k + 1);
