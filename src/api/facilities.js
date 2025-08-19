@@ -1,5 +1,13 @@
 import { api } from "./http";
 
+/**
+ * params:
+ *  - orgId?: number
+ *  - types?: string[]  // ['GREENHOUSE','COWSHED', ...]
+ *  - status?: 'ACTIVE' | 'INACTIVE' | 'UNDER_MAINTENANCE'
+ *  - bbox?: string     // "minLng,minLat,maxLng,maxLat"
+ *  - q?: string
+ */
 export const fetchFacilities = async (params = {}) => {
   const { types, ...rest } = params;
   const qp = { ...rest };
