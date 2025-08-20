@@ -1,0 +1,304 @@
+.org-table-page {
+  .page-header {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e9ecf1;
+    h2 {
+      margin: 0 0 4px;
+    }
+    .muted {
+      color: #7a7f87;
+      font-size: 13px;
+    }
+  }
+}
+
+.org-table-wrap {
+  padding: 12px;
+
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+    .search {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid #e3e6eb;
+      border-radius: 8px;
+    }
+    .spacer {
+      flex: 1;
+    }
+    .btn {
+      padding: 8px 12px;
+      border: 1px solid #e3e6eb;
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+      &.primary {
+        background: #0ea5e9;
+        color: #fff;
+        border-color: #0ea5e9;
+      }
+      &.danger {
+        background: #fff0f0;
+        color: #b91c1c;
+        border-color: #ffd6d6;
+      }
+    }
+  }
+
+  .table-card {
+    border: 1px solid #e9ecf1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  table.org-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    thead th {
+      text-align: left;
+      background: #fafbfc;
+      border-bottom: 1px solid #e9ecf1;
+      padding: 10px;
+    }
+    tbody td {
+      border-top: 1px solid #f2f4f7;
+      padding: 10px;
+      vertical-align: middle;
+    }
+    .muted {
+      color: #7a7f87;
+    }
+    .num {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+    }
+    .actions {
+      display: flex;
+      gap: 6px;
+      .btn {
+        padding: 6px 10px;
+        border: 1px solid #e3e6eb;
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+      }
+      .danger {
+        background: #fff0f0;
+        border-color: #ffd6d6;
+        color: #b91c1c;
+      }
+    }
+    .empty {
+      text-align: center;
+      color: #7a7f87;
+      padding: 18px 0;
+    }
+    .indent {
+      display: inline-block;
+      width: 0;
+    }
+  }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: grid;
+    place-items: center;
+    z-index: 4000;
+  }
+  .modal-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(16, 24, 40, 0.15);
+    overflow: hidden;
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid #e9ecf1;
+      background: #fafbfc;
+      .modal-title {
+        font-weight: 700;
+      }
+      .modal-close {
+        border: none;
+        background: transparent;
+        font-size: 20px;
+        cursor: pointer;
+      }
+    }
+    .modal-body {
+      padding: 12px;
+    }
+  }
+
+  .form-grid {
+    display: grid;
+    gap: 10px;
+    .field {
+      display: grid;
+      gap: 6px;
+      label {
+        font-size: 13px;
+        color: #475467;
+      }
+      input,
+      select {
+        padding: 8px 10px;
+        border: 1px solid #e3e6eb;
+        border-radius: 8px;
+      }
+    }
+    .grid3 {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 4px;
+    .btn {
+      padding: 8px 12px;
+      border: 1px solid #e3e6eb;
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .primary {
+      background: #0ea5e9;
+      color: #fff;
+      border-color: #0ea5e9;
+    }
+    .danger {
+      background: #fff0f0;
+      color: #b91c1c;
+      border-color: #ffd6d6;
+    }
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.55);
+    display: grid;
+    place-items: center;
+    z-index: 3000;
+  }
+  .spinner {
+    width: 34px;
+    height: 34px;
+    border: 3px solid #e3e6eb;
+    border-top-color: #0ea5e9;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
+
+table.org-table {
+  .sortable {
+    cursor: pointer;
+    user-select: none;
+  }
+  .sortable .sort {
+    margin-left: 6px;
+    font-size: 12px;
+    color: #98a2b3;
+  }
+  th.sortable:hover {
+    background: #f5f7fb;
+  }
+}
+
+.paginator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  .btn {
+    padding: 6px 10px;
+    border: 1px solid #e3e6eb;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+  }
+  .muted {
+    color: #7a7f87;
+  }
+}
+.toolbar {
+  .parent-filter {
+    padding: 8px 10px;
+    border: 1px solid #e3e6eb;
+    border-radius: 8px;
+  }
+  .size {
+    padding: 8px 10px;
+    border: 1px solid #e3e6eb;
+    border-radius: 8px;
+  }
+}
+
+.map-picker {
+  display: grid;
+  grid-template-rows: auto 60vh auto;
+  gap: 10px;
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    .spacer {
+      flex: 1;
+    }
+    .btn {
+      padding: 6px 10px;
+      border: 1px solid #e3e6eb;
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+    }
+  }
+  .map-holder {
+    border: 1px solid #e9ecf1;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    .btn {
+      padding: 8px 12px;
+      border: 1px solid #e3e6eb;
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .primary {
+      background: #0ea5e9;
+      color: #fff;
+      border-color: #0ea5e9;
+    }
+  }
+}
+
+/* ADMIN bo'lmaganda toolbar’dagi "Root qo'shish" tugmasini yashirish */
+.appshell[data-admin="false"] .org-table-wrap .toolbar .primary {
+  display: none;
+}
