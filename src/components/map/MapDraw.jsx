@@ -14,13 +14,13 @@ import L from "leaflet";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
 
-import { getLatestDrawing, saveDrawing } from "../api/drawings";
+import { getLatestDrawing, saveDrawing } from "../../api/drawings";
 import {
   fetchFacilities,
   patchFacility,
   deleteFacility,
   createFacility,
-} from "../api/facilities";
+} from "../../api/facilities";
 import { iconFor, typeColor, badgeIconFor } from "./mapIcons";
 
 /** FlyTo: yon ta'sirlar useEffect ichida */

@@ -88,6 +88,12 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
             <span className="menu-text">Security</span>
           </MenuItem>
         </SubMenu>
+        <MenuItem
+          active={pathname === "/orgs-table"}
+          component={<Link to="/orgs-table" />}
+        >
+          Tashkilotlar
+        </MenuItem>
       </Menu>
     </Sidebar>
   );

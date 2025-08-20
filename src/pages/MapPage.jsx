@@ -1,27 +1,43 @@
 import { useEffect, useState } from "react";
-import MapDraw from "../components/MapDraw";
-import { fetchOrgTree } from "../api/org";
+import MapView from "../components/map/MapView";
+import { getOrgTree } from "../api/org";
 
-export default function MapPage({
-  headerHeight = 60,
-  dark = false,
-  sidebarOpen = false,
-}) {
+export default function MapPage() {
   const [orgTree, setOrgTree] = useState([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchOrgTree().then(setOrgTree).catch(console.error);
+    (async () => {
+      try {
+        const data = await getOrgTree();
+        setOrgTree(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error(e);
+        setError(e.message || "Org tree loading error");
+      }
+    })();
   }, []);
 
   return (
-    <div>
-      <h1 style={{ margin: "0 0 12px" }}>Map</h1>
-      <MapDraw
-        height={`calc(100vh - ${headerHeight + 32 + 16}px)`}
-        dark={dark}
-        orgTree={orgTree}
-        hideTree={sidebarOpen}
-      />
+    <div style={{ height: "100vh" }}>
+      {error && (
+        <div
+          style={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            zIndex: 9999,
+            background: "#fff0f0",
+            border: "1px solid #ffd6d6",
+            color: "#b91c1c",
+            padding: "8px 10px",
+            borderRadius: 8,
+          }}
+        >
+          API xato: {error}
+        </div>
+      )}
+      <MapView orgTree={orgTree} dark={false} />
     </div>
   );
 }
