@@ -55,7 +55,7 @@ function collectDescendantIds(tree, rootId, out = new Set()) {
 
 /* ---------- Component ---------- */
 
-export default function OrgTable() {
+export default function OrgTable({ isAdmin }) {
   // Server-side listing
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(0); // zero-based
@@ -357,9 +357,11 @@ export default function OrgTable() {
         <button className="btn" onClick={onSearch}>
           Qidir
         </button>
-        <button className="btn primary" onClick={openCreateRoot}>
-          + Root qo‘shish
-        </button>
+        {isAdmin && (
+          <button className="btn primary" onClick={openCreateRoot}>
+            + Root qo‘shish
+          </button>
+        )}
       </div>
 
       <div className="table-card">
@@ -474,6 +476,7 @@ export default function OrgTable() {
         open={createOpen}
         title="Bo‘lim qo‘shish"
         onClose={() => setCreateOpen(false)}
+        dark={document.body.classList.contains("theme-dark")}
       >
         <div className="form-grid">
           <div className="field">
@@ -552,6 +555,7 @@ export default function OrgTable() {
         open={editOpen}
         title="Bo‘limni tahrirlash"
         onClose={() => setEditOpen(false)}
+        dark={document.body.classList.contains("theme-dark")}
       >
         <div className="form-grid">
           <div className="field">
@@ -630,6 +634,7 @@ export default function OrgTable() {
         title="Bo‘limni o‘chirish"
         onClose={() => setDeleteOpen(false)}
         width={440}
+        dark={document.body.classList.contains("theme-dark")}
       >
         <div className="confirm">
           <p>
@@ -659,6 +664,8 @@ export default function OrgTable() {
         onSave={({ lat, lng, zoom }) => {
           setDraft((d) => ({ ...d, lat, lng, zoom }));
         }}
+        dark={document.body.classList.contains("theme-dark")}
+        size="xl"
       />
 
       {loading && (

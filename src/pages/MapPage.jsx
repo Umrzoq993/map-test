@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import MapView from "../components/map/MapView";
 import { getOrgTree } from "../api/org";
 
-export default function MapPage() {
+export default function MapPage({ dark }) {
   const [orgTree, setOrgTree] = useState([]);
   const [error, setError] = useState("");
 
@@ -37,7 +37,7 @@ export default function MapPage() {
           API xato: {error}
         </div>
       )}
-      <MapView orgTree={orgTree} dark={false} />
+      <MapView orgTree={orgTree} dark={dark} />
     </div>
   );
 }

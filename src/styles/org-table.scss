@@ -1,0 +1,373 @@
+/* src/styles/org-table.scss */
+/* =================================================================== */
+/*  AgriMap — Organization Table (scoped, dark-aware, no global bleed)  */
+/* =================================================================== */
+
+/* ----------------------------- */
+/*  LIGHT THEME TOKENS (scoped)  */
+/* ----------------------------- */
+.org-table-page {
+  --bg: #f6f9fc;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e5e7eb;
+  --ring: rgba(34, 197, 94, 0.25);
+
+  --thead-bg: #f1f5f9;
+  --thead-text: #0f172a;
+
+  --row: #ffffff;
+  --row-hover: #f8fafc;
+  --input-bg: #ffffff;
+
+  --primary-1: #22c55e;
+  --primary-2: #16a34a;
+
+  --danger-1: #ef4444;
+  --danger-2: #dc2626;
+
+  /* Page bg + header text */
+  .page-header {
+    margin: 8px 0 12px;
+    h2 {
+      margin: 0 0 4px;
+      color: var(--text);
+    }
+    .muted {
+      color: var(--muted);
+    }
+  }
+
+  /* ---------------- */
+  /*   Toolbar        */
+  /* ---------------- */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+  }
+  .toolbar .spacer {
+    flex: 1;
+  }
+  .toolbar .search,
+  .toolbar .parent-filter,
+  .toolbar .size {
+    appearance: none;
+    background: var(--input-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 10px;
+    outline: none;
+  }
+  .toolbar .search {
+    min-width: 240px;
+  }
+  .toolbar input::placeholder {
+    color: var(--muted);
+  }
+
+  /* -------------- */
+  /*   Buttons      */
+  /* -------------- */
+  .btn {
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: box-shadow 0.15s, transform 0.03s;
+  }
+  .btn:focus {
+    box-shadow: 0 0 0 4px var(--ring);
+    outline: none;
+  }
+  .btn:active {
+    transform: translateY(1px);
+  }
+  .btn.primary {
+    background: linear-gradient(135deg, var(--primary-1), var(--primary-2));
+    border-color: transparent;
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 6px 16px rgba(34, 197, 94, 0.22);
+  }
+  .btn.danger {
+    background: linear-gradient(135deg, var(--danger-1), var(--danger-2));
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.18);
+  }
+  .btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  /* -------------- */
+  /*   Card/Table   */
+  /* -------------- */
+  .table-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+
+  .org-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  /* HEADER — kuchaytirilgan selectorlar */
+  .table-card .org-table thead tr th,
+  .table-card .org-table thead tr td {
+    background-color: var(--thead-bg);
+    color: var(--thead-text);
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    font-weight: 600;
+    padding: 10px 12px;
+    user-select: none;
+    box-shadow: inset 0 -1px 0 var(--border); /* subtle separation */
+  }
+  .table-card .org-table thead tr th.sortable {
+    cursor: pointer;
+  }
+  .table-card .org-table thead tr th .sort {
+    opacity: 0.6;
+    margin-left: 6px;
+  }
+
+  /* BODY */
+  .org-table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    background: var(--row);
+    vertical-align: middle;
+  }
+  .org-table tbody tr:hover td {
+    background: var(--row-hover);
+  }
+
+  .org-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .org-table .muted {
+    color: var(--muted);
+  }
+  .org-table .indent {
+    display: inline-block;
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 16px;
+  }
+
+  /* ---------------- */
+  /*   Paginator      */
+  /* ---------------- */
+  .paginator {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px;
+  }
+  .paginator .muted {
+    color: var(--muted);
+  }
+
+  /* ----------------------- */
+  /*   Overlay (Loader)      */
+  /* ----------------------- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.15);
+    display: grid;
+    place-items: center;
+    z-index: 5000;
+  }
+  .spinner {
+    width: 34px;
+    height: 34px;
+    border: 3px solid transparent;
+    border-top-color: var(--primary-1);
+    border-right-color: var(--primary-2);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* ------------- */
+  /*   Modal       */
+  /* ------------- */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.45);
+    display: grid;
+    place-items: center;
+    z-index: 5000; /* Leaflet ustiga chiqadi */
+  }
+  .modal-card {
+    width: 520px;
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--thead-bg);
+  }
+  .modal-title {
+    font-weight: 600;
+  }
+  .modal-close {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--muted);
+  }
+  .modal-body {
+    padding: 12px;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
+
+  /* ------------- */
+  /*   Forms       */
+  /* ------------- */
+  .form-grid {
+    display: grid;
+    gap: 12px;
+  }
+  .field {
+    display: grid;
+    gap: 6px;
+  }
+  .field label {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .field input,
+  .field select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    outline: none;
+    background: var(--input-bg);
+    color: var(--text);
+  }
+  .field input:focus,
+  .field select:focus {
+    box-shadow: 0 0 0 4px var(--ring);
+    border-color: transparent;
+  }
+
+  .grid3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 720px) {
+    .grid3 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ---------------- */
+  /*   Map Picker     */
+  /* ---------------- */
+  .map-picker {
+    display: grid;
+    grid-template-rows: auto 60vh auto;
+    gap: 10px;
+  }
+  .map-picker .controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .map-picker .controls .spacer {
+    flex: 1;
+  }
+  .map-holder {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--card);
+  }
+}
+
+/* --------------------------------------------------- */
+/*  DARK OVERRIDE — istalgan ajdodda dark bo‘lsa ishlaydi */
+/*  (html/body/#root/.app-layout/.theme-dark — hammasi) */
+/* --------------------------------------------------- */
+:where(.dark, [data-theme="dark"], .theme-dark) .org-table-page {
+  --bg: #0b1220;
+  --card: #0f172a;
+  --text: #e6eef9;
+  --muted: #9aa5b1;
+  --border: #253045;
+  --ring: rgba(34, 197, 94, 0.25);
+
+  --thead-bg: #111c2b;
+  --thead-text: #e6eef9;
+
+  --row: #0f172a;
+  --row-hover: #0c1726;
+  --input-bg: #0b1422;
+}
+
+/* --------------------------------------------------- */
+/*  (Ixtiyoriy) Jadvalga kuchliroq scope berish        */
+/*  .org-table--scoped qo‘ysangiz, shunday ham ishlaydi */
+/* --------------------------------------------------- */
+.org-table-page .table-card .org-table.org-table--scoped thead tr th,
+.org-table-page .table-card .org-table.org-table--scoped thead tr td {
+  background-color: var(--thead-bg);
+  color: var(--thead-text);
+  border-bottom: 1px solid var(--border);
+}

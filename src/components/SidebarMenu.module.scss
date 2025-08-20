@@ -1,0 +1,87 @@
+/* SCOPED sidebar tokenlari */
+.wrapper {
+  /* Light */
+  --sb-bg: #ffffff;
+  --sb-fg: #0f172a;
+  --sb-muted: #6b7280;
+  --sb-border: #e5e7eb;
+  --sb-hover-bg: #f5f7fb;
+  --sb-active-bg: #e9f8ee;
+  --sb-accent: #16a34a;
+
+  /* Dark override — body/html/#root/anything’da theme ishlaydi */
+  :where(.dark, [data-theme="dark"], .theme-dark) &,
+  &[data-theme="dark"] {
+    --sb-bg: #0f172a;
+    --sb-fg: #e6eef9;
+    --sb-muted: #9aa5b1;
+    --sb-border: #223046;
+    --sb-hover-bg: #0c1726;
+    --sb-active-bg: #0b2b22;
+    --sb-accent: #22c55e;
+  }
+}
+
+/* Header/brand */
+.header {
+  padding: 14px 12px 8px 12px;
+  border-bottom: 1px solid var(--sb-border);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--sb-fg);
+}
+.brandIcon {
+  color: var(--sb-accent);
+}
+.brandText {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+/* Matn va badge */
+.text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sb-accent) 20%, transparent);
+  color: var(--sb-accent);
+  border: 1px solid color-mix(in srgb, var(--sb-accent) 35%, transparent);
+}
+
+/* pro-sidebar ichidagi hover holatini kuchaytirish (agar kerak bo'lsa) */
+:global(.ps-menu-button:hover) {
+  background: var(--sb-hover-bg) !important;
+}
+
+/* Submenu ichki kontenti biroz zichroq */
+:global(.ps-submenu-content) {
+  padding-inline: 4px !important;
+}
+
+:global(.ps-sidebar-container) {
+  background-color: var(--sb-bg) !important;
+  color: var(--sb-fg);
+}
+
+/* ildiz (chegara) – ayrim temalarda kerak bo‘lishi mumkin */
+:global(.ps-sidebar-root) {
+  border-right: 1px solid var(--sb-border);
+}
+
+/* menyu hover / active holatlari */
+:global(.ps-menu-button:hover) {
+  background: var(--sb-hover-bg) !important;
+}
+:global(.ps-submenu-content) {
+  background: transparent; /* gradient/legacy fonlarni yo‘qotish */
+}

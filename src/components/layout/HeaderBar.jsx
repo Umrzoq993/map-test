@@ -1,10 +1,10 @@
+import { LuMoon, LuSun, LuMenu } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
 import { clearToken } from "../../utils/auth";
 import { useAuth } from "../../hooks/useAuth";
-import { useTheme } from "../../hooks/useTheme";
-import "./_layout.scss";
+import styles from "./HeaderBar.module.scss";
 
-function LeafLogo({ size = 22 }) {
+function LeafLogo({ size = 20 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
       <defs>
@@ -28,22 +28,13 @@ function LeafLogo({ size = 22 }) {
   );
 }
 
-function ThemeSwitch() {
-  const { theme, setTheme } = useTheme();
-  return (
-    <select
-      value={theme}
-      onChange={(e) => setTheme(e.target.value)}
-      title="Theme"
-    >
-      <option value="light">Light</option>
-      <option value="dark">Dark</option>
-      <option value="system">System</option>
-    </select>
-  );
-}
-
-export default function HeaderBar() {
+/**
+ * Props:
+ *  - dark: boolean
+ *  - onToggleTheme: () => void
+ *  - onHamburger: () => void
+ */
+export default function HeaderBar({ dark, onToggleTheme, onHamburger }) {
   const nav = useNavigate();
   const { username, role } = useAuth();
 
@@ -53,16 +44,37 @@ export default function HeaderBar() {
   };
 
   return (
-    <header className="app-header">
-      <div className="brand">
+    // data-theme berib qo'yamiz: body.da .theme-dark bo'lmasa ham ishlaydi
+    <header className={styles.header} data-theme={dark ? "dark" : "light"}>
+      <button
+        className={styles.iconBtn}
+        onClick={onHamburger}
+        aria-label="Toggle sidebar"
+        title="Menyuni ochish/yopish"
+      >
+        <LuMenu size={18} />
+      </button>
+
+      <div className={styles.brand}>
         <LeafLogo />
-        <span>AgriMap</span>
+        <span>Agro Map</span>
       </div>
-      <div className="grow" />
-      <div className="userbox">
-        <span className="role-badge">{role || "USER"}</span>
-        <span className="username">{username}</span>
-        <button className="btn tiny" onClick={onLogout} title="Chiqish">
+
+      <div className={styles.grow} />
+
+      <button
+        className={styles.iconBtn}
+        onClick={onToggleTheme}
+        aria-label="Toggle theme"
+        title={dark ? "Light mode" : "Dark mode"}
+      >
+        {dark ? <LuSun size={18} /> : <LuMoon size={18} />}
+      </button>
+
+      <div className={styles.userbox}>
+        <span className={styles.role}>{role || "USER"}</span>
+        <span className={styles.username}>{username}</span>
+        <button className={styles.logoutBtn} onClick={onLogout} title="Chiqish">
           Logout
         </button>
       </div>

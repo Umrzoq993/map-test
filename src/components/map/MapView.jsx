@@ -10,6 +10,7 @@ import {
 } from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
+import MapTiles from "./MapTiles";
 
 import { getLatestDrawing, saveDrawing } from "../../api/drawings";
 import {
@@ -309,14 +310,7 @@ export default function MapView({
         zoom={zoom}
         style={{ height, width: "100%" }}
       >
-        <TileLayer
-          url={
-            dark
-              ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          }
-          attribution="&copy; OSM &copy; Carto"
-        />
+        <MapTiles dark={dark} />
 
         {/* Panes — faqat shu yerda bitta marta yaratiladi */}
         <Pane name="facilities-polys" style={{ zIndex: 410 }} />

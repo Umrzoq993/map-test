@@ -1,6 +1,9 @@
 import OrgTable from "../components/org/OrgTable";
+import { useAuth } from "../hooks/useAuth";
+import "../styles/org-table.scss";
 
 export default function OrgTablePage() {
+  const { isAdmin } = useAuth();
   return (
     <div className="page org-table-page">
       <div className="page-header">
@@ -9,7 +12,7 @@ export default function OrgTablePage() {
           Bo‘limlarni jadvalda ko‘rish va CRUD (modal orqali)
         </div>
       </div>
-      <OrgTable />
+      <OrgTable isAdmin={isAdmin} />
     </div>
   );
 }

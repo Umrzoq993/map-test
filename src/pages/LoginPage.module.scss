@@ -1,25 +1,21 @@
-/* LoginPage.module.scss — izolyatsiya qilingan stil */
-:root {
-  --bg: #f6f9fc;
-  --card: #ffffff;
-  --text: #0f172a;
-  --muted: #64748b;
-  --border: #e5e7eb;
-  --brand1: #22c55e;
-  --brand2: #16a34a;
-}
+/* BARCHA O'ZGARUVCHILAR FAQAT AUTH WRAPPER DOIRASIDA! */
+.auth {
+  --am-bg: #f6f9fc;
+  --am-card: #ffffff;
+  --am-text: #0f172a;
+  --am-muted: #64748b;
+  --am-border: #e5e7eb;
+  --am-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b1220;
-    --card: #0f172a;
-    --text: #e6eef9;
-    --muted: #9aa5b1;
-    --border: #1f2937;
+  @media (prefers-color-scheme: dark) {
+    --am-bg: #0b1220;
+    --am-card: #0f172a;
+    --am-text: #e6eef9;
+    --am-muted: #9aa5b1;
+    --am-border: #1f2937;
+    --am-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   }
-}
 
-.screen {
   min-height: 100vh;
   display: grid;
   place-items: center;
@@ -33,18 +29,44 @@
       rgba(22, 163, 74, 0.12),
       transparent 60%
     ),
-    var(--bg);
-  padding: 16px;
+    var(--am-bg);
+  position: relative;
+  overflow: hidden;
+}
+
+.decor1,
+.decor2 {
+  position: absolute;
+  filter: blur(60px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+.decor1 {
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(closest-side, #22c55e, transparent);
+  top: -80px;
+  right: -60px;
+  border-radius: 50%;
+}
+.decor2 {
+  width: 460px;
+  height: 460px;
+  background: radial-gradient(closest-side, #16a34a, transparent);
+  bottom: -120px;
+  left: -90px;
+  border-radius: 50%;
 }
 
 .card {
   width: min(92vw, 420px);
-  background: var(--card);
-  color: var(--text);
-  border: 1px solid var(--border);
+  background: var(--am-card);
+  color: var(--am-text);
+  border: 1px solid var(--am-border);
   border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--am-shadow);
   padding: 28px;
+  position: relative;
 }
 
 .brand {
@@ -55,46 +77,48 @@
 }
 .brandText {
   line-height: 1.2;
-  h1 {
-    margin: 0;
-    font-size: 20px;
-  }
-  p {
-    margin: 2px 0 0;
-    color: var(--muted);
-    font-size: 13px;
-  }
+}
+.brandText h1 {
+  font-size: 20px;
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+.muted {
+  color: var(--am-muted);
+  margin: 0;
 }
 
 .form {
   display: grid;
   gap: 14px;
+  margin-top: 8px;
 }
 .field {
   display: grid;
   gap: 6px;
-  label {
-    font-size: 13px;
-    color: var(--muted);
-  }
-  input {
-    width: 100%;
-    padding: 12px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    outline: none;
-    background: transparent;
-    color: var(--text);
-    &:focus {
-      border-color: #93c5aa;
-      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
-    }
-  }
 }
-.pwdWrap {
+.field label {
+  font-size: 13px;
+  color: var(--am-muted);
+}
+.field input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--am-border);
+  outline: none;
+  background: transparent;
+  color: var(--am-text);
+}
+.field input:focus {
+  border-color: #93c5aa;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+}
+
+.pwd {
   position: relative;
 }
-.pwdToggle {
+.toggle {
   position: absolute;
   right: 8px;
   top: 50%;
@@ -104,6 +128,33 @@
   cursor: pointer;
   font-size: 16px;
   opacity: 0.8;
+}
+
+.btn {
+  border: 1px solid var(--am-border);
+  background: #fff;
+  color: var(--am-text);
+  padding: 12px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.03s ease-in-out, box-shadow 0.15s;
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.primary {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.25);
+}
+.full {
+  width: 100%;
+}
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .error {
@@ -122,24 +173,7 @@
   }
 }
 
-.primaryBtn {
-  width: 100%;
-  border: 0;
-  padding: 12px 14px;
-  border-radius: 12px;
-  color: #fff;
-  font-weight: 600;
-  background: linear-gradient(135deg, var(--brand1), var(--brand2));
-  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.25);
-  cursor: pointer;
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-}
-
 .foot {
   margin-top: 16px;
   text-align: center;
-  color: var(--muted);
 }

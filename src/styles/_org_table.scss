@@ -1,3 +1,18 @@
+/* org-table.scss ichida, default tokenlardan keyin */
+:where(.dark, [data-theme="dark"], .theme-dark) .org-table-page {
+  --bg: #0b1220;
+  --card: #0f172a;
+  --text: #e6eef9;
+  --muted: #9aa5b1;
+  --border: #253045;
+  --ring: rgba(34, 197, 94, 0.25);
+  --thead-bg: #111c2b;
+  --thead-text: #e6eef9;
+  --row: #0f172a;
+  --row-hover: #0c1726;
+  --input-bg: #0b1422;
+}
+
 .org-table-page {
   .page-header {
     padding: 10px 12px;

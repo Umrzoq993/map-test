@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { LuMoon, LuSun } from "react-icons/lu";
 import { Navigate, Route, Routes } from "react-router-dom";
 import SidebarMenu from "./components/SidebarMenu";
 import Dashboard from "./pages/Dashboard";
-import LoginPage from "./pages/LoginPage"; // ✅ qo‘shildi
+import LoginPage from "./pages/LoginPage";
 import MapPage from "./pages/MapPage";
 import OrgManager from "./pages/OrgManager";
 import OrgTablePage from "./pages/OrgTablePage";
-import ProtectedRoute from "./routes/ProtectedRoute"; // ✅ qo‘shildi
+import ProtectedRoute from "./routes/ProtectedRoute";
+
+// ⬇️ YANGI IMPORT
+import HeaderBar from "./components/layout/HeaderBar";
 
 function useIsMobile(query = "(max-width: 1024px)") {
   const [isMobile, setIsMobile] = useState(false);
@@ -31,6 +33,7 @@ export default function App() {
     if (isMobile) setCollapsed(false);
   }, [isMobile]);
 
+  // Siz avval body.ga .theme-dark qo'ygan edingiz — shu saqlanib qoladi:
   useEffect(() => {
     const cls = "theme-dark";
     if (dark) document.body.classList.add(cls);
@@ -46,10 +49,8 @@ export default function App() {
 
   return (
     <Routes>
-      {/* 🔑 Login sahifasi doim ochiq */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* 🔐 Himoyalangan layout */}
       <Route element={<ProtectedRoute />}>
         <Route
           path="/*"
@@ -87,27 +88,12 @@ export default function App() {
 
               {/* Main */}
               <main className="app-main">
-                <div className="app-header">
-                  <button
-                    className="hamburger"
-                    onClick={onHamburger}
-                    aria-label="Toggle sidebar"
-                  >
-                    ☰
-                  </button>
-                  <div className="brand">Agro Map</div>
-
-                  <button
-                    className="hamburger"
-                    onClick={() => setDark((d) => !d)}
-                    aria-label="Toggle theme"
-                    title={dark ? "Light mode" : "Dark mode"}
-                  >
-                    {dark ? <LuSun size={18} /> : <LuMoon size={18} />}
-                  </button>
-
-                  <div className="spacer">Logged in</div>
-                </div>
+                {/* ⬇️ INLINE HEADER O‘RNIGA ALOHIDA KOMPONENT */}
+                <HeaderBar
+                  dark={dark}
+                  onToggleTheme={() => setDark((d) => !d)}
+                  onHamburger={onHamburger}
+                />
 
                 <div className="app-content">
                   <Routes>
@@ -140,7 +126,6 @@ export default function App() {
         />
       </Route>
 
-      {/* Agar boshqa noma’lum url bo‘lsa */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
