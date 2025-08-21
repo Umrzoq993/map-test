@@ -1,10 +1,8 @@
-// src/components/ui/Modal.module.scss
 /* Scoped, dark-aware, animated Modal */
 
-.portalHost {
-  all: initial;
-}
+/* ⛔️ ESKI: .portalHost { all: initial; } — olib tashlandi */
 
+/* Dark/Lite tokenlar */
 .modalRoot {
   /* LIGHT tokens */
   --md-overlay: rgba(2, 6, 23, 0.45);
@@ -19,9 +17,7 @@
   z-index: 6000; /* Leaflet va nav ustidan */
 }
 
-/* Global yoki local dark trigger:
-   - body/html/#root/.app-layout ga .dark | [data-theme="dark"] | .theme-dark
-   - Yoki komponentning o'ziga data-theme="dark" (Header/props orqali) */
+/* Global yoki local dark trigger */
 :where(.dark, [data-theme="dark"], .theme-dark) .modalRoot,
 .modalRoot[data-theme="dark"] {
   --md-overlay: rgba(2, 6, 23, 0.6);
@@ -119,7 +115,7 @@
   opacity: 0;
 }
 
-/* Focus rings (ichidagi input/selectlar uchun yumshoq) */
+/* Focus rings */
 .body :where(input, select, textarea, button):focus {
   outline: none;
   box-shadow: 0 0 0 4px var(--md-ring);

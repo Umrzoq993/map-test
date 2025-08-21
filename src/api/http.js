@@ -1,17 +1,18 @@
 // src/api/http.js
 import axios from "axios";
-import { getToken, clearToken } from "../utils/auth";
+import { getToken, logout } from "./auth";
 
-// Vite dev serverida proxy ishlatayotgan bo'lsangiz baseURL bo'sh qolsin.
-// Aks holda backend rootini bering, masalan: "http://localhost:8080"
-export const api = axios.create({ baseURL: "http://localhost:8080" });
+const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
-// Request interceptor
+// Bitta axios instance
+export const api = axios.create({ baseURL: BASE });
+
+// Har bir so'rovga JWT qo'shib yuboramiz
 api.interceptors.request.use((config) => {
-  const token = getToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  const t = getToken();
+  if (t) config.headers.Authorization = `Bearer ${t}`;
 
-  // Tomcat bilan mos: sort[]=... emas, bir nechta sort=
+  // (ixtiyoriy) ?sort[]=... o‘rniga bir nechta ?sort=... ga aylantirish:
   if (config.params?.sort && Array.isArray(config.params.sort)) {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(config.params)) {
@@ -27,31 +28,32 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor
+// 401 bo‘lsa tokenni tozalab, login sahifasiga
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err?.response?.status === 401) {
-      clearToken();
+      logout();
       window.location.assign("/login");
     }
     return Promise.reject(err);
   }
 );
 
-// Http helper funksiyalar
-export async function httpGet(url, config) {
-  return (await api.get(url, config)).data;
+// Kichik helperlar (login va boshqalar qulay ishlatishi uchun)
+export async function httpGet(url, params) {
+  const res = await api.get(url, { params });
+  return res.data;
 }
-
-export async function httpPost(url, data, config) {
-  return (await api.post(url, data, config)).data;
+export async function httpPost(url, body) {
+  const res = await api.post(url, body);
+  return res.data;
 }
-
-export async function httpPatch(url, data, config) {
-  return (await api.patch(url, data, config)).data;
+export async function httpPatch(url, body) {
+  const res = await api.patch(url, body);
+  return res.data;
 }
-
-export async function httpDelete(url, config) {
-  return (await api.delete(url, config)).data;
+export async function httpDelete(url) {
+  const res = await api.delete(url);
+  return res.data;
 }

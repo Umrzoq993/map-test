@@ -1,6 +1,7 @@
 // src/components/map/CreateFacilityDrawer.jsx
 import { useEffect, useMemo, useState } from "react";
 import { createFacility } from "../../api/facilities";
+import { centroidOfGeometry } from "../../utils/geo"; // ⬅️ YANGI
 
 /** ---------------- FIELD SCHEMA (bitta joydan boshqariladi) ----------------
  * Har bir type uchun: label va fields (kalit, label, input type, suffix).
@@ -212,12 +213,17 @@ export default function CreateFacilityDrawer({
         type,
         status,
         orgId,
-        details: normalizeNumbers(details),
+        attributes: normalizeNumbers(details),
       };
-      if (geometry) payload.geometry = geometry;
-      if (center?.lat && center?.lng) {
-        payload.lat = center.lat;
-        payload.lng = center.lng;
+      // Geometriyani biriktiramiz
+      if (geometry) {
+        payload.geometry = geometry;
+      }
+      // LAT/LNG: avvalo geometriyaning haqiqiy centroidi, bo'lmasa fallback sifatida Drawerga uzatilgan center
+      const c = geometry ? centroidOfGeometry(geometry) : center || null;
+      if (c?.lat != null && c?.lng != null) {
+        payload.lat = c.lat;
+        payload.lng = c.lng;
       }
       await createFacility(payload);
       onClose?.();

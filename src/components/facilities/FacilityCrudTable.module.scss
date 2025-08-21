@@ -1,0 +1,296 @@
+/* ===== FacilityCrudTable.module.scss ===== */
+
+/* LIGHT tokenlar (default) */
+.root {
+  --fc-bg: #ffffff;
+  --fc-fg: #111827;
+  --fc-muted: #6b7280;
+  --fc-border: #e5e7eb;
+  --fc-row-alt: #fafafa;
+  --fc-hover: #f8fafc;
+
+  --fc-accent: #3b82f6;
+  --fc-accent-2: #60a5fa;
+  --fc-ring: rgba(59, 130, 246, 0.22);
+
+  --fc-danger: #e11d48;
+  --fc-danger-bg: #fee2e2;
+  --fc-danger-br: #fecaca;
+
+  --fc-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+
+  /* “card” ko‘rinishini komponent ichida hal qilamiz */
+  background: var(--fc-bg);
+  color: var(--fc-fg);
+  border: 1px solid var(--fc-border);
+  border-radius: 16px;
+  box-shadow: var(--fc-shadow);
+  padding: 16px;
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+/* DARK override — ancestor global selectorlar bilan */
+:global(.dark) .root,
+:global([data-theme="dark"]) .root,
+:global(.theme-dark) .root {
+  --fc-bg: #0b1220;
+  --fc-fg: #e5e7eb;
+  --fc-muted: #94a3b8;
+  --fc-border: #23324a;
+  --fc-row-alt: #0f1a2b;
+  --fc-hover: #0b1626;
+
+  --fc-accent: #60a5fa;
+  --fc-accent-2: #93c5fd;
+  --fc-ring: rgba(96, 165, 250, 0.22);
+
+  --fc-danger: #fca5a5;
+  --fc-danger-bg: #2a1214;
+  --fc-danger-br: #7f1d1d;
+}
+
+/* ===== Toolbar ===== */
+.toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.titleWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--fc-fg);
+}
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.count {
+  display: inline-block;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--fc-fg);
+  border: 1px solid var(--fc-border);
+  background: color-mix(in srgb, var(--fc-accent) 12%, transparent);
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.search {
+  position: relative;
+  min-width: 260px;
+}
+.searchInput {
+  width: 100%;
+  height: 40px;
+  padding: 0 34px 0 34px;
+  border-radius: 12px;
+  border: 1px solid var(--fc-border);
+  background: transparent;
+  color: var(--fc-fg);
+  outline: none;
+  transition: box-shadow 0.15s, border-color 0.15s, background 0.15s;
+}
+.searchInput::placeholder {
+  color: var(--fc-muted);
+}
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.65;
+  font-size: 14px;
+  pointer-events: none;
+}
+.clearBtn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid var(--fc-border);
+  border-radius: 10px;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  color: var(--fc-fg);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.clearBtn:hover {
+  background: var(--fc-hover);
+}
+.searchInput:focus {
+  box-shadow: 0 0 0 4px var(--fc-ring);
+  border-color: transparent;
+  background: color-mix(in srgb, var(--fc-accent) 6%, transparent);
+}
+
+.select {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--fc-border);
+  background: transparent;
+  color: var(--fc-fg);
+  outline: none;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.select:focus {
+  box-shadow: 0 0 0 4px var(--fc-ring);
+  border-color: transparent;
+}
+
+/* Buttons */
+.btn {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--fc-border);
+  background: transparent;
+  color: var(--fc-fg);
+  cursor: pointer;
+  transition: transform 0.03s, box-shadow 0.15s, background 0.15s,
+    border-color 0.15s;
+}
+.btn:hover {
+  background: var(--fc-hover);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btnPrimary {
+  background: linear-gradient(135deg, var(--fc-accent), var(--fc-accent-2));
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--fc-accent) 35%, transparent);
+}
+.btnDanger {
+  background: var(--fc-danger-bg);
+  border-color: var(--fc-danger-br);
+  color: var(--fc-danger);
+}
+
+/* ===== Table ===== */
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--fc-border);
+  border-radius: 14px;
+  background-color: var(--fc-bg);
+  box-shadow: var(--fc-shadow);
+}
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--fc-fg);
+  font-size: 14px;
+  background-color: var(--fc-bg);
+}
+.table thead th {
+  position: sticky;
+  top: 0;
+  background-color: var(--fc-bg);
+  text-align: left;
+  font-weight: 700;
+  padding: 12px;
+  border-bottom: 1px solid var(--fc-border);
+  white-space: nowrap;
+}
+.table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--fc-border);
+  vertical-align: middle;
+  background-color: var(--fc-bg);
+}
+.table tbody tr:nth-child(2n) td {
+  background-color: var(--fc-row-alt);
+}
+.table tbody tr:hover td {
+  background-color: var(--fc-hover);
+}
+
+/* Status chip */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--fc-border);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--fc-muted);
+}
+.active {
+  color: var(--fc-accent);
+  border-color: color-mix(in srgb, var(--fc-accent) 35%, transparent);
+}
+.active .dot {
+  background: var(--fc-accent);
+}
+
+/* Form (Modal ichida) */
+.form {
+  display: grid;
+  gap: 14px;
+}
+.grid3 {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.field {
+  display: grid;
+  gap: 6px;
+}
+.field label {
+  font-size: 12.5px;
+  color: var(--fc-muted);
+}
+.inputLike {
+  width: 100%;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--fc-border);
+  outline: none;
+  background: transparent;
+  color: var(--fc-fg);
+  transition: box-shadow 0.15s, border-color 0.15s, background 0.15s;
+}
+.inputLike:focus {
+  box-shadow: 0 0 0 4px var(--fc-ring);
+  border-color: transparent;
+  background: color-mix(in srgb, var(--fc-accent) 6%, transparent);
+}
+
+/* Helpers */
+.nowrap {
+  white-space: nowrap;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

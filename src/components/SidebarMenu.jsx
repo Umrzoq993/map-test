@@ -24,16 +24,13 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
   const { pathname } = useLocation();
   const { isAdmin } = useAuth();
 
-  // Path o‘zgarsa mobile panelni yopamiz
   useEffect(() => {
     if (toggled) setToggled(false);
   }, [pathname, toggled, setToggled]);
 
-  // Active helper
   const isActive = (to, exact = true) =>
     exact ? pathname === to : pathname.startsWith(to);
 
-  // react-pro-sidebar v2: itemlar uchun custom ranglar
   const menuItemStyles = {
     button: ({ active }) => ({
       color: "var(--sb-fg)",
@@ -53,6 +50,11 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
     }),
     subMenuContent: () => ({
       padding: "6px 4px 8px 12px",
+      backgroundColor: "var(--sb-bg)",
+      border: "1px solid var(--sb-border)",
+      borderRadius: "12px",
+      margin: "0 8px 8px 8px",
+      boxShadow: "0 6px 16px rgba(0,0,0,.08)",
     }),
   };
 
@@ -72,6 +74,12 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
           color: "var(--sb-fg)",
           borderRight: "1px solid var(--sb-border)",
           height: "100vh",
+          "--ps-menu-bg": "var(--sb-bg)",
+          "--ps-menu-color": "var(--sb-fg)",
+          "--ps-menu-active-bg": "var(--sb-active-bg)",
+          "--ps-menu-item-default-color": "var(--sb-fg)",
+          "--ps-menu-item-hover-bg": "var(--sb-hover-bg)",
+          "--ps-menu-item-active-bg": "var(--sb-active-bg)",
         }}
       >
         {/* Header */}
@@ -112,23 +120,15 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
             </MenuItem>
           )}
 
-          {/* Inshootlar bo‘limi — overview + 9 ta sahifa */}
+          {/* Inshootlar — faqat alohida sahifalar */}
           {isAdmin && (
             <SubMenu
               defaultOpen={isActive("/facilities", false)}
               label={<span className={styles.text}>Inshootlar</span>}
               icon={"🏭"}
             >
-              {/* Overview */}
-              <MenuItem
-                active={isActive("/facilities")}
-                component={<Link to="/facilities" />}
-                icon={"🗂️"}
-              >
-                <span className={styles.text}>Umumiy ko‘rinish</span>
-              </MenuItem>
+              {/* Overview olib tashlandi */}
 
-              {/* 1) Issiqxona */}
               <MenuItem
                 active={isActive("/facilities/greenhouse")}
                 component={<Link to="/facilities/greenhouse" />}
@@ -137,7 +137,6 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
                 <span className={styles.text}>Issiqxona</span>
               </MenuItem>
 
-              {/* 2) Tovuqxona */}
               <MenuItem
                 active={isActive("/facilities/poultry")}
                 component={<Link to="/facilities/poultry" />}
@@ -146,7 +145,6 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
                 <span className={styles.text}>Tovuqxona</span>
               </MenuItem>
 
-              {/* 3) Molxona */}
               <MenuItem
                 active={isActive("/facilities/cowshed")}
                 component={<Link to="/facilities/cowshed" />}
@@ -155,7 +153,6 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
                 <span className={styles.text}>Molxona</span>
               </MenuItem>
 
-              {/* 4) Kurkaxona */}
               <MenuItem
                 active={isActive("/facilities/fur-farm")}
                 component={<Link to="/facilities/fur-farm" />}
@@ -164,7 +161,6 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
                 <span className={styles.text}>Kurkaxona</span>
               </MenuItem>
 
-              {/* 5) Qo‘yxona */}
               <MenuItem
                 active={isActive("/facilities/sheepfold")}
                 component={<Link to="/facilities/sheepfold" />}
@@ -173,7 +169,6 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
                 <span className={styles.text}>Qo‘yxona</span>
               </MenuItem>
 
-              {/* 6) Sexlar */}
               <MenuItem
                 active={isActive("/facilities/workshops")}
                 component={<Link to="/facilities/workshops" />}
@@ -182,7 +177,6 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
                 <span className={styles.text}>Ishlab chiqarish sexlari</span>
               </MenuItem>
 
-              {/* 7) Yordamchi xo‘jalik yerlari */}
               <MenuItem
                 active={isActive("/facilities/aux-lands")}
                 component={<Link to="/facilities/aux-lands" />}
@@ -191,7 +185,6 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
                 <span className={styles.text}>Yordamchi xo‘jalik yerlari</span>
               </MenuItem>
 
-              {/* 8) Chegara oldi yerlar */}
               <MenuItem
                 active={isActive("/facilities/border-lands")}
                 component={<Link to="/facilities/border-lands" />}
@@ -200,7 +193,6 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
                 <span className={styles.text}>Chegara oldi yerlari</span>
               </MenuItem>
 
-              {/* 9) Baliqchilik ko‘llari */}
               <MenuItem
                 active={isActive("/facilities/fish-ponds")}
                 component={<Link to="/facilities/fish-ponds" />}

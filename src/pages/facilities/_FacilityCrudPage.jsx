@@ -6,9 +6,9 @@ import {
   patchFacility,
   deleteFacility,
 } from "../../api/facilities";
-import { getToken } from "../../api/auth"; // sizda shu bor — yo‘q bo‘lsa pastdagi helperdan foydalaning
+import { getToken } from "../../api/auth";
 
-/** Token’dan orgId olish (fallback) */
+/** Token’dan orgId olish */
 function decodeOrgIdFromToken() {
   try {
     const t = getToken?.() || localStorage.getItem("token");
@@ -24,16 +24,13 @@ function decodeOrgIdFromToken() {
 }
 
 /**
- * Generic CRUD page:
+ * Generic CRUD page (jadval + modal):
  * props: {
  *   title: string,
  *   type: string (FacilityType),
- *   columns: [{key, label, render?: (row)=>ReactNode}],
- *   formSchema: [{name,label,type,placeholder?}],
+ *   columns: [{key, label, render?:(row,attrs)=>ReactNode}],
+ *   formSchema: [{name,label,type?,placeholder?}],
  * }
- * - Jadval ko‘rinadi
- * - “Qo‘shish” bosilsa modal ochiladi
- * - Edit/Delete ham modallar orqali
  */
 export default function FacilityCrudPage({ title, type, columns, formSchema }) {
   const [rows, setRows] = useState([]);
@@ -46,7 +43,7 @@ export default function FacilityCrudPage({ title, type, columns, formSchema }) {
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
 
-  // Form states
+  // Form holatlari
   const [draft, setDraft] = useState({});
   const [editRow, setEditRow] = useState(null);
   const [deleteRow, setDeleteRow] = useState(null);
@@ -77,12 +74,9 @@ export default function FacilityCrudPage({ title, type, columns, formSchema }) {
   }
   function openEditModal(row) {
     setEditRow(row);
-    // attributes ichidan form qiymatlarini to‘ldiramiz
     const a = row.attributes || {};
     const initial = {};
-    formSchema.forEach((f) => {
-      initial[f.name] = a[f.name] ?? "";
-    });
+    formSchema.forEach((f) => (initial[f.name] = a[f.name] ?? ""));
     setDraft(initial);
     setOpenEdit(true);
   }
@@ -100,21 +94,26 @@ export default function FacilityCrudPage({ title, type, columns, formSchema }) {
     setDeleteRow(null);
   }
 
-  function onDraftChange(name, value) {
-    setDraft((d) => ({ ...d, [name]: value }));
+  /** input change (number bo‘lsa, son qilamiz) */
+  function onDraftChange(name, value, fieldType) {
+    let v = value;
+    if (fieldType === "number") {
+      v = value === "" ? "" : Number(value);
+      if (Number.isNaN(v)) v = "";
+    }
+    setDraft((d) => ({ ...d, [name]: v }));
   }
 
   async function submitCreate(e) {
     e?.preventDefault();
     try {
-      const payload = {
+      await createFacility({
         orgId,
         name: `${title} — ${new Date().toLocaleDateString()}`,
         type,
         status: "ACTIVE",
         attributes: draft,
-      };
-      await createFacility(payload);
+      });
       closeAll();
       await load();
     } catch (e2) {
@@ -125,9 +124,7 @@ export default function FacilityCrudPage({ title, type, columns, formSchema }) {
   async function submitEdit(e) {
     e?.preventDefault();
     try {
-      await patchFacility(editRow.id, {
-        attributes: draft, // deep-merge bo‘ladi (backend)
-      });
+      await patchFacility(editRow.id, { attributes: draft }); // backend deep-merge qiladi
       closeAll();
       await load();
     } catch (e2) {
@@ -147,14 +144,16 @@ export default function FacilityCrudPage({ title, type, columns, formSchema }) {
 
   return (
     <div className="org-table-page">
+      {/* Sarlavha */}
       <div className="page-header">
         <h2>{title}</h2>
         <div className="muted">
-          Jadval ko‘rinishida. CRUD amallari popup modal orqali bajariladi.
+          Sahifada faqat jadval. Qo‘shish/Tahrirlash/O‘chirish — modal orqali.
         </div>
       </div>
 
       <div className="org-table-wrap">
+        {/* Jadval usti — faqat qidirish + qo‘shish tugmasi */}
         <div className="toolbar">
           <input
             className="search"
@@ -168,6 +167,7 @@ export default function FacilityCrudPage({ title, type, columns, formSchema }) {
           </button>
         </div>
 
+        {/* Jadval */}
         <div className="table-card">
           <table className="org-table org-table--scoped">
             <thead>
@@ -176,7 +176,7 @@ export default function FacilityCrudPage({ title, type, columns, formSchema }) {
                 {columns.map((c) => (
                   <th key={c.key}>{c.label}</th>
                 ))}
-                <th>Actions</th>
+                <th>Amallar</th>
               </tr>
             </thead>
             <tbody>
@@ -232,21 +232,12 @@ export default function FacilityCrudPage({ title, type, columns, formSchema }) {
         </div>
       </div>
 
-      {/* CREATE */}
+      {/* CREATE MODAL */}
       <Modal
         open={openCreate}
         title={`${title} — Qo‘shish`}
         onClose={closeAll}
-        footer={
-          <>
-            <button className="btn" onClick={closeAll}>
-              Bekor qilish
-            </button>
-            <button className="btn primary" onClick={submitCreate}>
-              Saqlash
-            </button>
-          </>
-        }
+        size="md"
       >
         <form className="form-grid" onSubmit={submitCreate}>
           {formSchema.map((f) => (
@@ -256,28 +247,28 @@ export default function FacilityCrudPage({ title, type, columns, formSchema }) {
                 type={f.type || "text"}
                 placeholder={f.placeholder || ""}
                 value={draft[f.name] ?? ""}
-                onChange={(e) => onDraftChange(f.name, e.target.value)}
+                onChange={(e) => onDraftChange(f.name, e.target.value, f.type)}
               />
             </div>
           ))}
+
+          <div className="modal-actions" style={{ marginTop: 12 }}>
+            <button type="button" className="btn" onClick={closeAll}>
+              Bekor qilish
+            </button>
+            <button type="submit" className="btn primary">
+              Saqlash
+            </button>
+          </div>
         </form>
       </Modal>
 
-      {/* EDIT */}
+      {/* EDIT MODAL */}
       <Modal
         open={openEdit}
         title={`${title} — Tahrirlash`}
         onClose={closeAll}
-        footer={
-          <>
-            <button className="btn" onClick={closeAll}>
-              Bekor qilish
-            </button>
-            <button className="btn primary" onClick={submitEdit}>
-              Yangilash
-            </button>
-          </>
-        }
+        size="md"
       >
         <form className="form-grid" onSubmit={submitEdit}>
           {formSchema.map((f) => (
@@ -287,33 +278,39 @@ export default function FacilityCrudPage({ title, type, columns, formSchema }) {
                 type={f.type || "text"}
                 placeholder={f.placeholder || ""}
                 value={draft[f.name] ?? ""}
-                onChange={(e) => onDraftChange(f.name, e.target.value)}
+                onChange={(e) => onDraftChange(f.name, e.target.value, f.type)}
               />
             </div>
           ))}
+
+          <div className="modal-actions" style={{ marginTop: 12 }}>
+            <button type="button" className="btn" onClick={closeAll}>
+              Bekor qilish
+            </button>
+            <button type="submit" className="btn primary">
+              Yangilash
+            </button>
+          </div>
         </form>
       </Modal>
 
-      {/* DELETE */}
+      {/* DELETE MODAL */}
       <Modal
         open={openDelete}
         title="O‘chirishni tasdiqlang"
         onClose={closeAll}
-        footer={
-          <>
-            <button className="btn" onClick={closeAll}>
-              Bekor qilish
-            </button>
-            <button className="btn danger" onClick={submitDelete}>
-              Ha, o‘chirish
-            </button>
-          </>
-        }
+        size="sm"
       >
-        <div className="fd-alert">
-          <div>
-            <strong>Diqqat!</strong> ushbu yozuvni o‘chirmoqchisiz.
-          </div>
+        <div className="fd-alert" style={{ marginBottom: 12 }}>
+          <strong>Diqqat!</strong> ushbu yozuvni o‘chirmoqchisiz.
+        </div>
+        <div className="modal-actions">
+          <button className="btn" onClick={closeAll}>
+            Bekor qilish
+          </button>
+          <button className="btn danger" onClick={submitDelete}>
+            Ha, o‘chirish
+          </button>
         </div>
       </Modal>
     </div>

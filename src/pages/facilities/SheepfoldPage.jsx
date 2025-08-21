@@ -1,30 +1,5 @@
-import FacilityCrudPage from "./_FacilityCrudPage";
-
+// src/pages/facilities/SheepfoldPage.jsx
+import FacilityCrudTable from "../../components/facilities/FacilityCrudTable";
 export default function SheepfoldPage() {
-  return (
-    <FacilityCrudPage
-      title="Qo‘yxona"
-      type="STABLE" /* yoki COWSHED - backend mappingga moslang */
-      columns={[
-        { key: "areaM2", label: "Umumiy yer (m²)" },
-        { key: "capacity", label: "Umumiy sig‘imi (son)" },
-        { key: "currentCount", label: "Hozirda mavjud (son)" },
-        { key: "productKg", label: "Mahsulot (kg)" },
-        { key: "revenueAmount", label: "Daromad" },
-        { key: "netProfit", label: "Sof foyda" },
-      ]}
-      formSchema={[
-        { name: "areaM2", label: "Umumiy yer maydoni (m²)", type: "number" },
-        { name: "capacity", label: "Umumiy sig‘imi (son)", type: "number" },
-        { name: "currentCount", label: "Hozirda mavjud (son)", type: "number" },
-        {
-          name: "productKg",
-          label: "Olinadigan mahsulot (kg)",
-          type: "number",
-        },
-        { name: "revenueAmount", label: "Olinadigan daromad", type: "number" },
-        { name: "netProfit", label: "Olingan sof foyda", type: "number" },
-      ]}
-    />
-  );
+  return <FacilityCrudTable type="SHEEPFOLD" title="Qo‘yxona" />;
 }

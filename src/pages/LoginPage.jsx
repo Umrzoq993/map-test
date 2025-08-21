@@ -1,66 +1,41 @@
 // src/pages/LoginPage.jsx
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { login } from "../api/auth";
-import { setToken, decodeJWT } from "../utils/auth";
-import styles from "./LoginPage.module.scss"; // <-- MODUL
-
-function LeafLogo({ size = 28 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
-      <defs>
-        <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0" stopColor="#22c55e" />
-          <stop offset="1" stopColor="#16a34a" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M56 8C36 9 22 16 14 28S6 52 8 56c4 2 20 0 32-8s19-22 16-40z"
-        fill="url(#g)"
-      />
-      <path
-        d="M10 52C30 50 50 30 54 10"
-        stroke="#0f5132"
-        strokeOpacity=".3"
-        strokeWidth="3"
-        fill="none"
-      />
-    </svg>
-  );
-}
+import { useLocation, useNavigate, Navigate } from "react-router-dom";
+import { isAuthenticated, login } from "../api/auth";
+import { LuLeaf } from "react-icons/lu";
+import styles from "./LoginPage.module.scss";
 
 export default function LoginPage() {
+  // Agar allaqachon login bo‘lsa — dashboardga
+  if (isAuthenticated()) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   const navigate = useNavigate();
-  const loc = useLocation();
-  const from = loc.state?.from?.pathname || "/";
+  const location = useLocation();
+  // Qayerdan kelganini olamiz — bo‘lmasa /dashboard
+  const from = location.state?.from?.pathname || "/dashboard";
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    setErr("");
-    if (!username.trim() || !password) {
-      setErr("Login va parolni kiriting");
-      return;
-    }
-    setLoading(true);
+    setBusy(true);
+    setError("");
     try {
-      const { token } = await login(username.trim(), password);
-      setToken(token);
-      decodeJWT(); // kerak bo‘lsa ishlatasiz
-      navigate(from, { replace: true });
-    } catch (e) {
-      setErr(
-        e?.response?.status === 401
-          ? "Login yoki parol noto‘g‘ri"
-          : "Server xatosi."
+      const ok = await login(username.trim(), password);
+      if (ok) navigate(from, { replace: true });
+      else setError("Login failed");
+    } catch (err) {
+      setError(
+        err?.response?.data?.message || err?.message || "Login amalga oshmadi"
       );
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
 
@@ -71,63 +46,56 @@ export default function LoginPage() {
 
       <div className={styles.card}>
         <div className={styles.brand}>
-          <LeafLogo size={30} />
+          <LuLeaf size={22} />
           <div className={styles.brandText}>
-            <h1>AgriMap</h1>
-            <p className={styles.muted}>Fermer xo‘jaliklari uchun geoxizmat</p>
+            <h1>Agro Map</h1>
+            <p className={styles.muted}>Tizimga kirish</p>
           </div>
         </div>
 
+        {error && <div className={styles.error}>{error}</div>}
+
         <form className={styles.form} onSubmit={onSubmit}>
           <div className={styles.field}>
-            <label>Login</label>
+            <label>Username</label>
             <input
-              type="text"
               autoFocus
-              placeholder="username"
+              placeholder="admin"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
             />
           </div>
 
-          <div className={styles.field}>
-            <label>Parol</label>
-            <div className={styles.pwd}>
-              <input
-                type={showPwd ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-              />
-              <button
-                type="button"
-                className={styles.toggle}
-                onClick={() => setShowPwd((s) => !s)}
-                aria-label={
-                  showPwd ? "Parolni yashirish" : "Parolni ko‘rsatish"
-                }
-              >
-                {showPwd ? "🙈" : "👁️"}
-              </button>
-            </div>
+          <div className={`${styles.field} ${styles.pwd}`}>
+            <label>Password</label>
+            <input
+              placeholder="••••••••"
+              type={showPwd ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              className={styles.toggle}
+              onClick={() => setShowPwd((s) => !s)}
+              aria-label={showPwd ? "Yopish" : "Ko‘rsatish"}
+              title={showPwd ? "Yopish" : "Ko‘rsatish"}
+            >
+              {showPwd ? "🙈" : "👁️"}
+            </button>
           </div>
 
-          {err && <div className={styles.error}>{err}</div>}
-
           <button
+            type="submit"
             className={`${styles.btn} ${styles.primary} ${styles.full}`}
-            disabled={loading}
+            disabled={busy}
           >
-            {loading ? "Kutilmoqda..." : "Kirish"}
+            {busy ? "Kutilmoqda..." : "Kirish"}
           </button>
         </form>
 
         <div className={styles.foot}>
-          <small className={styles.muted}>
-            © {new Date().getFullYear()} AgriMap
-          </small>
+          <p className={styles.muted}>© {new Date().getFullYear()} Agro Map</p>
         </div>
       </div>
     </div>

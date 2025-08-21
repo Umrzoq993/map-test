@@ -1,3 +1,4 @@
+// src/api/facilities.js
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
 function authHeaders() {
@@ -6,7 +7,12 @@ function authHeaders() {
 }
 
 async function http(path, { method = "GET", body, headers } = {}) {
-  const res = await fetch(`${BASE}/api${path}`, {
+  // ❗️FIX: Har doim BASE + /api prefiksi qo‘shamiz (agar path absolute URL bo‘lmasa)
+  const url = path.startsWith("http")
+    ? path
+    : `${BASE}/api${path.startsWith("/") ? "" : "/"}${path}`;
+
+  const res = await fetch(url, {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -16,6 +22,7 @@ async function http(path, { method = "GET", body, headers } = {}) {
     body: body ? JSON.stringify(body) : undefined,
     credentials: "include",
   });
+
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     let data;
@@ -33,27 +40,59 @@ async function http(path, { method = "GET", body, headers } = {}) {
   return res.json().catch(() => null);
 }
 
-/** LIST */
-export async function fetchFacilities({ orgId, types, bbox, q } = {}) {
+/** ----- Helpers: normalize / denormalize ----- **/
+function normalizeFacility(row) {
+  if (!row || typeof row !== "object") return row;
+  const attributes = row.attributes ?? row.details ?? null;
+  return { ...row, attributes, details: attributes };
+}
+function normalizeList(list) {
+  return Array.isArray(list) ? list.map(normalizeFacility) : [];
+}
+function withAttributes(body) {
+  if (!body || typeof body !== "object") return body;
+  const { details, attributes, ...rest } = body;
+  const mergedAttr =
+    attributes != null ? attributes : details != null ? details : undefined;
+  return mergedAttr === undefined ? rest : { ...rest, attributes: mergedAttr };
+}
+
+/** ----- LIST ----- **/
+export async function listFacilities({ orgId, types, bbox, status, q } = {}) {
   const qs = new URLSearchParams();
   if (orgId != null) qs.set("orgId", String(orgId));
   if (Array.isArray(types) && types.length) qs.set("types", types.join(","));
   if (bbox) qs.set("bbox", bbox);
-  if (q && q.trim()) qs.set("q", q.trim());
-  return http(`/facilities?${qs.toString()}`);
+  if (status) qs.set("status", status);
+  if (q) qs.set("q", q);
+
+  // Bu yerda "/facilities" yoki "facilities" – ikkalasi ham ishlaydi
+  const data = await http(`/facilities?${qs.toString()}`);
+  return normalizeList(data);
 }
 
-/** alias (old code compatibility) */
-export const listFacilities = fetchFacilities;
+/** ----- CREATE ----- **/
+export async function createFacility(payload) {
+  const body = withAttributes(payload);
+  const data = await http(`/facilities`, { method: "POST", body });
+  return normalizeFacility(data);
+}
 
-/** CREATE */
-export const createFacility = (payload) =>
-  http("/facilities", { method: "POST", body: payload });
+/** ----- PATCH ----- **/
+export async function patchFacility(id, patch) {
+  const body = withAttributes(patch);
+  const data = await http(`/facilities/${id}`, { method: "PATCH", body });
+  return normalizeFacility(data);
+}
 
-/** PATCH (partial update) */
-export const patchFacility = (id, patch) =>
-  http(`/facilities/${id}`, { method: "PATCH", body: patch });
+/** ----- PUT (ixtiyoriy) ----- **/
+export async function putFacility(id, full) {
+  const body = withAttributes(full);
+  const data = await http(`/facilities/${id}`, { method: "PUT", body });
+  return normalizeFacility(data);
+}
 
-/** DELETE */
-export const deleteFacility = (id) =>
-  http(`/facilities/${id}`, { method: "DELETE" });
+/** ----- DELETE ----- **/
+export async function deleteFacility(id) {
+  return http(`/facilities/${id}`, { method: "DELETE" });
+}

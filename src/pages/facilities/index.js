@@ -1,4 +1,3 @@
-// src/pages/facilities/index.jsx
 export { default as GreenhousePage } from "./GreenhousePage";
 export { default as PoultryPage } from "./PoultryPage";
 export { default as CowshedPage } from "./CowshedPage";

@@ -1,22 +1,13 @@
 // src/components/map/MapView.jsx
 import { useRef, useState, useCallback, useMemo, useEffect } from "react";
-import {
-  MapContainer,
-  Marker,
-  Popup,
-  FeatureGroup,
-  Pane,
-} from "react-leaflet";
+import { MapContainer, Marker, Popup, FeatureGroup, Pane } from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
 import MapTiles from "./MapTiles";
+import "../../styles/leaflet-theme.css";
 
 import { getLatestDrawing, saveDrawing } from "../../api/drawings";
-import {
-  fetchFacilities,
-  patchFacility,
-  deleteFacility,
-} from "../../api/facilities";
+import { listFacilities } from "../../api/facilities";
 
 import MapFlyer from "./MapFlyer";
 import ViewportWatcher from "./ViewportWatcher";
@@ -24,7 +15,7 @@ import FacilityGeoLayer from "./FacilityGeoLayer";
 import FacilityMarkers from "./FacilityMarkers";
 import CreateFacilityDrawer from "./CreateFacilityDrawer";
 import OrgTreePanel from "./OrgTreePanel";
-import FacilityDetailsModal from "./FacilityDetailsModal";
+import FacilityEditModal from "./FacilityEditModal";
 
 export default function MapView({
   center = [41.3111, 69.2797],
@@ -132,20 +123,7 @@ export default function MapView({
     return out;
   }, [orgTree]);
 
-  const highlight = (text, q) => {
-    if (!q) return text;
-    const i = text.toLowerCase().indexOf(q.toLowerCase());
-    if (i === -1) return text;
-    return (
-      <span>
-        {text.slice(0, i)}
-        <mark>{text.slice(i, i + q.length)}</mark>
-        {text.slice(i + q.length)}
-      </span>
-    );
-  };
-
-  // Filtered tree for search
+  // Filtered tree for search (same)
   const [expandedKeys, setExpandedKeys] = useState(undefined);
   const { rcData, visibleKeySet } = useMemo(() => {
     const q = query.toLowerCase();
@@ -154,12 +132,11 @@ export default function MapView({
       if (!q) return nodes;
       const res = [];
       for (const n of nodes) {
-        const keyStr = String(n.key);
         const titleStr = typeof n.title === "string" ? n.title : "";
         const selfMatch = titleStr.toLowerCase().includes(q);
         const childPruned = n.children ? prune(n.children) : null;
         if (selfMatch || (childPruned && childPruned.length)) {
-          visible.add(keyStr);
+          visible.add(String(n.key));
           res.push({
             ...n,
             children:
@@ -172,7 +149,7 @@ export default function MapView({
     const filtered = prune(orgTree);
     const mapNode = (n) => ({
       key: String(n.key),
-      title: typeof n.title === "string" ? highlight(n.title, query) : n.title,
+      title: n.title,
       children: n.children ? n.children.map(mapNode) : undefined,
     });
     return {
@@ -191,7 +168,7 @@ export default function MapView({
     [flatNodes, checkedKeys]
   );
 
-  // SELECT (flyTo) uchun
+  // SELECT (flyTo)
   const onTreeSelect = (keys) => {
     setSelectedKeys(keys);
     const k = keys?.[0] ? String(keys[0]) : null;
@@ -219,7 +196,7 @@ export default function MapView({
     const t = setTimeout(async () => {
       try {
         const reqs = checkedOrgIds.map((orgId) =>
-          fetchFacilities({ orgId, types: enabledTypes, bbox })
+          listFacilities({ orgId, types: enabledTypes, bbox })
         );
         const all = (await Promise.all(reqs)).flat();
         const seen = new Set();
@@ -232,7 +209,7 @@ export default function MapView({
         }
         if (!cancelled) setFacilities(uniq);
       } catch (e) {
-        if (!cancelled) console.error("fetchFacilities failed:", e);
+        if (!cancelled) console.error("listFacilities failed:", e);
       }
     }, 250);
     return () => {
@@ -263,7 +240,7 @@ export default function MapView({
     [updateGeoJSON]
   );
 
-  // EDIT modal
+  // EDIT modal state
   const [editOpen, setEditOpen] = useState(false);
   const [editFacility, setEditFacility] = useState(null);
   const handleOpenEdit = (f) => {
@@ -288,7 +265,11 @@ export default function MapView({
 
   return (
     <div className="map-wrapper" style={{ position: "relative" }}>
-      <MapContainer center={center} zoom={zoom} style={{ height, width: "100%" }}>
+      <MapContainer
+        center={center}
+        zoom={zoom}
+        style={{ height, width: "100%" }}
+      >
         <MapTiles dark={dark} />
 
         {/* Panes */}
@@ -306,14 +287,15 @@ export default function MapView({
           </Marker>
         ))}
 
-        {/* Poligonlar + centroids */}
+        {/* Poligonlar + centroids (info popup + Edit button) */}
         <FacilityGeoLayer
           facilities={visibleFacilities}
           showPolys={showPolys}
           onFlyTo={setNavTarget}
+          onOpenEdit={handleOpenEdit}
         />
 
-        {/* Geometry yo‘q obyektlar yoki umumiy marker ko‘rsatish */}
+        {/* Geometry yo‘q obyektlar yoki umumiy marker ko‘rsatish (info popup + Edit button) */}
         <FacilityMarkers
           facilities={visibleFacilities}
           onOpenEdit={handleOpenEdit}
@@ -376,16 +358,15 @@ export default function MapView({
       />
 
       {/* Edit Modal */}
-      <FacilityDetailsModal
+      <FacilityEditModal
         open={editOpen}
         facility={editFacility}
         onClose={() => setEditOpen(false)}
-        onSaved={() => {
-          setReloadKey((k) => k + 1);
-        }}
+        onSaved={() => setReloadKey((k) => k + 1)}
+        dark={dark}
       />
 
-      {/* Pastki panel: GeoJSON import/export */}
+      {/* Pastki panel: GeoJSON import/export (dev) */}
       <div className="panel">
         <div className="panel-col">
           <h4>GeoJSON (readonly)</h4>
@@ -393,11 +374,17 @@ export default function MapView({
         </div>
         <div className="panel-col">
           <h4>GeoJSON import</h4>
-          <textarea id="gj-input" placeholder='{"type":"FeatureCollection","features":[...]}' />
+          <textarea
+            id="gj-input"
+            placeholder='{"type":"FeatureCollection","features":[...]}'
+          />
           <div className="panel-actions">
             <button onClick={importFromTextarea}>Import</button>
             <a
-              href={"data:application/json;charset=utf-8," + encodeURIComponent(geojsonPretty || "{}")}
+              href={
+                "data:application/json;charset=utf-8," +
+                encodeURIComponent(geojsonPretty || "{}")
+              }
               download="drawings.geojson"
             >
               <button disabled={!geojsonPretty}>Download .geojson</button>

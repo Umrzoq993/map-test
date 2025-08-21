@@ -1,0 +1,39 @@
+/* LIGHT (default) */
+.leaflet-popup-content-wrapper {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.15);
+}
+.leaflet-popup-content {
+  margin: 10px 12px;
+}
+.leaflet-popup-tip {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+.leaflet-container a.leaflet-popup-close-button {
+  color: #334155;
+  opacity: 0.85;
+}
+.leaflet-container a.leaflet-popup-close-button:hover {
+  opacity: 1;
+}
+
+/* DARK override */
+:where(.theme-dark, .dark, [data-theme="dark"]) .leaflet-popup-content-wrapper {
+  background: #0f172a;
+  color: #e6eef9;
+  border-color: #253045;
+}
+:where(.theme-dark, .dark, [data-theme="dark"]) .leaflet-popup-tip {
+  background: #0f172a;
+  border-color: #253045;
+}
+:where(.theme-dark, .dark, [data-theme="dark"])
+  .leaflet-container
+  a.leaflet-popup-close-button {
+  color: #e6eef9;
+  opacity: 0.9;
+}

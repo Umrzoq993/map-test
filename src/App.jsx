@@ -1,4 +1,3 @@
-// src/App.jsx
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import SidebarMenu from "./components/SidebarMenu";
@@ -9,11 +8,12 @@ import OrgManager from "./pages/OrgManager";
 import OrgTablePage from "./pages/OrgTablePage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
-// ⬇️ YANGI IMPORT
-import FacilitiesPage from "./pages/FacilitiesPage";
+// ⬇️ OVERVIEW NI OLIB TASHLADIK (FacilitiesPage import yo‘q)
 
-// ⬇️ YANGI IMPORT (mavjud edi)
+// Header
 import HeaderBar from "./components/layout/HeaderBar";
+
+// Barcha alohida sahifalar
 import {
   AuxiliaryLandsPage,
   BorderLandsPage,
@@ -128,8 +128,13 @@ export default function App() {
                     <Route path="/orgs" element={<OrgManager />} />
                     <Route path="/orgs-table" element={<OrgTablePage />} />
 
-                    {/* ⬇️ YANGI ROUTE */}
-                    <Route path="/facilities" element={<FacilitiesPage />} />
+                    {/* /facilities ni mavjud bir sahifaga yo‘naltiryapmiz */}
+                    <Route
+                      path="/facilities"
+                      element={<Navigate to="/facilities/greenhouse" replace />}
+                    />
+
+                    {/* Alohida CRUD sahifalar */}
                     <Route
                       path="/facilities/greenhouse"
                       element={<GreenhousePage />}

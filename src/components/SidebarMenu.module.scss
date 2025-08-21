@@ -86,3 +86,28 @@
 :global(.ps-submenu-content) {
   background: transparent; /* gradient/legacy fonlarni yo‘qotish */
 }
+
+/* Submenu kontenti doim tokenlardan rang olsin */
+:global(.ps-menu-root .ps-submenu-content) {
+  background-color: var(--sb-bg) !important;
+  border: 1px solid var(--sb-border) !important;
+  border-radius: 12px !important;
+}
+
+/* Submenu ichidagi itemlar oq fon olmasin */
+:global(.ps-submenu-content .ps-menuitem-root > .ps-menu-button) {
+  background: transparent !important;
+}
+
+/* Dark rejimda ham qat’iy ishlashi uchun */
+.wrapper[data-theme="dark"] :global(.ps-submenu-content) {
+  background-color: var(--sb-bg) !important;
+  border-color: var(--sb-border) !important;
+}
+
+:global(.ps-menu-button:hover) {
+  background: var(--sb-hover-bg) !important;
+}
+:global(.ps-menuitem-root.ps-active > .ps-menu-button) {
+  background: var(--sb-active-bg) !important;
+}

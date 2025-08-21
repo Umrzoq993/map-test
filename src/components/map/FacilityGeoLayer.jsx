@@ -3,13 +3,21 @@ import { useMemo, useCallback, useRef } from "react";
 import { GeoJSON, Marker, Popup } from "react-leaflet";
 import { typeColor, badgeIconFor } from "./mapIcons";
 import { centroidOfGeometry } from "../../utils/geo";
+import { FACILITY_TYPES } from "./CreateFacilityDrawer";
 
 export default function FacilityGeoLayer({
   facilities,
   showPolys = true,
   onFlyTo,
+  onOpenEdit, // ⬅️ yangi
 }) {
   const geoJsonRef = useRef(null);
+
+  const facilityById = useMemo(() => {
+    const m = new Map();
+    (facilities || []).forEach((f) => m.set(f.id, f));
+    return m;
+  }, [facilities]);
 
   const fc = useMemo(() => {
     const features = (facilities || [])
@@ -28,7 +36,6 @@ export default function FacilityGeoLayer({
     return { type: "FeatureCollection", features };
   }, [facilities]);
 
-  // 🔑 features o‘zgarsa GeoJSON ni qayta mount qilish uchun unique key
   const geoKey = useMemo(
     () =>
       (fc.features.length
@@ -51,14 +58,9 @@ export default function FacilityGeoLayer({
   const onEach = useCallback(
     (feature, layer) => {
       const p = feature?.properties || {};
-      layer.bindPopup(`
-      <div style="min-width:200px">
-        <div style="font-weight:700">${p.name || "Facility"}</div>
-        <div style="font-size:12px;opacity:.8">${p.type || ""} • ${
-        p.status || ""
-      }</div>
-      </div>
-    `);
+      const f = facilityById.get(p.id);
+      if (!f) return;
+
       layer.on("mouseover", () => {
         layer.setStyle({ weight: 3, fillOpacity: 0.25 });
         layer.bringToFront();
@@ -66,19 +68,80 @@ export default function FacilityGeoLayer({
       layer.on("mouseout", () => {
         if (geoJsonRef.current) geoJsonRef.current.resetStyle(layer);
       });
+
+      const typeLabel = FACILITY_TYPES[f.type]?.label || f.type;
+      const orgLabel =
+        f.orgName || f.org?.name || (f.orgId != null ? `Org #${f.orgId}` : "—");
+      const details = f.attributes || f.details || {};
+
+      const rows = (FACILITY_TYPES[f.type]?.fields || [])
+        .map((fld) => {
+          const val = details[fld.key];
+          if (val === null || val === undefined || String(val).trim?.() === "")
+            return "";
+          const suffix = fld.suffix ? ` (${fld.suffix})` : "";
+          return `
+            <div style="display:grid;grid-template-columns:1fr auto;gap:10px;font-size:13px;">
+              <div style="color:#64748b">${escapeHtml(fld.label)}${suffix}</div>
+              <div style="font-weight:600">${escapeHtml(String(val))}</div>
+            </div>`;
+        })
+        .filter(Boolean)
+        .join("");
+
+      const editId = `rx-edit-${p.id}`;
+      const html = `
+        <div style="min-width:240px">
+          <div style="font-weight:700;font-size:15px;margin-bottom:2px">
+            ${escapeHtml(f.name || "Obyekt")}
+          </div>
+          <div style="font-size:12px;opacity:.8;margin-bottom:6px">
+            ${escapeHtml(typeLabel)}${
+        f.status ? " • " + escapeHtml(f.status) : ""
+      }<br/>
+            <span style="opacity:.9">Bo‘lim:</span> ${escapeHtml(orgLabel)}
+          </div>
+          <div style="display:grid;gap:6px">${rows}</div>
+          <div style="display:flex;justify-content:flex-end;margin-top:10px">
+            <button id="${editId}" class="btn primary" style="padding:6px 10px;border-radius:10px">Tahrirlash</button>
+          </div>
+        </div>`;
+
+      layer.bindPopup(html, { minWidth: 260, maxWidth: 360, autoPan: true });
+
+      // Edit tugmasiga native click ulash
+      let handler = null;
+      layer.on("popupopen", (e) => {
+        const root = e?.popup?.getElement?.();
+        if (!root) return;
+        const btn = root.querySelector?.(`#${CSS.escape(editId)}`);
+        if (!btn) return;
+        handler = () => onOpenEdit?.(f);
+        btn.addEventListener("click", handler);
+      });
+
+      layer.on("popupclose", (e) => {
+        const root = e?.popup?.getElement?.();
+        if (!root) return;
+        const btn = root.querySelector?.(`#${CSS.escape(editId)}`);
+        if (btn && handler) btn.removeEventListener("click", handler);
+        handler = null;
+      });
+
+      // ixtiyoriy fly-to
       layer.on("click", () => {
-        if (!onFlyTo) return;
-        const c = layer.getBounds ? layer.getBounds().getCenter() : null;
-        if (c)
+        if (onFlyTo && layer.getBounds) {
+          const c = layer.getBounds().getCenter();
           onFlyTo({
             lat: c.lat,
             lng: c.lng,
             zoom: p.zoom || 16,
             ts: Date.now(),
           });
+        }
       });
     },
-    [onFlyTo]
+    [facilityById, onFlyTo, onOpenEdit]
   );
 
   const centroidBadges = useMemo(() => {
@@ -89,6 +152,13 @@ export default function FacilityGeoLayer({
       .map((f) => {
         const c = centroidOfGeometry(f.geometry);
         if (!c) return null;
+        const typeLabel = FACILITY_TYPES[f.type]?.label || f.type;
+        const orgLabel =
+          f.orgName ||
+          f.org?.name ||
+          (f.orgId != null ? `Org #${f.orgId}` : "—");
+        const details = f.attributes || f.details || {};
+
         return (
           <Marker
             key={`fc-${f.id}`}
@@ -96,11 +166,59 @@ export default function FacilityGeoLayer({
             icon={badgeIconFor(f.type, 28)}
             pane="facilities-centroids"
           >
-            <Popup>
-              <div style={{ minWidth: 200 }}>
-                <div style={{ fontWeight: 700 }}>{f.name}</div>
-                <div style={{ fontSize: 12, opacity: 0.8 }}>
-                  {f.type} • {f.status}
+            <Popup minWidth={260} maxWidth={360} autoPan>
+              <div style={{ minWidth: 240 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>
+                  {f.name || "Obyekt"}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
+                  {typeLabel} {f.status ? `• ${f.status}` : ""} <br />
+                  <span style={{ opacity: 0.9 }}>Bo‘lim:</span> {orgLabel}
+                </div>
+
+                <div style={{ display: "grid", gap: 6 }}>
+                  {(FACILITY_TYPES[f.type]?.fields || []).map((fld) => {
+                    const v = details[fld.key];
+                    if (
+                      v === null ||
+                      v === undefined ||
+                      String(v).trim?.() === ""
+                    )
+                      return null;
+                    return (
+                      <div
+                        key={fld.key}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto",
+                          gap: 10,
+                          fontSize: 13,
+                        }}
+                      >
+                        <div style={{ color: "#64748b" }}>
+                          {fld.label}
+                          {fld.suffix ? ` (${fld.suffix})` : ""}
+                        </div>
+                        <div style={{ fontWeight: 600 }}>{String(v)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    marginTop: 10,
+                  }}
+                >
+                  <button
+                    className="btn primary"
+                    style={{ padding: "6px 10px", borderRadius: 10 }}
+                    onClick={() => onOpenEdit?.(f)}
+                  >
+                    Tahrirlash
+                  </button>
                 </div>
               </div>
             </Popup>
@@ -108,7 +226,7 @@ export default function FacilityGeoLayer({
         );
       })
       .filter(Boolean);
-  }, [facilities]);
+  }, [facilities, onOpenEdit]);
 
   return (
     <>
@@ -125,4 +243,12 @@ export default function FacilityGeoLayer({
       {showPolys && centroidBadges}
     </>
   );
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
