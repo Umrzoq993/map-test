@@ -1,175 +1,266 @@
 // src/components/map/CreateFacilityDrawer.jsx
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFacility } from "../../api/facilities";
+
+/** ---------------- FIELD SCHEMA (bitta joydan boshqariladi) ----------------
+ * Har bir type uchun: label va fields (kalit, label, input type, suffix).
+ * details ichida shu kalitlar saqlanadi.
+ */
+export const FACILITY_TYPES = {
+  GREENHOUSE: {
+    label: "Issiqxona",
+    fields: [
+      { key: "area_ha", label: "Umumiy yer maydoni", type: "number", suffix: "ga" },
+      { key: "heating_type", label: "Isitish tizimi turi", type: "text" },
+      { key: "yield_amount", label: "Olinadigan hosildorlik miqdori", type: "number" },
+      { key: "revenue", label: "Olinadigan daromad miqdori", type: "number" },
+      { key: "profit", label: "Olingan sof foyda", type: "number" },
+    ],
+  },
+  POULTRY: {
+    label: "Tovuqxona",
+    fields: [
+      { key: "area_m2", label: "Umumiy yer maydoni", type: "number", suffix: "m²" },
+      { key: "capacity", label: "Umumiy sig‘imi", type: "number" },
+      { key: "current", label: "Hozirda mavjud", type: "number" },
+      { key: "product_amount", label: "Olinadigan mahsulot (kg yoki dona)", type: "number" },
+      { key: "revenue", label: "Olinadigan daromad", type: "number" },
+      { key: "profit", label: "Olingan sof foyda", type: "number" },
+    ],
+  },
+  COWSHED: {
+    label: "Molxona",
+    fields: [
+      { key: "area_m2", label: "Umumiy yer maydoni", type: "number", suffix: "m²" },
+      { key: "capacity", label: "Umumiy sig‘imi", type: "number" },
+      { key: "current", label: "Hozirda mavjud", type: "number" },
+      { key: "product_kg", label: "Olinadigan mahsulot (kg)", type: "number" },
+      { key: "revenue", label: "Olinadigan daromad", type: "number" },
+      { key: "profit", label: "Olingan sof foyda", type: "number" },
+    ],
+  },
+  TURKEY: {
+    label: "Kurkaxona",
+    fields: [
+      { key: "area_m2", label: "Umumiy yer maydoni", type: "number", suffix: "m²" },
+      { key: "capacity", label: "Umumiy sig‘imi", type: "number" },
+      { key: "current", label: "Hozirda mavjud", type: "number" },
+      { key: "product_kg", label: "Olinadigan mahsulot (kg)", type: "number" },
+      { key: "revenue", label: "Olinadigan daromad", type: "number" },
+      { key: "profit", label: "Olingan sof foyda", type: "number" },
+    ],
+  },
+  SHEEPFOLD: {
+    label: "Qo‘yxona",
+    fields: [
+      { key: "area_m2", label: "Umumiy yer maydoni", type: "number", suffix: "m²" },
+      { key: "capacity", label: "Umumiy sig‘imi", type: "number" },
+      { key: "current", label: "Hozirda mavjud", type: "number" },
+      { key: "product_kg", label: "Olinadigan mahsulot (kg)", type: "number" },
+      { key: "revenue", label: "Olinadigan daromad", type: "number" },
+      { key: "profit", label: "Olingan sof foyda", type: "number" },
+    ],
+  },
+  WORKSHOP: {
+    label: "Ishlab chiqarish sexi",
+    fields: [
+      { key: "area_m2", label: "Umumiy yer maydoni", type: "number", suffix: "m²" },
+      { key: "product_kg", label: "Olinadigan mahsulot (kg)", type: "number" },
+      { key: "revenue", label: "Olinadigan daromad", type: "number" },
+      { key: "profit", label: "Olingan sof foyda", type: "number" },
+    ],
+  },
+  AUX_LAND: {
+    label: "Yordamchi xo‘jalik yerlari",
+    fields: [
+      { key: "area_m2", label: "Umumiy yer maydoni", type: "number", suffix: "m²" },
+      { key: "harvest_amount", label: "Olinadigan hosil miqdori", type: "number" },
+      { key: "revenue", label: "Olinadigan daromad miqdori", type: "number" },
+      { key: "profit", label: "Olinadigan sof foyda", type: "number" },
+      { key: "tenant", label: "Ijarachi", type: "text" },
+      { key: "government_decision", label: "Hukumat qarori", type: "text" },
+    ],
+  },
+  BORDER_LAND: {
+    label: "Chegara oldi yer maydonlari",
+    fields: [
+      { key: "area_m2", label: "Umumiy yer maydoni", type: "number", suffix: "m²" },
+      { key: "harvest_amount", label: "Olinadigan hosil miqdori", type: "number" },
+      { key: "revenue", label: "Olinadigan daromad miqdori", type: "number" },
+      { key: "profit", label: "Olinadigan sof foyda", type: "number" },
+      { key: "tenant", label: "Ijarachi", type: "text" },
+      { key: "government_decision", label: "Hukumat qarori", type: "text" },
+    ],
+  },
+  FISHPOND: {
+    label: "Baliqchilik ko‘llari",
+    fields: [
+      { key: "area_m2", label: "Umumiy yer maydoni", type: "number", suffix: "m²" },
+      { key: "product_amount", label: "Olinadigan mahsulot miqdori", type: "number" },
+      { key: "revenue", label: "Olinadigan daromad miqdori", type: "number" },
+      { key: "profit", label: "Olinadigan sof foyda", type: "number" },
+      { key: "tenant", label: "Ijarachi", type: "text" },
+      { key: "government_decision", label: "Hukumat qarori", type: "text" },
+    ],
+  },
+};
+
+const DEFAULT_STATUS = "ACTIVE";
 
 export default function CreateFacilityDrawer({
   open,
-  geometry,
-  center,
-  selectedOrgId,
   onClose,
-  onSaved,
+  geometry,          // GeoJSON Geometry (marker/polygon/rectangle)
+  center,            // {lat,lng} (marker yoki bounds center)
+  selectedOrgId,     // org id (optional)
+  onSaved,           // callback
 }) {
-  const [form, setForm] = useState({
-    orgId: null,
-    name: "",
-    type: "GREENHOUSE",
-    status: "ACTIVE",
-    zoom: 15,
-    attributes: { notes: "" },
-  });
-  useEffect(() => {
-    setForm((f) => ({ ...f, orgId: selectedOrgId || null }));
-  }, [selectedOrgId]);
-  if (!open) return null;
+  const [name, setName] = useState("");
+  const [type, setType] = useState("GREENHOUSE");
+  const [orgId, setOrgId] = useState(selectedOrgId ?? null);
+  const [status, setStatus] = useState(DEFAULT_STATUS);
+  const fields = FACILITY_TYPES[type]?.fields || [];
 
-  const save = async () => {
-    if (!form.orgId) return alert("Org ID tanlang yoki kiriting.");
-    if (!form.name.trim()) return alert("Nomi kerak.");
-    if (!geometry) return alert("Geometriya yo‘q.");
-    const payload = {
-      orgId: form.orgId,
-      name: form.name.trim(),
-      type: form.type,
-      status: form.status,
-      lat: center?.lat ?? null,
-      lng: center?.lng ?? null,
-      zoom: form.zoom ?? null,
-      attributes: form.attributes || null,
-      geometry,
-    };
-    await createFacility(payload);
-    onSaved?.();
-    onClose?.();
+  const [details, setDetails] = useState({});
+  useEffect(() => {
+    // type o'zgarsa, eski keys saqlanib qolmasin
+    const next = {};
+    for (const f of fields) next[f.key] = "";
+    setDetails(next);
+  }, [type]); // eslint-disable-line
+
+  useEffect(() => {
+    setOrgId(selectedOrgId ?? null);
+  }, [selectedOrgId]);
+
+  const canSave = name.trim().length > 0 && type && (orgId != null);
+
+  const onChangeDetail = (k, v) => {
+    setDetails((d) => ({ ...d, [k]: v }));
   };
 
+  const onSubmit = async () => {
+    if (!canSave) return;
+    try {
+      const payload = {
+        name: name.trim(),
+        type,
+        status,
+        orgId,
+        details: normalizeNumbers(details),
+      };
+      if (geometry) payload.geometry = geometry;
+      if (center?.lat && center?.lng) {
+        payload.lat = center.lat;
+        payload.lng = center.lng;
+      }
+      await createFacility(payload);
+      onClose?.();
+      onSaved?.();
+    } catch (e) {
+      console.error(e);
+      alert(e?.data?.message || "Saqlashda xatolik");
+    }
+  };
+
+  if (!open) return null;
+
   return (
-    <div className="facility-drawer">
+    <aside className="facility-drawer">
       <div className="facility-drawer__header">
-        Yangi obyekt yaratish
-        <button className="fd-close" onClick={onClose}>
-          ×
-        </button>
+        Yangi obyekt
+        <button className="fd-close" onClick={onClose} aria-label="Yopish">×</button>
       </div>
+
       <div className="facility-drawer__body">
-        {!selectedOrgId && (
-          <div className="fd-alert">Avval tree’dan bo‘limni tanlang (org).</div>
-        )}
-
         <div className="fd-field">
-          <label>Bo‘lim (Org ID)</label>
-          <input
-            type="number"
-            value={form.orgId || ""}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                orgId: e.target.value ? Number(e.target.value) : null,
-              })
-            }
-          />
-          <div className="fd-hint">Tree tanlovidan avtomatik keladi.</div>
-        </div>
-
-        <div className="fd-field">
-          <label>Nomi</label>
-          <input
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Masalan: Tovuqxona A"
-          />
+          <label>Nom *</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Masalan: Issiqxona #1" />
         </div>
 
         <div className="fd-grid">
           <div className="fd-field">
-            <label>Turi</label>
-            <select
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value })}
-            >
-              {[
-                "GREENHOUSE",
-                "COWSHED",
-                "STABLE",
-                "FISHFARM",
-                "WAREHOUSE",
-                "ORCHARD",
-                "FIELD",
-                "POULTRY",
-                "APIARY",
-              ].map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
+            <label>Tur *</label>
+            <select value={type} onChange={(e) => setType(e.target.value)}>
+              {Object.entries(FACILITY_TYPES).map(([k, v]) => (
+                <option key={k} value={k}>{v.label}</option>
               ))}
             </select>
           </div>
           <div className="fd-field">
             <label>Status</label>
-            <select
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-            >
-              {["ACTIVE", "INACTIVE", "UNDER_MAINTENANCE"].map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
+            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="INACTIVE">INACTIVE</option>
+              <option value="UNDER_MAINTENANCE">UNDER_MAINTENANCE</option>
             </select>
           </div>
           <div className="fd-field">
-            <label>Zoom</label>
+            <label>Bo‘lim (orgId)</label>
             <input
               type="number"
-              min="3"
-              max="19"
-              value={form.zoom ?? ""}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  zoom: e.target.value ? Number(e.target.value) : null,
-                })
-              }
+              value={orgId ?? ""}
+              onChange={(e) => setOrgId(toNumberOrNull(e.target.value))}
+              placeholder="Masalan: 12"
             />
           </div>
         </div>
 
-        <div className="fd-field">
-          <label>Izoh</label>
-          <textarea
-            rows={3}
-            value={form.attributes?.notes ?? ""}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                attributes: {
-                  ...(form.attributes || {}),
-                  notes: e.target.value,
-                },
-              })
-            }
-          />
+        {geometry ? (
+          <div className="fd-geom">Geometriya: <code>{geometry.type}</code></div>
+        ) : center ? (
+          <div className="fd-geom">Koordinata: {center.lat?.toFixed(6)}, {center.lng?.toFixed(6)}</div>
+        ) : (
+          <div className="fd-alert">Eslatma: geometriya yoki nuqta tanlanmagan. Baribir saqlash mumkin.</div>
+        )}
+
+        <hr style={{ opacity: 0.2 }} />
+
+        <div style={{ fontWeight: 700 }}>{FACILITY_TYPES[type]?.label} — ma’lumotlar</div>
+        <div className="fd-fields">
+          {fields.map((f) => (
+            <div key={f.key} className="fd-field">
+              <label>{f.label}{f.suffix ? ` (${f.suffix})` : ""}</label>
+              {f.type === "text" ? (
+                <input
+                  value={details[f.key] ?? ""}
+                  onChange={(e) => onChangeDetail(f.key, e.target.value)}
+                />
+              ) : (
+                <input
+                  type="number"
+                  value={details[f.key] ?? ""}
+                  onChange={(e) => onChangeDetail(f.key, e.target.value)}
+                />
+              )}
+            </div>
+          ))}
         </div>
 
-        <div className="fd-geom">
-          <div>
-            <b>Geometriya:</b> {geometry?.type}
-          </div>
-          {center && (
-            <div className="fd-hint">
-              Markaz: {center.lat?.toFixed(6)}, {center.lng?.toFixed(6)}
-            </div>
-          )}
+        <div className="fd-hint">
+          * Sonli maydonlar serverga number sifatida yuboriladi (bo‘sh qoldirilsa null).
         </div>
       </div>
+
       <div className="facility-drawer__footer">
-        <button className="fd-secondary" onClick={onClose}>
-          Bekor qilish
-        </button>
-        <button className="fd-primary" onClick={save}>
-          Saqlash
-        </button>
+        <button className="fd-secondary" onClick={onClose}>Bekor</button>
+        <button className="fd-primary" onClick={onSubmit} disabled={!canSave}>Saqlash</button>
       </div>
-    </div>
+    </aside>
   );
+}
+
+function toNumberOrNull(v) {
+  if (v === "" || v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+function normalizeNumbers(obj) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj || {})) {
+    if (v === "" || v == null) { out[k] = null; continue; }
+    const n = Number(v);
+    out[k] = Number.isFinite(n) && String(v).trim() !== "" ? n : v;
+  }
+  return out;
 }

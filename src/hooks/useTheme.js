@@ -1,3 +1,4 @@
+// src/hooks/useTheme.jsx
 import { useEffect, useState } from "react";
 const KEY = "theme"; // 'light' | 'dark' | 'system'
 

@@ -2,10 +2,9 @@
 import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import {
   MapContainer,
-  TileLayer,
-  FeatureGroup,
   Marker,
   Popup,
+  FeatureGroup,
   Pane,
 } from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
@@ -25,6 +24,7 @@ import FacilityGeoLayer from "./FacilityGeoLayer";
 import FacilityMarkers from "./FacilityMarkers";
 import CreateFacilityDrawer from "./CreateFacilityDrawer";
 import OrgTreePanel from "./OrgTreePanel";
+import FacilityDetailsModal from "./FacilityDetailsModal";
 
 export default function MapView({
   center = [41.3111, 69.2797],
@@ -47,8 +47,8 @@ export default function MapView({
   const onDeleted = useCallback(updateGeoJSON, [updateGeoJSON]);
 
   // Tree & nav
-  const [checkedKeys, setCheckedKeys] = useState([]); // CHECKED bo‘limlar
-  const [selectedKeys, setSelectedKeys] = useState([]); // SELECT (flyTo uchun)
+  const [checkedKeys, setCheckedKeys] = useState([]);
+  const [selectedKeys, setSelectedKeys] = useState([]);
   const [navTarget, setNavTarget] = useState(null);
 
   // Search
@@ -69,13 +69,16 @@ export default function MapView({
   const [typeFilter, setTypeFilter] = useState({
     GREENHOUSE: true,
     COWSHED: true,
-    STABLE: true,
-    FISHFARM: true,
+    TURKEY: true,
+    SHEEPFOLD: true,
+    POULTRY: true,
+    FISHPOND: true,
+    WORKSHOP: true,
+    AUX_LAND: false,
+    BORDER_LAND: false,
     WAREHOUSE: false,
     ORCHARD: false,
     FIELD: false,
-    POULTRY: true,
-    APIARY: false,
   });
   const enabledTypes = useMemo(
     () =>
@@ -85,13 +88,11 @@ export default function MapView({
     [typeFilter]
   );
 
-  // CHECKED bo‘lim ID’lari (raqamga aylantiramiz)
   const checkedOrgIds = useMemo(
     () => checkedKeys.map((k) => Number(k)).filter((n) => Number.isFinite(n)),
     [checkedKeys]
   );
 
-  // Frontendda ham type bo‘yicha kesamiz — ikon va poligonlar sinxron ko‘rinadi/yashirinadi
   const visibleFacilities = useMemo(
     () => facilities.filter((f) => enabledTypes.includes(f.type)),
     [facilities, enabledTypes]
@@ -185,7 +186,6 @@ export default function MapView({
     else setExpandedKeys(undefined);
   }, [visibleKeySet]);
 
-  // Org node markerlar (checkbox bo‘yicha)
   const visibleMarkers = useMemo(
     () => flatNodes.filter((n) => n.pos && checkedKeys.includes(String(n.key))),
     [flatNodes, checkedKeys]
@@ -209,7 +209,7 @@ export default function MapView({
   const onTreeExpand = (keys) => setExpandedKeys(keys);
   const onTreeCheck = (keys) => setCheckedKeys(keys.map(String));
 
-  // FETCH facilities — CHECKED bo‘lim(lar) + BBOX + enabledTypes
+  // FETCH facilities
   useEffect(() => {
     let cancelled = false;
     if (!bbox || checkedOrgIds.length === 0 || enabledTypes.length === 0) {
@@ -218,12 +218,10 @@ export default function MapView({
     }
     const t = setTimeout(async () => {
       try {
-        // Bir nechta org uchun parallel so‘rov
         const reqs = checkedOrgIds.map((orgId) =>
           fetchFacilities({ orgId, types: enabledTypes, bbox })
         );
         const all = (await Promise.all(reqs)).flat();
-        // Dedup by id
         const seen = new Set();
         const uniq = [];
         for (const f of all) {
@@ -241,14 +239,9 @@ export default function MapView({
       cancelled = true;
       clearTimeout(t);
     };
-  }, [
-    bbox,
-    JSON.stringify(checkedOrgIds), // checked bo‘limlar o‘zgarsa
-    enabledTypes.join(","), // type filter o‘zgarsa
-    reloadKey,
-  ]);
+  }, [bbox, JSON.stringify(checkedOrgIds), enabledTypes.join(","), reloadKey]);
 
-  // CREATE drawer (on draw created)
+  // CREATE drawer
   const [createOpen, setCreateOpen] = useState(false);
   const [draftGeom, setDraftGeom] = useState(null);
   const [draftCenter, setDraftCenter] = useState(null);
@@ -270,22 +263,12 @@ export default function MapView({
     [updateGeoJSON]
   );
 
-  // Marker popup actions – prompt (modallarni keyin ulash mumkin)
-  const handleEdit = async (f) => {
-    const name = prompt("Yangi nom:", f.name);
-    if (name == null) return;
-    const status = prompt(
-      "Status (ACTIVE/INACTIVE/UNDER_MAINTENANCE):",
-      f.status
-    );
-    if (status == null) return;
-    await patchFacility(f.id, { name, status });
-    setReloadKey((k) => k + 1);
-  };
-  const handleDelete = async (f) => {
-    if (!confirm(`O'chirilsinmi: ${f.name}?`)) return;
-    await deleteFacility(f.id);
-    setReloadKey((k) => k + 1);
+  // EDIT modal
+  const [editOpen, setEditOpen] = useState(false);
+  const [editFacility, setEditFacility] = useState(null);
+  const handleOpenEdit = (f) => {
+    setEditFacility(f);
+    setEditOpen(true);
   };
 
   const geojsonPretty = geojson ? JSON.stringify(geojson, null, 2) : "";
@@ -305,14 +288,10 @@ export default function MapView({
 
   return (
     <div className="map-wrapper" style={{ position: "relative" }}>
-      <MapContainer
-        center={center}
-        zoom={zoom}
-        style={{ height, width: "100%" }}
-      >
+      <MapContainer center={center} zoom={zoom} style={{ height, width: "100%" }}>
         <MapTiles dark={dark} />
 
-        {/* Panes — faqat shu yerda bitta marta yaratiladi */}
+        {/* Panes */}
         <Pane name="facilities-polys" style={{ zIndex: 410 }} />
         <Pane name="facilities-centroids" style={{ zIndex: 420 }} />
         <Pane name="facilities-markers" style={{ zIndex: 430 }} />
@@ -320,25 +299,24 @@ export default function MapView({
         <ViewportWatcher onBboxChange={setBbox} />
         <MapFlyer target={navTarget} />
 
-        {/* Org markerlar (checkbox bo‘yicha) */}
+        {/* Org markerlar */}
         {visibleMarkers.map((n) => (
           <Marker key={n.key} position={n.pos}>
             <Popup>{n.title}</Popup>
           </Marker>
         ))}
 
-        {/* Poligonlar + centroid badges — faqat ko‘rinadigan (type filter) obyektlar */}
+        {/* Poligonlar + centroids */}
         <FacilityGeoLayer
           facilities={visibleFacilities}
           showPolys={showPolys}
           onFlyTo={setNavTarget}
         />
 
-        {/* Geometry yo‘q obyektlar uchun fallback markerlar */}
+        {/* Geometry yo‘q obyektlar yoki umumiy marker ko‘rsatish */}
         <FacilityMarkers
           facilities={visibleFacilities}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+          onOpenEdit={handleOpenEdit}
         />
 
         {/* Draw */}
@@ -379,9 +357,7 @@ export default function MapView({
         setShowPolys={setShowPolys}
         bbox={bbox}
         facilitiesCount={visibleFacilities.length}
-        selectedOrgId={
-          null
-        } /* endi SELECT shart emas, info uchun istasangiz moslashtirasiz */
+        selectedOrgId={null}
         hide={hideTree}
       />
 
@@ -390,11 +366,21 @@ export default function MapView({
         open={createOpen}
         geometry={draftGeom}
         center={draftCenter}
-        selectedOrgId={checkedOrgIds[0] || null} // eng birinchi checked bo‘limga biriktirish (xohlasangiz UI’da tanlatamiz)
+        selectedOrgId={checkedOrgIds[0] || null}
         onClose={() => setCreateOpen(false)}
         onSaved={() => {
           const fg = featureGroupRef.current;
           if (fg) fg.clearLayers();
+          setReloadKey((k) => k + 1);
+        }}
+      />
+
+      {/* Edit Modal */}
+      <FacilityDetailsModal
+        open={editOpen}
+        facility={editFacility}
+        onClose={() => setEditOpen(false)}
+        onSaved={() => {
           setReloadKey((k) => k + 1);
         }}
       />
@@ -407,17 +393,11 @@ export default function MapView({
         </div>
         <div className="panel-col">
           <h4>GeoJSON import</h4>
-          <textarea
-            id="gj-input"
-            placeholder='{"type":"FeatureCollection","features":[...]}'
-          />
+          <textarea id="gj-input" placeholder='{"type":"FeatureCollection","features":[...]}' />
           <div className="panel-actions">
             <button onClick={importFromTextarea}>Import</button>
             <a
-              href={
-                "data:application/json;charset=utf-8," +
-                encodeURIComponent(geojsonPretty || "{}")
-              }
+              href={"data:application/json;charset=utf-8," + encodeURIComponent(geojsonPretty || "{}")}
               download="drawings.geojson"
             >
               <button disabled={!geojsonPretty}>Download .geojson</button>

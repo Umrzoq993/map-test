@@ -1,3 +1,4 @@
+// src/components/map/MapTiles.jsx
 // Dark/Lite rejimga qarab tile provider tanlaydi.
 // Agar MAPTILER_KEY bo'lsa, MapTiler-ning High-Contrast Dark/OSM Basic xaritalaridan ham foydalanish mumkin.
 import { TileLayer } from "react-leaflet";

@@ -1,3 +1,4 @@
+// src/data/orgTree.js
 // Har bir tugun uchun: key, title, pos: [lat, lng], zoom (ixtiyoriy), children
 const orgTreeData = [
   {
