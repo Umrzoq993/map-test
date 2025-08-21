@@ -1,3 +1,4 @@
+// src/App.jsx
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import SidebarMenu from "./components/SidebarMenu";
@@ -9,7 +10,21 @@ import OrgTablePage from "./pages/OrgTablePage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 // ⬇️ YANGI IMPORT
+import FacilitiesPage from "./pages/FacilitiesPage";
+
+// ⬇️ YANGI IMPORT (mavjud edi)
 import HeaderBar from "./components/layout/HeaderBar";
+import {
+  AuxiliaryLandsPage,
+  BorderLandsPage,
+  CowshedPage,
+  FishPondsPage,
+  FurFarmPage,
+  GreenhousePage,
+  PoultryPage,
+  SheepfoldPage,
+  WorkshopsPage,
+} from "./pages/facilities";
 
 function useIsMobile(query = "(max-width: 1024px)") {
   const [isMobile, setIsMobile] = useState(false);
@@ -33,7 +48,6 @@ export default function App() {
     if (isMobile) setCollapsed(false);
   }, [isMobile]);
 
-  // Siz avval body.ga .theme-dark qo'ygan edingiz — shu saqlanib qoladi:
   useEffect(() => {
     const cls = "theme-dark";
     if (dark) document.body.classList.add(cls);
@@ -88,7 +102,6 @@ export default function App() {
 
               {/* Main */}
               <main className="app-main">
-                {/* ⬇️ INLINE HEADER O‘RNIGA ALOHIDA KOMPONENT */}
                 <HeaderBar
                   dark={dark}
                   onToggleTheme={() => setDark((d) => !d)}
@@ -114,6 +127,46 @@ export default function App() {
                     />
                     <Route path="/orgs" element={<OrgManager />} />
                     <Route path="/orgs-table" element={<OrgTablePage />} />
+
+                    {/* ⬇️ YANGI ROUTE */}
+                    <Route path="/facilities" element={<FacilitiesPage />} />
+                    <Route
+                      path="/facilities/greenhouse"
+                      element={<GreenhousePage />}
+                    />
+                    <Route
+                      path="/facilities/poultry"
+                      element={<PoultryPage />}
+                    />
+                    <Route
+                      path="/facilities/cowshed"
+                      element={<CowshedPage />}
+                    />
+                    <Route
+                      path="/facilities/fur-farm"
+                      element={<FurFarmPage />}
+                    />
+                    <Route
+                      path="/facilities/sheepfold"
+                      element={<SheepfoldPage />}
+                    />
+                    <Route
+                      path="/facilities/workshops"
+                      element={<WorkshopsPage />}
+                    />
+                    <Route
+                      path="/facilities/aux-lands"
+                      element={<AuxiliaryLandsPage />}
+                    />
+                    <Route
+                      path="/facilities/border-lands"
+                      element={<BorderLandsPage />}
+                    />
+                    <Route
+                      path="/facilities/fish-ponds"
+                      element={<FishPondsPage />}
+                    />
+
                     <Route
                       path="*"
                       element={<div className="card">Not Found</div>}

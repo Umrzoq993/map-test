@@ -1,3 +1,4 @@
+// src/components/layout/AppShell.jsx
 import HeaderBar from "./HeaderBar";
 import { Outlet } from "react-router-dom";
 

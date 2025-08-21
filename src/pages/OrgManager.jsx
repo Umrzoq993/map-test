@@ -1,3 +1,4 @@
+// src/pages/OrgManager.jsx
 import OrgTreeEditor from "../components/org/OrgTreeEditor";
 
 export default function OrgManager() {

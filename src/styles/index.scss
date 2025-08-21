@@ -1,5 +1,10 @@
+/* src/styles/index.scss */
+
+/* 1) Tokenlar va mixinlar (eng boshida) */
 @use "./variables" as *;
 @use "./mixins" as *;
+
+/* 2) Tizim modullari (layout, sidebar, map, themes, org table, auth) */
 @use "./layout";
 @use "./sidebar";
 @use "./map";
@@ -7,7 +12,7 @@
 @use "./org_table";
 @use "./auth";
 
-/* Reset / base */
+/* 3) Base/reset (shu faylda qolsin) */
 * {
   box-sizing: border-box;
 }
@@ -24,7 +29,7 @@ body {
   line-height: 1.5;
 }
 
-/* Utilities */
+/* 4) Kichik utilitylar (kartalar, konteyner va h-k.) */
 .container {
   max-width: 1280px;
   margin: 0 auto;
@@ -44,7 +49,7 @@ h3 {
   margin: 0 0 10px;
 }
 
-/* ====== DARK MODE (layout & cards) ====== */
+/* 5) Dark mode override’lari (body.theme-dark) */
 body.theme-dark {
   background: $dark-body;
 }
@@ -52,10 +57,10 @@ body.theme-dark .app-main {
   background: $dark-body;
 }
 
+/* Header dark holati */
 body.theme-dark .app-header {
   background: $dark-surface;
   border-bottom-color: $dark-border;
-
   .hamburger {
     background: $dark-surface;
     border-color: $dark-border;
@@ -68,10 +73,10 @@ body.theme-dark .app-header {
     color: $dark-muted;
   }
 }
+
 body.theme-dark .app-content {
   color: $dark-text;
 }
-
 body.theme-dark .card {
   background: $dark-surface;
   border-color: $dark-border;
@@ -79,7 +84,7 @@ body.theme-dark .card {
   color: $dark-text;
 }
 
-/* ====== MAP DARK ====== */
+/* Map dark (qoldiring—sizda ishlayotgan) */
 body.theme-dark .map-wrapper .leaflet-container {
   border-color: $dark-border;
   box-shadow: none;

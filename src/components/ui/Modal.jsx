@@ -1,3 +1,4 @@
+// src/components/ui/Modal.jsx
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import styles from "./Modal.module.scss";

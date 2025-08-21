@@ -15,7 +15,7 @@ import styles from "./SidebarMenu.module.scss";
 
 /**
  * Props:
- * - dark: boolean            // faqat vizual state uchun (body.class bilan ham ishlayveradi)
+ * - dark: boolean
  * - collapsed: boolean
  * - toggled: boolean
  * - setToggled: (bool)=>void
@@ -112,6 +112,106 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
             </MenuItem>
           )}
 
+          {/* Inshootlar bo‘limi — overview + 9 ta sahifa */}
+          {isAdmin && (
+            <SubMenu
+              defaultOpen={isActive("/facilities", false)}
+              label={<span className={styles.text}>Inshootlar</span>}
+              icon={"🏭"}
+            >
+              {/* Overview */}
+              <MenuItem
+                active={isActive("/facilities")}
+                component={<Link to="/facilities" />}
+                icon={"🗂️"}
+              >
+                <span className={styles.text}>Umumiy ko‘rinish</span>
+              </MenuItem>
+
+              {/* 1) Issiqxona */}
+              <MenuItem
+                active={isActive("/facilities/greenhouse")}
+                component={<Link to="/facilities/greenhouse" />}
+                icon={"🌿"}
+              >
+                <span className={styles.text}>Issiqxona</span>
+              </MenuItem>
+
+              {/* 2) Tovuqxona */}
+              <MenuItem
+                active={isActive("/facilities/poultry")}
+                component={<Link to="/facilities/poultry" />}
+                icon={"🐔"}
+              >
+                <span className={styles.text}>Tovuqxona</span>
+              </MenuItem>
+
+              {/* 3) Molxona */}
+              <MenuItem
+                active={isActive("/facilities/cowshed")}
+                component={<Link to="/facilities/cowshed" />}
+                icon={"🐄"}
+              >
+                <span className={styles.text}>Molxona</span>
+              </MenuItem>
+
+              {/* 4) Kurkaxona */}
+              <MenuItem
+                active={isActive("/facilities/fur-farm")}
+                component={<Link to="/facilities/fur-farm" />}
+                icon={"🦊"}
+              >
+                <span className={styles.text}>Kurkaxona</span>
+              </MenuItem>
+
+              {/* 5) Qo‘yxona */}
+              <MenuItem
+                active={isActive("/facilities/sheepfold")}
+                component={<Link to="/facilities/sheepfold" />}
+                icon={"🐑"}
+              >
+                <span className={styles.text}>Qo‘yxona</span>
+              </MenuItem>
+
+              {/* 6) Sexlar */}
+              <MenuItem
+                active={isActive("/facilities/workshops")}
+                component={<Link to="/facilities/workshops" />}
+                icon={"🏭"}
+              >
+                <span className={styles.text}>Ishlab chiqarish sexlari</span>
+              </MenuItem>
+
+              {/* 7) Yordamchi xo‘jalik yerlari */}
+              <MenuItem
+                active={isActive("/facilities/aux-lands")}
+                component={<Link to="/facilities/aux-lands" />}
+                icon={"🌾"}
+              >
+                <span className={styles.text}>Yordamchi xo‘jalik yerlari</span>
+              </MenuItem>
+
+              {/* 8) Chegara oldi yerlar */}
+              <MenuItem
+                active={isActive("/facilities/border-lands")}
+                component={<Link to="/facilities/border-lands" />}
+                icon={"🧭"}
+              >
+                <span className={styles.text}>Chegara oldi yerlari</span>
+              </MenuItem>
+
+              {/* 9) Baliqchilik ko‘llari */}
+              <MenuItem
+                active={isActive("/facilities/fish-ponds")}
+                component={<Link to="/facilities/fish-ponds" />}
+                icon={"🐟"}
+              >
+                <span className={styles.text}>Baliqchilik ko‘llari</span>
+              </MenuItem>
+            </SubMenu>
+          )}
+
+          {/* Settings */}
           <SubMenu
             label={<span className={styles.text}>Settings</span>}
             icon={<LuSettings size={18} />}

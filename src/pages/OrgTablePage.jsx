@@ -1,6 +1,7 @@
+// src/pages/OrgTablePage.jsx
 import OrgTable from "../components/org/OrgTable";
 import { useAuth } from "../hooks/useAuth";
-import "../styles/org-table.scss";
+import "../styles/_org_table.scss";
 
 export default function OrgTablePage() {
   const { isAdmin } = useAuth();

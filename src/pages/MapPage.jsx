@@ -1,3 +1,4 @@
+// src/pages/MapPage.jsx
 import { useEffect, useState } from "react";
 import MapView from "../components/map/MapView";
 import { getOrgTree } from "../api/org";

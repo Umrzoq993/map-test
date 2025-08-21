@@ -1,3 +1,4 @@
+// src/hooks/useAuth.jsx
 import { decodeJWT, isAuthenticated } from "../utils/auth";
 
 export function useAuth() {

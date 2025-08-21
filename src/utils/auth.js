@@ -1,3 +1,4 @@
+// src/utils/_auth.scss
 export const TOKEN_KEY = "token";
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);

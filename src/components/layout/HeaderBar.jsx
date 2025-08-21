@@ -1,3 +1,4 @@
+// src/components/layout/HeaderBar.jsx
 import { LuMoon, LuSun, LuMenu } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
 import { clearToken } from "../../utils/auth";

@@ -1,32 +1,59 @@
-import { api } from "./http";
+const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
-/**
- * params:
- *  - orgId?: number
- *  - types?: string[]  // ['GREENHOUSE','COWSHED', ...]
- *  - status?: 'ACTIVE' | 'INACTIVE' | 'UNDER_MAINTENANCE'
- *  - bbox?: string     // "minLng,minLat,maxLng,maxLat"
- *  - q?: string
- */
-export const fetchFacilities = async (params = {}) => {
-  const { types, ...rest } = params;
-  const qp = { ...rest };
-  if (types && types.length > 0) qp.types = types.join(",");
-  const res = await api.get("/api/facilities", { params: qp });
-  return res.data;
-};
+function authHeaders() {
+  const t = localStorage.getItem("token");
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
 
-export const getFacility = async (id) =>
-  (await api.get(`/api/facilities/${id}`)).data;
+async function http(path, { method = "GET", body, headers } = {}) {
+  const res = await fetch(`${BASE}/api${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+      ...(headers || {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { message: text || `HTTP ${res.status}` };
+    }
+    const err = new Error(data.message || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  if (res.status === 204) return null;
+  return res.json().catch(() => null);
+}
 
-export const createFacility = async (payload) =>
-  (await api.post("/api/facilities", payload)).data;
+/** LIST */
+export async function fetchFacilities({ orgId, types, bbox, q } = {}) {
+  const qs = new URLSearchParams();
+  if (orgId != null) qs.set("orgId", String(orgId));
+  if (Array.isArray(types) && types.length) qs.set("types", types.join(","));
+  if (bbox) qs.set("bbox", bbox);
+  if (q && q.trim()) qs.set("q", q.trim());
+  return http(`/facilities?${qs.toString()}`);
+}
 
-export const putFacility = async (id, payload) =>
-  (await api.put(`/api/facilities/${id}`, payload)).data;
+/** alias (old code compatibility) */
+export const listFacilities = fetchFacilities;
 
-export const patchFacility = async (id, payload) =>
-  (await api.patch(`/api/facilities/${id}`, payload)).data;
+/** CREATE */
+export const createFacility = (payload) =>
+  http("/facilities", { method: "POST", body: payload });
 
-export const deleteFacility = async (id) =>
-  (await api.delete(`/api/facilities/${id}`)).data;
+/** PATCH (partial update) */
+export const patchFacility = (id, patch) =>
+  http(`/facilities/${id}`, { method: "PATCH", body: patch });
+
+/** DELETE */
+export const deleteFacility = (id) =>
+  http(`/facilities/${id}`, { method: "DELETE" });
