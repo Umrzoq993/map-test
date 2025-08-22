@@ -1,3 +1,4 @@
+// src/App.jsx
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import SidebarMenu from "./components/SidebarMenu";
@@ -7,13 +8,7 @@ import MapPage from "./pages/MapPage";
 import OrgManager from "./pages/OrgManager";
 import OrgTablePage from "./pages/OrgTablePage";
 import ProtectedRoute from "./routes/ProtectedRoute";
-
-// ⬇️ OVERVIEW NI OLIB TASHLADIK (FacilitiesPage import yo‘q)
-
-// Header
 import HeaderBar from "./components/layout/HeaderBar";
-
-// Barcha alohida sahifalar
 import {
   AuxiliaryLandsPage,
   BorderLandsPage,
@@ -25,6 +20,9 @@ import {
   SheepfoldPage,
   WorkshopsPage,
 } from "./pages/facilities";
+
+// ⬇️ Yangi: persistent tema
+import { useTheme } from "./hooks/useTheme";
 
 function useIsMobile(query = "(max-width: 1024px)") {
   const [isMobile, setIsMobile] = useState(false);
@@ -42,17 +40,13 @@ export default function App() {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [toggled, setToggled] = useState(false);
-  const [dark, setDark] = useState(false);
+
+  // ⬇️ useTheme: default=dark, localStorage’da saqlanadi, html[data-theme] va .dark classni qo‘yadi
+  const { isDark, toggle } = useTheme();
 
   useEffect(() => {
     if (isMobile) setCollapsed(false);
   }, [isMobile]);
-
-  useEffect(() => {
-    const cls = "theme-dark";
-    if (dark) document.body.classList.add(cls);
-    else document.body.classList.remove(cls);
-  }, [dark]);
 
   const onHamburger = () => {
     if (isMobile) setToggled((t) => !t);
@@ -74,7 +68,7 @@ export default function App() {
               {!isMobile && (
                 <div style={{ height: "100vh" }}>
                   <SidebarMenu
-                    dark={dark}
+                    dark={isDark}
                     collapsed={collapsed}
                     toggled={false}
                     setToggled={setToggled}
@@ -91,7 +85,7 @@ export default function App() {
                   />
                   <div className="mobile-overlay__panel">
                     <SidebarMenu
-                      dark={dark}
+                      dark={isDark}
                       collapsed={false}
                       toggled={toggled}
                       setToggled={setToggled}
@@ -103,8 +97,8 @@ export default function App() {
               {/* Main */}
               <main className="app-main">
                 <HeaderBar
-                  dark={dark}
-                  onToggleTheme={() => setDark((d) => !d)}
+                  dark={isDark}
+                  onToggleTheme={toggle} // ⬅️ endi persistent toggle
                   onHamburger={onHamburger}
                 />
 
@@ -114,13 +108,16 @@ export default function App() {
                       path="/"
                       element={<Navigate to="/dashboard" replace />}
                     />
-                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route
+                      path="/dashboard"
+                      element={<Dashboard dark={isDark} />}
+                    />
                     <Route
                       path="/map"
                       element={
                         <MapPage
                           headerHeight={60}
-                          dark={dark}
+                          dark={isDark}
                           sidebarOpen={isMobile && toggled}
                         />
                       }
@@ -128,7 +125,7 @@ export default function App() {
                     <Route path="/orgs" element={<OrgManager />} />
                     <Route path="/orgs-table" element={<OrgTablePage />} />
 
-                    {/* /facilities ni mavjud bir sahifaga yo‘naltiryapmiz */}
+                    {/* /facilities ni mavjud bir sahifaga yo‘naltiramiz */}
                     <Route
                       path="/facilities"
                       element={<Navigate to="/facilities/greenhouse" replace />}

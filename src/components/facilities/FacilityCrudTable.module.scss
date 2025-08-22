@@ -1,25 +1,30 @@
 /* ===== FacilityCrudTable.module.scss ===== */
 
-/* LIGHT tokenlar (default) */
+/* Global tokenlarga tayangan component-scoped tokenlar */
 .root {
-  --fc-bg: #ffffff;
-  --fc-fg: #111827;
-  --fc-muted: #6b7280;
-  --fc-border: #e5e7eb;
-  --fc-row-alt: #fafafa;
-  --fc-hover: #f8fafc;
+  /* Globallardan alias */
+  --fc-bg: var(--card);
+  --fc-fg: var(--text);
+  --fc-muted: var(--muted);
+  --fc-border: var(--border);
 
-  --fc-accent: #3b82f6;
-  --fc-accent-2: #60a5fa;
-  --fc-ring: rgba(59, 130, 246, 0.22);
+  /* Yuzalar */
+  --fc-row-alt: color-mix(in srgb, var(--text) 3%, var(--card));
+  --fc-hover: color-mix(in srgb, var(--brand) 6%, var(--card));
 
-  --fc-danger: #e11d48;
-  --fc-danger-bg: #fee2e2;
-  --fc-danger-br: #fecaca;
+  /* Brend / ring */
+  --fc-accent: var(--brand);
+  --fc-accent-2: var(--brand-2);
+  --fc-ring: color-mix(in srgb, var(--brand) 24%, transparent);
 
-  --fc-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+  /* Xavf ranglari ham globaldan */
+  --fc-danger: var(--danger-text);
+  --fc-danger-bg: var(--danger-bg);
+  --fc-danger-br: var(--danger-border);
 
-  /* “card” ko‘rinishini komponent ichida hal qilamiz */
+  --fc-shadow: var(--shadow-sm);
+
+  /* “card” ko‘rinishi — komponent ichida */
   background: var(--fc-bg);
   color: var(--fc-fg);
   border: 1px solid var(--fc-border);
@@ -30,26 +35,6 @@
   * {
     box-sizing: border-box;
   }
-}
-
-/* DARK override — ancestor global selectorlar bilan */
-:global(.dark) .root,
-:global([data-theme="dark"]) .root,
-:global(.theme-dark) .root {
-  --fc-bg: #0b1220;
-  --fc-fg: #e5e7eb;
-  --fc-muted: #94a3b8;
-  --fc-border: #23324a;
-  --fc-row-alt: #0f1a2b;
-  --fc-hover: #0b1626;
-
-  --fc-accent: #60a5fa;
-  --fc-accent-2: #93c5fd;
-  --fc-ring: rgba(96, 165, 250, 0.22);
-
-  --fc-danger: #fca5a5;
-  --fc-danger-bg: #2a1214;
-  --fc-danger-br: #7f1d1d;
 }
 
 /* ===== Toolbar ===== */

@@ -1,12 +1,13 @@
-// src/pages/LoginPage.jsx
 import { useState } from "react";
 import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import { isAuthenticated, login } from "../api/auth";
-import { LuLeaf } from "react-icons/lu";
 import styles from "./LoginPage.module.scss";
 
+// ⚠️ Logoni shu yo‘lga qo‘ying: src/assets/app-logo.png
+// Agar nomi boshqacha bo‘lsa, import yo‘lini moslang.
+import appLogo from "../assets/zamin-logo.png";
+
 export default function LoginPage() {
-  // Agar allaqachon login bo‘lsa — dashboardga
   if (isAuthenticated()) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -19,7 +20,6 @@ export default function LoginPage() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  // Qayerdan kelganini olamiz — bo‘lmasa /dashboard
   const from = location.state?.from?.pathname || "/dashboard";
 
   const onSubmit = async (e) => {
@@ -44,58 +44,82 @@ export default function LoginPage() {
       <div className={styles.decor1} />
       <div className={styles.decor2} />
 
-      <div className={styles.card}>
-        <div className={styles.brand}>
-          <LuLeaf size={22} />
-          <div className={styles.brandText}>
-            <h1>Agro Map</h1>
-            <p className={styles.muted}>Tizimga kirish</p>
+      <div className={styles.split}>
+        {/* Chap — Hero */}
+        <div className={styles.left}>
+          <div className={styles.hero}>
+            <div className={styles.logoWrap}>
+              <img className={styles.logo} src={appLogo} alt="Agro Map logo" />
+            </div>
+
+            <h1 className={styles.heroTitle}>
+              Avtomatlashtirilgan axborot tizimi
+            </h1>
+            <p className={styles.tagline}>
+              Qishloq xo‘jaligi va yordamchi xo‘jalik resurslarini{" "}
+              <span>interaktiv xarita</span> orqali kuzating, boshqaring va
+              tahlil qiling.
+            </p>
           </div>
         </div>
 
-        {error && <div className={styles.error}>{error}</div>}
+        {/* O‘ng — Forma */}
+        <div className={styles.right}>
+          <div className={styles.card}>
+            <div className={styles.brandSmall}>
+              <span className={styles.brandTextSmall}>Tizimga kirish</span>
+            </div>
 
-        <form className={styles.form} onSubmit={onSubmit}>
-          <div className={styles.field}>
-            <label>Username</label>
-            <input
-              autoFocus
-              placeholder="admin"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
+            {error && <div className={styles.error}>{error}</div>}
+
+            <form className={styles.form} onSubmit={onSubmit}>
+              <div className={styles.field}>
+                <label>Username</label>
+                <input
+                  autoFocus
+                  placeholder="admin"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
+                  inputMode="email"
+                  spellCheck={false}
+                  autoCapitalize="none"
+                />
+              </div>
+
+              <div className={`${styles.field} ${styles.pwd}`}>
+                <label>Password</label>
+                <input
+                  placeholder="••••••••"
+                  type={showPwd ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className={styles.toggle}
+                  onClick={() => setShowPwd((s) => !s)}
+                  aria-label={showPwd ? "Yopish" : "Ko‘rsatish"}
+                  title={showPwd ? "Yopish" : "Ko‘rsatish"}
+                >
+                  {showPwd ? "🙈" : "👁️"}
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                className={`${styles.btn} ${styles.primary} ${styles.full}`}
+                disabled={busy}
+              >
+                {busy ? "Kutilmoqda..." : "Kirish"}
+              </button>
+            </form>
+
+            <div className={styles.foot}>
+              <p className={styles.muted}>© {new Date().getFullYear()} Zamin</p>
+            </div>
           </div>
-
-          <div className={`${styles.field} ${styles.pwd}`}>
-            <label>Password</label>
-            <input
-              placeholder="••••••••"
-              type={showPwd ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <button
-              type="button"
-              className={styles.toggle}
-              onClick={() => setShowPwd((s) => !s)}
-              aria-label={showPwd ? "Yopish" : "Ko‘rsatish"}
-              title={showPwd ? "Yopish" : "Ko‘rsatish"}
-            >
-              {showPwd ? "🙈" : "👁️"}
-            </button>
-          </div>
-
-          <button
-            type="submit"
-            className={`${styles.btn} ${styles.primary} ${styles.full}`}
-            disabled={busy}
-          >
-            {busy ? "Kutilmoqda..." : "Kirish"}
-          </button>
-        </form>
-
-        <div className={styles.foot}>
-          <p className={styles.muted}>© {new Date().getFullYear()} Agro Map</p>
         </div>
       </div>
     </div>

@@ -1,33 +1,11 @@
-// src/components/layout/HeaderBar.jsx
 import { LuMoon, LuSun, LuMenu } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
 import { clearToken } from "../../utils/auth";
 import { useAuth } from "../../hooks/useAuth";
 import styles from "./HeaderBar.module.scss";
 
-function LeafLogo({ size = 20 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
-      <defs>
-        <linearGradient id="g2" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0" stopColor="#22c55e" />
-          <stop offset="1" stopColor="#16a34a" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M56 8C36 9 22 16 14 28S6 52 8 56c4 2 20 0 32-8s19-22 16-40z"
-        fill="url(#g2)"
-      />
-      <path
-        d="M10 52C30 50 50 30 54 10"
-        stroke="#0f5132"
-        strokeOpacity=".3"
-        strokeWidth="3"
-        fill="none"
-      />
-    </svg>
-  );
-}
+// App logosi
+import appLogo from "../../assets/zamin-logo.png";
 
 /**
  * Props:
@@ -45,7 +23,6 @@ export default function HeaderBar({ dark, onToggleTheme, onHamburger }) {
   };
 
   return (
-    // data-theme berib qo'yamiz: body.da .theme-dark bo'lmasa ham ishlaydi
     <header className={styles.header} data-theme={dark ? "dark" : "light"}>
       <button
         className={styles.iconBtn}
@@ -56,9 +33,16 @@ export default function HeaderBar({ dark, onToggleTheme, onHamburger }) {
         <LuMenu size={18} />
       </button>
 
-      <div className={styles.brand}>
-        <LeafLogo />
-        <span>Agro Map</span>
+      <div
+        className={styles.brand}
+        onClick={() => nav("/dashboard")}
+        title="Zamin"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && nav("/dashboard")}
+      >
+        <img className={styles.brandLogoSm} src={appLogo} alt="Zamin logo" />
+        <span>Zamin</span>
       </div>
 
       <div className={styles.grow} />
