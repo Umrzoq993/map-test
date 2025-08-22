@@ -1,104 +1,76 @@
 /* src/styles/index.scss */
 
-/* 1) Tokenlar va mixinlar (eng boshida) */
+/* 1) Token va mixinlar */
 @use "./variables" as *;
 @use "./mixins" as *;
 
-/* 2) Tizim modullari (layout, sidebar, map, themes, org table, auth) */
+/* 2) Modullar */
+@use "./themes"; /* :root tokenlar */
 @use "./layout";
 @use "./sidebar";
-@use "./map";
-@use "./themes";
+@use "./map"; /* ← yangilangan (yuqoridagi) */
 @use "./org_table";
+@use "./org_tree"; /* ← YANGI */
 @use "./auth";
 
-/* 3) Base/reset (shu faylda qolsin) */
-* {
-  box-sizing: border-box;
-}
+/* Global surfaces */
 html,
 body,
 #root {
-  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100%;
+}
+.app-layout {
+  background: var(--bg);
+}
+.app-main {
+  background: var(--bg);
+}
+.app-content {
+  background: var(--bg);
+}
+
+/* Umumiy “card” va “table” lar */
+.card {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Agar umumiy .table ishlatilsa */
+.table {
+  color: var(--text);
+  background: var(--card);
+}
+.table thead th {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+.table tbody td {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Reset/utility – SASS $… dan emas, tokenlardan foydalanamiz */
+* {
+  box-sizing: border-box;
 }
 body {
   margin: 0;
-  font-family: $font-family;
-  color: $text-color;
-  background: $bg-body;
   line-height: 1.5;
-}
-
-/* 4) Kichik utilitylar (kartalar, konteyner va h-k.) */
-.container {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 16px;
-}
-.card {
-  background: $surface;
-  border: 1px solid $border;
-  border-radius: 14px;
-  box-shadow: $shadow-sm;
-  padding: 16px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell,
+    Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 h1,
 h2,
 h3 {
-  color: $heading;
+  color: var(--text);
   margin: 0 0 10px;
 }
-
-/* 5) Dark mode override’lari (body.theme-dark) */
-body.theme-dark {
-  background: $dark-body;
-}
-body.theme-dark .app-main {
-  background: $dark-body;
-}
-
-/* Header dark holati */
-body.theme-dark .app-header {
-  background: $dark-surface;
-  border-bottom-color: $dark-border;
-  .hamburger {
-    background: $dark-surface;
-    border-color: $dark-border;
-    color: $dark-text;
-  }
-  .brand {
-    color: $dark-heading;
-  }
-  .spacer {
-    color: $dark-muted;
-  }
-}
-
-body.theme-dark .app-content {
-  color: $dark-text;
-}
-body.theme-dark .card {
-  background: $dark-surface;
-  border-color: $dark-border;
-  box-shadow: none;
-  color: $dark-text;
-}
-
-/* Map dark (qoldiring—sizda ishlayotgan) */
-body.theme-dark .map-wrapper .leaflet-container {
-  border-color: $dark-border;
-  box-shadow: none;
-}
-body.theme-dark .map-wrapper .panel .panel-col {
-  background: $dark-surface;
-  border-color: $dark-border;
-  color: $dark-text;
-}
-body.theme-dark .map-wrapper .panel .panel-actions button {
-  background: $dark-surface;
-  border-color: $dark-border;
-  color: $dark-text;
-  &:hover {
-    background: $sidebar-dark-hover;
-  }
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 16px;
 }

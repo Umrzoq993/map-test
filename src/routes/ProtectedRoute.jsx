@@ -1,14 +1,15 @@
 // src/routes/ProtectedRoute.jsx
+import { Outlet, Navigate, useLocation } from "react-router-dom";
 import { isAuthenticated } from "../api/auth";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 export default function ProtectedRoute() {
   const location = useLocation();
-
-  if (!isAuthenticated()) {
-    // Login sahifasiga YONALTIRAMIZ va qayerdan kelganini state.from ga saqlaymiz
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  return <Outlet />;
+  if (isAuthenticated()) return <Outlet />;
+  return (
+    <Navigate
+      to="/login"
+      replace
+      state={{ from: location }} // ⬅️ LoginPage aynan shuni o‘qiydi
+    />
+  );
 }

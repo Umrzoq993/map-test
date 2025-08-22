@@ -1,31 +1,22 @@
-/* Scoped, dark-aware, animated Modal */
+/* Modal.module.scss */
+/* Scoped, dark-aware, animated Modal — global tokenlar orqali */
 
-/* ⛔️ ESKI: .portalHost { all: initial; } — olib tashlandi */
-
-/* Dark/Lite tokenlar */
 .modalRoot {
-  /* LIGHT tokens */
-  --md-overlay: rgba(2, 6, 23, 0.45);
-  --md-card: #ffffff;
-  --md-fg: #0f172a;
-  --md-border: #e5e7eb;
-  --md-header: #f1f5f9;
-  --md-ring: rgba(34, 197, 94, 0.25);
+  /* Global tokenlardan hosila */
+  --md-card: var(--card);
+  --md-fg: var(--text);
+  --md-border: var(--border);
+  --md-header: color-mix(in srgb, var(--text) 6%, var(--card));
+  --md-overlay: color-mix(
+    in srgb,
+    #000 55%,
+    transparent
+  ); /* dark/light avtomatik to‘g‘ri ko‘rinadi */
+  --md-ring: color-mix(in srgb, var(--brand) 30%, transparent);
 
   position: fixed;
   inset: 0;
-  z-index: 6000; /* Leaflet va nav ustidan */
-}
-
-/* Global yoki local dark trigger */
-:where(.dark, [data-theme="dark"], .theme-dark) .modalRoot,
-.modalRoot[data-theme="dark"] {
-  --md-overlay: rgba(2, 6, 23, 0.6);
-  --md-card: #0f172a;
-  --md-fg: #e6eef9;
-  --md-border: #253045;
-  --md-header: #111c2b;
-  --md-ring: rgba(34, 197, 94, 0.25);
+  z-index: 6000;
 }
 
 .backdrop {
@@ -45,6 +36,7 @@
   width: var(--card-w, 520px);
   max-width: 96vw;
   max-height: 92vh;
+
   background: var(--md-card);
   color: var(--md-fg);
   border: 1px solid var(--md-border);
@@ -97,7 +89,6 @@
 .entered .backdrop {
   opacity: 1;
 }
-
 .enter .card {
   transform: translateY(8px) scale(0.98);
   opacity: 0;
@@ -106,7 +97,6 @@
   transform: translateY(0) scale(1);
   opacity: 1;
 }
-
 .exit .backdrop {
   opacity: 0;
 }

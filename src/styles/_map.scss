@@ -1,374 +1,119 @@
-// src/styles/_map.scss
-@use "./variables" as *;
-@use "sass:color";
+/* src/styles/map.scss */
 
-/* =========================
-   MAP WRAPPER & CONTAINER
-   ========================= */
+/* Katta konteyner: 2 qator — [map-canvas] / [panel] */
 .map-wrapper {
-  .leaflet-container {
-    border-radius: $radius;
-    border: 1px solid $border;
-    box-shadow: $shadow-sm;
+  /* Header balandligini React’dan kiritamiz: style={{ '--header-h': '60px' }} */
+  --header-h: 60px;
+
+  display: grid;
+  grid-template-rows: 1fr auto;
+  height: calc(100vh - var(--header-h));
+  background: var(--bg);
+  color: var(--text);
+  gap: 0; /* qat’iy bo‘lsin */
+
+  /* Map qatori */
+  .map-canvas {
+    position: relative;
+    min-height: 320px; /* kichik ekranlar uchun kafolat */
+    /* Leaflet konteyneri to‘liq to‘lsin */
+    .leaflet-container {
+      position: absolute;
+      inset: 0;
+      height: 100%;
+      width: 100%;
+      background: var(--bg) !important;
+      border-bottom: 1px solid var(--border);
+    }
   }
 
-  /* Pastdagi GeoJSON panel */
+  /* Pastki panel (GeoJSON/controls) */
   .panel {
-    margin-top: 12px;
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 1; /* xaritaning ustida, lekin ustma-ust emas */
     display: grid;
-    gap: 12px;
     grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    padding: 12px;
 
-    @media (max-width: $bp-lg) {
+    @media (max-width: 900px) {
       grid-template-columns: 1fr;
     }
 
     .panel-col {
-      background: $surface;
-      border: 1px solid $border;
-      border-radius: $radius;
-      box-shadow: $shadow-sm;
-      padding: 16px;
-    }
-
-    h4 {
-      margin: 0 0 8px;
-      color: $heading;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
+      min-height: 120px;
     }
 
     textarea {
       width: 100%;
-      height: 200px;
+      height: 220px;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+      padding: 10px 12px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-        monospace;
+        "Liberation Mono", monospace;
       font-size: 12px;
-      resize: vertical;
+      transition: box-shadow 0.15s, border-color 0.15s, background 0.15s;
+    }
+    textarea:focus {
+      border-color: transparent;
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 28%, transparent);
+      background: color-mix(in srgb, var(--brand) 6%, var(--card));
     }
 
     .panel-actions {
       margin-top: 8px;
       display: flex;
       gap: 8px;
+      flex-wrap: wrap;
 
       button {
-        appearance: none;
+        background: var(--card);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 8px 10px;
         cursor: pointer;
-        border: 1px solid $border;
-        background: $surface;
-        border-radius: $radius-sm;
-        padding: 8px 12px;
-        transition: 0.15s;
-
-        &:hover {
-          background: #fafafa;
-        }
+        transition: background 0.15s, transform 0.03s;
       }
-
-      a {
-        text-decoration: none;
+      button:hover {
+        background: color-mix(in srgb, var(--brand) 8%, var(--card));
       }
-
-      button[disabled] {
-        opacity: 0.5;
-        cursor: not-allowed;
+      button:active {
+        transform: translateY(1px);
       }
     }
   }
 }
 
-/* =========================
-   ORG TREE OVERLAY CARD
-   ========================= */
-.org-tree-card {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  width: 320px;
-  z-index: 1200; /* Leaflet controls ~1000 */
-  background: $surface;
-  border: 1px solid $border;
-  border-radius: $radius;
-  box-shadow: $shadow-sm;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-
-  &.is-hidden {
-    transform: translateY(-8px);
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  &__header {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-    align-items: center;
-    padding: 10px 12px;
-    font-weight: 700;
-    border-bottom: 1px solid $border;
-  }
-
-  .org-tree-search-wrap {
-    position: relative;
-  }
-  .org-tree-search {
-    width: 100%;
-    height: 34px;
-    padding: 0 36px 0 10px;
-    border: 1px solid $border;
-    border-radius: 8px;
-    background: #fff;
-    font-size: 14px;
-    &:focus {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-    }
-  }
-  .org-tree-search__clear {
-    position: absolute;
-    right: 6px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 24px;
-    height: 24px;
-    border: 1px solid $border;
-    background: #fff;
-    border-radius: 6px;
-    line-height: 1;
-    font-size: 16px;
-    cursor: pointer;
-  }
-
-  &__body {
-    max-height: 320px;
-    overflow: auto;
-    padding: 8px 10px;
-  }
-  &__hint {
-    border-top: 1px solid $border;
-    padding: 8px 10px;
-    font-size: 12px;
-    color: $muted;
-    background: #fafcff;
-  }
-
-  .rc-tree {
-    font-size: 14px;
-    .rc-tree-node-content-wrapper:hover {
-      background: transparent;
-    }
-    .rc-tree-checkbox {
-      margin-inline-end: 6px;
-    }
-  }
-
-  mark {
-    background: rgba(59, 130, 246, 0.35);
-    color: inherit;
-    padding: 0 2px;
-    border-radius: 4px;
-  }
+/* Leaflet boshqaruvlari */
+.leaflet-control-zoom a,
+.leaflet-control-layers-toggle {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+.leaflet-bar a:hover {
+  background: color-mix(in srgb, var(--brand) 8%, var(--card)) !important;
 }
 
-@media (max-width: $bp-lg) {
-  .org-tree-card {
-    top: auto;
-    right: 50%;
-    left: 50%;
-    bottom: 12px;
-    width: min(92vw, 520px);
-    transform: translateX(-50%);
-  }
+/* Popuplar */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 
-/* =========================
-   FACILITY CREATE DRAWER
-   ========================= */
-.facility-drawer {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: min(360px, 92vw);
-  max-height: calc(100vh - 24px);
-  z-index: 2000;
-  background: $surface;
-  color: $text;
-  border: 1px solid $border;
-  border-radius: $radius;
-  box-shadow: $shadow-md;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-
-  &__header,
-  &__footer {
-    padding: 10px 12px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  &__header {
-    border-bottom: 1px solid $border;
-  }
-  &__footer {
-    border-top: 1px solid $border;
-    gap: 8px;
-  }
-
-  &__body {
-    padding: 12px;
-    overflow: auto;
-    display: grid;
-    gap: 10px;
-  }
-
-  .fd-close {
-    width: 28px;
-    height: 28px;
-    border: 1px solid $border;
-    background: #fff;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-
-  .fd-field {
-    display: grid;
-    gap: 6px;
-  }
-  .fd-grid {
-    display: grid;
-    gap: 8px;
-    grid-template-columns: 1fr 1fr 1fr;
-  }
-  .fd-hint {
-    font-size: 12px;
-    color: $muted;
-  }
-  .fd-alert {
-    background: #fff6e5;
-    border: 1px solid #f2d6a2;
-    color: #7a5b18;
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 13px;
-  }
-  .fd-geom {
-    font-size: 13px;
-    color: $muted;
-  }
-
-  input,
-  select,
-  textarea {
-    border: 1px solid $border;
-    border-radius: 8px;
-    padding: 8px 10px;
-    background: #fff;
-    font-size: 14px;
-  }
-
-  .fd-primary {
-    margin-left: auto;
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 1px solid $border;
-    background: #0ea5e9;
-    color: #fff;
-    cursor: pointer;
-  }
-  .fd-secondary {
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 1px solid $border;
-    background: #fff;
-    cursor: pointer;
-  }
-}
-
-/* Dark */
-body.theme-dark {
-  .map-wrapper {
-    .leaflet-container {
-      border-color: $dark-border;
-      box-shadow: none;
-    }
-    .panel {
-      .panel-col {
-        background: $dark-surface;
-        border-color: $dark-border;
-        color: $dark-text;
-      }
-      .panel-actions button {
-        background: $dark-surface;
-        border-color: $dark-border;
-        color: $dark-text;
-        &:hover {
-          background: $sidebar-dark-hover;
-        }
-      }
-    }
-  }
-
-  .org-tree-card {
-    background: $dark-surface;
-    border-color: $dark-border;
-    color: $dark-text;
-    &__header {
-      border-bottom-color: $dark-border;
-    }
-    &__hint {
-      border-top-color: $dark-border;
-      background: color.mix(#000, $dark-surface, 6%);
-      color: $dark-muted;
-    }
-    .org-tree-search,
-    .org-tree-search__clear {
-      background: $dark-surface;
-      border-color: $dark-border;
-      color: $dark-text;
-    }
-    .rc-tree {
-      .rc-tree-treenode:hover > .rc-tree-node-content-wrapper {
-        background: transparent;
-      }
-      .rc-tree-checkbox-inner {
-        background: $dark-surface;
-        border-color: $dark-border;
-      }
-      .rc-tree-switcher-icon,
-      .rc-tree-icon__customize svg {
-        color: $dark-text;
-      }
-    }
-    mark {
-      background: rgba(59, 130, 246, 0.25);
-    }
-  }
-
-  .facility-drawer {
-    background: $dark-surface;
-    color: $dark-text;
-    border-color: $dark-border;
-    .fd-close,
-    input,
-    select,
-    textarea,
-    .fd-secondary {
-      background: $dark-surface;
-      color: $dark-text;
-      border-color: $dark-border;
-    }
-    .fd-primary {
-      background: #0284c7;
-      border-color: $dark-border;
-    }
-    .fd-alert {
-      background: color.mix(#000, $dark-surface, 12%);
-      border-color: $dark-border;
-      color: $dark-text;
-    }
-  }
-}

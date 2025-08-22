@@ -1,26 +1,14 @@
-// src/components/SidebarMenu.module.scss
-/* SCOPED sidebar tokenlari */
-.wrapper {
-  /* Light */
-  --sb-bg: #ffffff;
-  --sb-fg: #0f172a;
-  --sb-muted: #6b7280;
-  --sb-border: #e5e7eb;
-  --sb-hover-bg: #f5f7fb;
-  --sb-active-bg: #e9f8ee;
-  --sb-accent: #16a34a;
+/* SidebarMenu.module.scss */
+/* SCOPED sidebar tokenlari — barchasi globaldan olinadi */
 
-  /* Dark override — body/html/#root/anything’da theme ishlaydi */
-  :where(.dark, [data-theme="dark"], .theme-dark) &,
-  &[data-theme="dark"] {
-    --sb-bg: #0f172a;
-    --sb-fg: #e6eef9;
-    --sb-muted: #9aa5b1;
-    --sb-border: #223046;
-    --sb-hover-bg: #0c1726;
-    --sb-active-bg: #0b2b22;
-    --sb-accent: #22c55e;
-  }
+.wrapper {
+  --sb-bg: var(--card);
+  --sb-fg: var(--text);
+  --sb-muted: var(--muted);
+  --sb-border: var(--border);
+  --sb-hover-bg: color-mix(in srgb, var(--brand) 6%, var(--card));
+  --sb-active-bg: color-mix(in srgb, var(--brand) 12%, var(--card));
+  --sb-accent: var(--brand);
 }
 
 /* Header/brand */
@@ -34,11 +22,21 @@
   gap: 10px;
   color: var(--sb-fg);
 }
-.brandIcon {
-  color: var(--sb-accent);
+.brandLogo {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  filter: drop-shadow(
+    0 0 12px color-mix(in srgb, var(--brand) 45%, transparent)
+  );
+}
+.wrapper[data-theme="dark"] .brandLogo {
+  filter: drop-shadow(
+    0 0 16px color-mix(in srgb, var(--brand) 60%, transparent)
+  );
 }
 .brandText {
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.2px;
 }
 
@@ -59,54 +57,37 @@
   border: 1px solid color-mix(in srgb, var(--sb-accent) 35%, transparent);
 }
 
-/* pro-sidebar ichidagi hover holatini kuchaytirish (agar kerak bo'lsa) */
+/* pro-sidebar tweaks */
 :global(.ps-menu-button:hover) {
   background: var(--sb-hover-bg) !important;
 }
-
-/* Submenu ichki kontenti biroz zichroq */
 :global(.ps-submenu-content) {
   padding-inline: 4px !important;
 }
-
 :global(.ps-sidebar-container) {
   background-color: var(--sb-bg) !important;
   color: var(--sb-fg);
 }
-
-/* ildiz (chegara) – ayrim temalarda kerak bo‘lishi mumkin */
 :global(.ps-sidebar-root) {
   border-right: 1px solid var(--sb-border);
 }
-
-/* menyu hover / active holatlari */
 :global(.ps-menu-button:hover) {
   background: var(--sb-hover-bg) !important;
 }
 :global(.ps-submenu-content) {
-  background: transparent; /* gradient/legacy fonlarni yo‘qotish */
+  background: transparent;
 }
-
-/* Submenu kontenti doim tokenlardan rang olsin */
 :global(.ps-menu-root .ps-submenu-content) {
   background-color: var(--sb-bg) !important;
   border: 1px solid var(--sb-border) !important;
   border-radius: 12px !important;
 }
-
-/* Submenu ichidagi itemlar oq fon olmasin */
 :global(.ps-submenu-content .ps-menuitem-root > .ps-menu-button) {
   background: transparent !important;
 }
-
-/* Dark rejimda ham qat’iy ishlashi uchun */
 .wrapper[data-theme="dark"] :global(.ps-submenu-content) {
   background-color: var(--sb-bg) !important;
   border-color: var(--sb-border) !important;
-}
-
-:global(.ps-menu-button:hover) {
-  background: var(--sb-hover-bg) !important;
 }
 :global(.ps-menuitem-root.ps-active > .ps-menu-button) {
   background: var(--sb-active-bg) !important;
