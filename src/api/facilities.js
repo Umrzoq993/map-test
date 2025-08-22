@@ -1,16 +1,28 @@
 // src/api/facilities.js
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
+/** Authorization header from localStorage (if any) */
 function authHeaders() {
   const t = localStorage.getItem("token");
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
-async function http(path, { method = "GET", body, headers } = {}) {
-  // ❗️FIX: Har doim BASE + /api prefiksi qo‘shamiz (agar path absolute URL bo‘lmasa)
-  const url = path.startsWith("http")
+/** Low-level HTTP helper (adds /api prefix for relative paths) */
+async function http(path, { method = "GET", body, headers, query } = {}) {
+  const isAbs = /^https?:\/\//i.test(path);
+  let url = isAbs
     ? path
-    : `${BASE}/api${path.startsWith("/") ? "" : "/"}${path}`;
+    : `${BASE.replace(/\/$/, "")}/api${path.startsWith("/") ? "" : "/"}${path}`;
+  if (query && typeof query === "object") {
+    const sp = new URLSearchParams();
+    Object.entries(query).forEach(([k, v]) => {
+      if (v === undefined || v === null || v === "") return;
+      if (Array.isArray(v)) v.forEach((x) => sp.append(k, x));
+      else sp.append(k, String(v));
+    });
+    const qs = sp.toString();
+    if (qs) url += (url.includes("?") ? "&" : "?") + qs;
+  }
 
   const res = await fetch(url, {
     method,
@@ -20,79 +32,135 @@ async function http(path, { method = "GET", body, headers } = {}) {
       ...(headers || {}),
     },
     body: body ? JSON.stringify(body) : undefined,
-    credentials: "include",
   });
-
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    let data;
+    let msg = `HTTP ${res.status}`;
     try {
-      data = JSON.parse(text);
-    } catch {
-      data = { message: text || `HTTP ${res.status}` };
-    }
-    const err = new Error(data.message || `HTTP ${res.status}`);
-    err.status = res.status;
-    err.data = data;
-    throw err;
+      const t = await res.text();
+      if (t) msg += `: ${t}`;
+    } catch {}
+    throw new Error(msg);
   }
-  if (res.status === 204) return null;
-  return res.json().catch(() => null);
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) return res.json();
+  return res.text();
 }
 
-/** ----- Helpers: normalize / denormalize ----- **/
-function normalizeFacility(row) {
-  if (!row || typeof row !== "object") return row;
-  const attributes = row.attributes ?? row.details ?? null;
-  return { ...row, attributes, details: attributes };
+/* ------------------------------ Normalizers ------------------------------ */
+function normalizeFacility(x) {
+  if (!x) return null;
+  return {
+    id: x.id,
+    orgId: x.orgId,
+    orgName: x.orgName,
+    name: x.name,
+    type: x.type,
+    status: x.status,
+    lat: x.lat,
+    lng: x.lng,
+    zoom: x.zoom ?? null,
+    attributes: x.attributes ?? {},
+    geometry: x.geometry ?? null,
+    createdAt: x.createdAt,
+    updatedAt: x.updatedAt,
+  };
 }
+
 function normalizeList(list) {
-  return Array.isArray(list) ? list.map(normalizeFacility) : [];
-}
-function withAttributes(body) {
-  if (!body || typeof body !== "object") return body;
-  const { details, attributes, ...rest } = body;
-  const mergedAttr =
-    attributes != null ? attributes : details != null ? details : undefined;
-  return mergedAttr === undefined ? rest : { ...rest, attributes: mergedAttr };
+  if (Array.isArray(list)) return list.map(normalizeFacility);
+  if (list && Array.isArray(list.content))
+    return list.content.map(normalizeFacility);
+  return [];
 }
 
-/** ----- LIST ----- **/
-export async function listFacilities({ orgId, types, bbox, status, q } = {}) {
-  const qs = new URLSearchParams();
-  if (orgId != null) qs.set("orgId", String(orgId));
-  if (Array.isArray(types) && types.length) qs.set("types", types.join(","));
-  if (bbox) qs.set("bbox", bbox);
-  if (status) qs.set("status", status);
-  if (q) qs.set("q", q);
-
-  // Bu yerda "/facilities" yoki "facilities" – ikkalasi ham ishlaydi
-  const data = await http(`/facilities?${qs.toString()}`);
-  return normalizeList(data);
+function withAttributes(obj = {}) {
+  const o = { ...(obj || {}) };
+  if (!o.attributes || typeof o.attributes !== "object") o.attributes = {};
+  return o;
 }
 
-/** ----- CREATE ----- **/
-export async function createFacility(payload) {
-  const body = withAttributes(payload);
-  const data = await http(`/facilities`, { method: "POST", body });
+/* --------------------------------- READ --------------------------------- */
+/** Paged list (PageResponse yoki array qaytishi mumkin) */
+export async function listFacilitiesPage(params = {}) {
+  const query = {};
+  if (params.orgId != null) query.orgId = params.orgId;
+  if (params.q) query.q = params.q;
+  if (params.status) query.status = params.status;
+  if (params.types)
+    query.types = Array.isArray(params.types)
+      ? params.types.join(",")
+      : String(params.types);
+  if (params.bbox) query.bbox = params.bbox;
+  if (params.page != null) query.page = params.page;
+  if (params.size != null) query.size = params.size;
+  if (params.sort) {
+    const s = Array.isArray(params.sort) ? params.sort : [params.sort];
+    query.sort = s; // ko'p martalik sort param uchun
+  }
+  return http("/facilities", { query });
+}
+
+/** Barcha sahifalarni to‘plab qaytaradi */
+export async function listFacilitiesAll(params = {}, opts = {}) {
+  const size = opts.size ?? 500;
+  const maxPages = opts.maxPages ?? 50;
+  let page = 0;
+  let out = [];
+
+  while (page < maxPages) {
+    const pageRes = await listFacilitiesPage({ ...params, page, size });
+
+    // Agar server array qaytarsa — paging yo‘q, shu bilan tugaydi
+    if (Array.isArray(pageRes)) {
+      out = out.concat(normalizeList(pageRes));
+      break;
+    }
+
+    const items = normalizeList(pageRes);
+    out = out.concat(items);
+
+    const isLast =
+      pageRes?.last === true ||
+      (typeof pageRes?.totalPages === "number" &&
+        page >= pageRes.totalPages - 1) ||
+      items.length < size;
+
+    if (isLast) break;
+    page += 1;
+  }
+  return out;
+}
+
+/** Orqaga mos kelish: listFacilities -> all-in-one */
+export async function listFacilities(params = {}, opts = {}) {
+  return listFacilitiesAll(params, opts);
+}
+
+/** Bitta obyekt */
+export async function getFacility(id) {
+  const data = await http(`/facilities/${id}`);
   return normalizeFacility(data);
 }
 
-/** ----- PATCH ----- **/
-export async function patchFacility(id, patch) {
-  const body = withAttributes(patch);
+/* --------------------------------- WRITE -------------------------------- */
+export async function createFacility(payload) {
+  const body = withAttributes(payload);
+  const data = await http("/facilities", { method: "POST", body });
+  return normalizeFacility(data);
+}
+
+export async function patchFacility(id, partial) {
+  const body = withAttributes(partial);
   const data = await http(`/facilities/${id}`, { method: "PATCH", body });
   return normalizeFacility(data);
 }
 
-/** ----- PUT (ixtiyoriy) ----- **/
 export async function putFacility(id, full) {
   const body = withAttributes(full);
   const data = await http(`/facilities/${id}`, { method: "PUT", body });
   return normalizeFacility(data);
 }
 
-/** ----- DELETE ----- **/
 export async function deleteFacility(id) {
   return http(`/facilities/${id}`, { method: "DELETE" });
 }

@@ -9,20 +9,10 @@ import OrgManager from "./pages/OrgManager";
 import OrgTablePage from "./pages/OrgTablePage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import HeaderBar from "./components/layout/HeaderBar";
-import {
-  AuxiliaryLandsPage,
-  BorderLandsPage,
-  CowshedPage,
-  FishPondsPage,
-  FurFarmPage,
-  GreenhousePage,
-  PoultryPage,
-  SheepfoldPage,
-  WorkshopsPage,
-} from "./pages/facilities";
 
 // ⬇️ Yangi: persistent tema
 import { useTheme } from "./hooks/useTheme";
+import GenericFacilityPage from "./pages/facilities/GenericFacilityPage";
 
 function useIsMobile(query = "(max-width: 1024px)") {
   const [isMobile, setIsMobile] = useState(false);
@@ -124,49 +114,20 @@ export default function App() {
                     />
                     <Route path="/orgs" element={<OrgManager />} />
                     <Route path="/orgs-table" element={<OrgTablePage />} />
+                    {/* Facilities */}
+                    <Route
+                      path="/facilities"
+                      element={<Navigate to="/facilities/greenhouse" replace />}
+                    />
+                    <Route
+                      path="/facilities/:type"
+                      element={<GenericFacilityPage />}
+                    />
 
                     {/* /facilities ni mavjud bir sahifaga yo‘naltiramiz */}
                     <Route
                       path="/facilities"
                       element={<Navigate to="/facilities/greenhouse" replace />}
-                    />
-
-                    {/* Alohida CRUD sahifalar */}
-                    <Route
-                      path="/facilities/greenhouse"
-                      element={<GreenhousePage />}
-                    />
-                    <Route
-                      path="/facilities/poultry"
-                      element={<PoultryPage />}
-                    />
-                    <Route
-                      path="/facilities/cowshed"
-                      element={<CowshedPage />}
-                    />
-                    <Route
-                      path="/facilities/fur-farm"
-                      element={<FurFarmPage />}
-                    />
-                    <Route
-                      path="/facilities/sheepfold"
-                      element={<SheepfoldPage />}
-                    />
-                    <Route
-                      path="/facilities/workshops"
-                      element={<WorkshopsPage />}
-                    />
-                    <Route
-                      path="/facilities/aux-lands"
-                      element={<AuxiliaryLandsPage />}
-                    />
-                    <Route
-                      path="/facilities/border-lands"
-                      element={<BorderLandsPage />}
-                    />
-                    <Route
-                      path="/facilities/fish-ponds"
-                      element={<FishPondsPage />}
                     />
 
                     <Route

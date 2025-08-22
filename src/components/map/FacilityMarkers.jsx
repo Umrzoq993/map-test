@@ -2,7 +2,7 @@
 import { Marker, Popup } from "react-leaflet";
 import { centroidOfGeometry } from "../../utils/geo";
 import { badgeIconFor } from "./mapIcons";
-import { FACILITY_TYPES } from "./CreateFacilityDrawer";
+import { FACILITY_TYPES } from "../../data/facilityTypes";
 
 export default function FacilityMarkers({ facilities, onOpenEdit }) {
   if (!Array.isArray(facilities) || facilities.length === 0) return null;

@@ -3,25 +3,41 @@ import { useMemo, useCallback, useRef } from "react";
 import { GeoJSON, Marker, Popup } from "react-leaflet";
 import { typeColor, badgeIconFor } from "./mapIcons";
 import { centroidOfGeometry } from "../../utils/geo";
-import { FACILITY_TYPES } from "./CreateFacilityDrawer";
+import { FACILITY_TYPES } from "../../data/facilityTypes";
 
 export default function FacilityGeoLayer({
   facilities,
   showPolys = true,
   onFlyTo,
-  onOpenEdit, // ⬅️ yangi
+  onOpenEdit, // popupdagi "Tahrirlash" va marker kliklari uchun
 }) {
   const geoJsonRef = useRef(null);
 
   const facilityById = useMemo(() => {
     const m = new Map();
-    (facilities || []).forEach((f) => m.set(f.id, f));
+    for (const f of facilities || []) m.set(f.id, f);
     return m;
   }, [facilities]);
 
+  // LatLng tekshirish
+  function isValidLatLng(ll) {
+    return (
+      ll &&
+      Number.isFinite(ll.lat) &&
+      Number.isFinite(ll.lng) &&
+      ll.lat >= -90 &&
+      ll.lat <= 90 &&
+      ll.lng >= -180 &&
+      ll.lng <= 180
+    );
+  }
+
+  /* ---------- GeoJSON uchun FeatureCollection (faqat polygonlar) ---------- */
   const fc = useMemo(() => {
     const features = (facilities || [])
-      .filter((f) => f.geometry && f.geometry.type)
+      .filter(
+        (f) => f.geometry && f.geometry.type && f.geometry.type !== "Point"
+      )
       .map((f) => ({
         type: "Feature",
         geometry: f.geometry,
@@ -31,11 +47,13 @@ export default function FacilityGeoLayer({
           type: f.type,
           status: f.status,
           zoom: f.zoom,
+          color: typeColor(f.type),
         },
       }));
     return { type: "FeatureCollection", features };
   }, [facilities]);
 
+  // Eski ishlagan mantiqqa o‘xshash: poligon qatlamini kuchli qayta chizish uchun key
   const geoKey = useMemo(
     () =>
       (fc.features.length
@@ -44,30 +62,125 @@ export default function FacilityGeoLayer({
     [fc, showPolys]
   );
 
+  /* ------------------------ Centroid markerlar ro‘yxati ------------------- */
+  const centroidBadges = useMemo(() => {
+    return (facilities || [])
+      .filter(
+        (f) => f.geometry && f.geometry.type && f.geometry.type !== "Point"
+      )
+      .map((f) => {
+        const c = centroidOfGeometry(f.geometry); // {lat,lng} | null
+        if (!c || !isValidLatLng(c)) return null;
+        const typeLabel = FACILITY_TYPES[f.type]?.label || f.type;
+        const orgLabel =
+          f.orgName ||
+          f.org?.name ||
+          (f.orgId != null ? `Org #${f.orgId}` : "—");
+        const details = f.attributes || f.details || {};
+        return (
+          <Marker
+            key={`fc-${f.id}`}
+            position={[c.lat, c.lng]}
+            icon={badgeIconFor(f.type, 28)}
+            pane="facilities-centroids"
+            eventHandlers={{
+              click: () => onOpenEdit?.(f.id),
+              dblclick: () => onFlyTo?.([c.lat, c.lng], 17),
+            }}
+          >
+            <Popup minWidth={260} maxWidth={360} autoPan>
+              <div style={{ minWidth: 240 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>
+                  {f.name || "Obyekt"}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
+                  {typeLabel} {f.status ? `• ${f.status}` : ""} <br />
+                  <span style={{ opacity: 0.9 }}>Bo‘lim:</span> {orgLabel}
+                </div>
+                {/* maydonlar (eski popup tarkibi bilan mos) */}
+                <div style={{ display: "grid", gap: 6 }}>
+                  {(FACILITY_TYPES[f.type]?.fields || []).map((fld) => {
+                    const val = details[fld.key];
+                    if (
+                      val === null ||
+                      val === undefined ||
+                      String(val).trim?.() === ""
+                    )
+                      return null;
+                    return (
+                      <div
+                        key={fld.key}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto",
+                          gap: 10,
+                          fontSize: 13,
+                        }}
+                      >
+                        <div style={{ color: "#64748b" }}>
+                          {fld.label}
+                          {fld.suffix ? ` (${fld.suffix})` : ""}
+                        </div>
+                        <div style={{ fontWeight: 600 }}>{String(val)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                  <button
+                    className="pp-edit-react"
+                    onClick={() => onOpenEdit?.(f.id)}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      border: "1px solid #e5e7eb",
+                      background: "#fff",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Tahrirlash
+                  </button>
+                  <button
+                    className="pp-zoom-react"
+                    onClick={() => onFlyTo?.([c.lat, c.lng], 17)}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      border: "1px solid #e5e7eb",
+                      background: "#fff",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Zoom
+                  </button>
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })
+      .filter(Boolean);
+  }, [facilities, onFlyTo, onOpenEdit]);
+
+  /* ---------------------------- GeoJSON style ---------------------------- */
   const style = useCallback((feature) => {
-    const col = typeColor(feature?.properties?.type);
+    const col =
+      feature?.properties?.color || typeColor(feature?.properties?.type);
     return {
       color: col,
-      weight: 2,
-      fillOpacity: 0.15,
+      weight: 2, // eski qiymat
+      fillOpacity: 0.15, // eski qiymat
       fillColor: col,
-      dashArray: "3",
+      dashArray: "3", // eski qiymat
     };
   }, []);
 
+  /* ----------------------- GeoJSON per-feature callback ------------------- */
   const onEach = useCallback(
     (feature, layer) => {
-      const p = feature?.properties || {};
-      const f = facilityById.get(p.id);
+      const id = feature?.properties?.id;
+      const f = id != null ? facilityById.get(id) : null;
       if (!f) return;
-
-      layer.on("mouseover", () => {
-        layer.setStyle({ weight: 3, fillOpacity: 0.25 });
-        layer.bringToFront();
-      });
-      layer.on("mouseout", () => {
-        if (geoJsonRef.current) geoJsonRef.current.resetStyle(layer);
-      });
 
       const typeLabel = FACILITY_TYPES[f.type]?.label || f.type;
       const orgLabel =
@@ -89,7 +202,6 @@ export default function FacilityGeoLayer({
         .filter(Boolean)
         .join("");
 
-      const editId = `rx-edit-${p.id}`;
       const html = `
         <div style="min-width:240px">
           <div style="font-weight:700;font-size:15px;margin-bottom:2px">
@@ -101,132 +213,33 @@ export default function FacilityGeoLayer({
       }<br/>
             <span style="opacity:.9">Bo‘lim:</span> ${escapeHtml(orgLabel)}
           </div>
-          <div style="display:grid;gap:6px">${rows}</div>
-          <div style="display:flex;justify-content:flex-end;margin-top:10px">
-            <button id="${editId}" class="btn primary" style="padding:6px 10px;border-radius:10px">Tahrirlash</button>
+          ${rows}
+          <div style="margin-top:8px; display:flex; gap:8px;">
+            <button class="pp-edit" data-id="${id}" style="padding:6px 10px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;cursor:pointer">Tahrirlash</button>
+            <button class="pp-zoom" data-id="${id}" style="padding:6px 10px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;cursor:pointer">Zoom</button>
           </div>
-        </div>`;
+        </div>
+      `;
 
-      layer.bindPopup(html, { minWidth: 260, maxWidth: 360, autoPan: true });
+      layer.bindPopup(html);
+      try {
+        layer.bringToFront();
+      } catch {}
 
-      // Edit tugmasiga native click ulash
-      let handler = null;
       layer.on("popupopen", (e) => {
-        const root = e?.popup?.getElement?.();
-        if (!root) return;
-        const btn = root.querySelector?.(`#${CSS.escape(editId)}`);
-        if (!btn) return;
-        handler = () => onOpenEdit?.(f);
-        btn.addEventListener("click", handler);
-      });
-
-      layer.on("popupclose", (e) => {
-        const root = e?.popup?.getElement?.();
-        if (!root) return;
-        const btn = root.querySelector?.(`#${CSS.escape(editId)}`);
-        if (btn && handler) btn.removeEventListener("click", handler);
-        handler = null;
-      });
-
-      // ixtiyoriy fly-to
-      layer.on("click", () => {
-        if (onFlyTo && layer.getBounds) {
-          const c = layer.getBounds().getCenter();
-          onFlyTo({
-            lat: c.lat,
-            lng: c.lng,
-            zoom: p.zoom || 16,
-            ts: Date.now(),
-          });
+        const el = e.popup?._contentNode;
+        if (!el) return;
+        const btnEdit = el.querySelector(".pp-edit");
+        const btnZoom = el.querySelector(".pp-zoom");
+        if (btnEdit) btnEdit.addEventListener("click", () => onOpenEdit?.(id));
+        if (btnZoom) {
+          const c = centroidOfGeometry(f.geometry);
+          if (c && isValidLatLng(c) && onFlyTo) onFlyTo([c.lat, c.lng], 17);
         }
       });
     },
     [facilityById, onFlyTo, onOpenEdit]
   );
-
-  const centroidBadges = useMemo(() => {
-    return (facilities || [])
-      .filter(
-        (f) => f.geometry && f.geometry.type && f.geometry.type !== "Point"
-      )
-      .map((f) => {
-        const c = centroidOfGeometry(f.geometry);
-        if (!c) return null;
-        const typeLabel = FACILITY_TYPES[f.type]?.label || f.type;
-        const orgLabel =
-          f.orgName ||
-          f.org?.name ||
-          (f.orgId != null ? `Org #${f.orgId}` : "—");
-        const details = f.attributes || f.details || {};
-
-        return (
-          <Marker
-            key={`fc-${f.id}`}
-            position={[c.lat, c.lng]}
-            icon={badgeIconFor(f.type, 28)}
-            pane="facilities-centroids"
-          >
-            <Popup minWidth={260} maxWidth={360} autoPan>
-              <div style={{ minWidth: 240 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>
-                  {f.name || "Obyekt"}
-                </div>
-                <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
-                  {typeLabel} {f.status ? `• ${f.status}` : ""} <br />
-                  <span style={{ opacity: 0.9 }}>Bo‘lim:</span> {orgLabel}
-                </div>
-
-                <div style={{ display: "grid", gap: 6 }}>
-                  {(FACILITY_TYPES[f.type]?.fields || []).map((fld) => {
-                    const v = details[fld.key];
-                    if (
-                      v === null ||
-                      v === undefined ||
-                      String(v).trim?.() === ""
-                    )
-                      return null;
-                    return (
-                      <div
-                        key={fld.key}
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr auto",
-                          gap: 10,
-                          fontSize: 13,
-                        }}
-                      >
-                        <div style={{ color: "#64748b" }}>
-                          {fld.label}
-                          {fld.suffix ? ` (${fld.suffix})` : ""}
-                        </div>
-                        <div style={{ fontWeight: 600 }}>{String(v)}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    marginTop: 10,
-                  }}
-                >
-                  <button
-                    className="btn primary"
-                    style={{ padding: "6px 10px", borderRadius: 10 }}
-                    onClick={() => onOpenEdit?.(f)}
-                  >
-                    Tahrirlash
-                  </button>
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        );
-      })
-      .filter(Boolean);
-  }, [facilities, onOpenEdit]);
 
   return (
     <>
@@ -236,7 +249,7 @@ export default function FacilityGeoLayer({
           data={fc}
           style={style}
           onEachFeature={onEach}
-          pane="facilities-polys"
+          pane="facilities-polys" // eski Pane nomi
           ref={geoJsonRef}
         />
       )}

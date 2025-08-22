@@ -1,22 +1,71 @@
+// src/components/facilities/FacilityCrudTable.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import Modal from "../ui/Modal";
 import {
-  listFacilities,
+  listFacilitiesPage,
   createFacility,
   patchFacility,
   deleteFacility,
 } from "../../api/facilities";
-import { FACILITY_TYPES } from "../map/CreateFacilityDrawer";
+import { listOrgsPage } from "../../api/org";
+import { FACILITY_TYPES } from "../../data/facilityTypes";
 import s from "./FacilityCrudTable.module.scss";
 
-function pickAttr(row) {
-  return row?.attributes ?? row?.details ?? {};
+/* -------------------------- Validation helpers -------------------------- */
+function validateByRules(schema, { name, orgId, attributes }) {
+  const errors = { name: null, orgId: null, attr: {} };
+
+  if (!name || !name.trim()) errors.name = "Nomi majburiy";
+  if (orgId == null) errors.orgId = "Tashkilot tanlanishi shart";
+
+  for (const f of schema.fields || []) {
+    const v = attributes?.[f.key];
+    const r = f.rules || {};
+    if (r.required && (v === null || v === undefined || v === "")) {
+      errors.attr[f.key] = "Majburiy maydon";
+      continue;
+    }
+    if (v !== null && v !== undefined && v !== "") {
+      if (f.type === "number") {
+        const n = Number(v);
+        if (!Number.isFinite(n)) {
+          errors.attr[f.key] = "Raqam kiritilishi kerak";
+          continue;
+        }
+        if (r.integer && !Number.isInteger(n)) {
+          errors.attr[f.key] = "Butun son bo‘lishi kerak";
+          continue;
+        }
+        if (typeof r.min === "number" && n < r.min) {
+          errors.attr[f.key] = `Qiymat ${r.min} dan kichik bo‘lmasin`;
+          continue;
+        }
+        if (typeof r.max === "number" && n > r.max) {
+          errors.attr[f.key] = `Qiymat ${r.max} dan katta bo‘lmasin`;
+          continue;
+        }
+      } else if (f.type === "text") {
+        const sv = String(v);
+        if (typeof r.maxLength === "number" && sv.length > r.maxLength) {
+          errors.attr[f.key] = `Maksimal ${r.maxLength} ta belgi`;
+          continue;
+        }
+      }
+    }
+  }
+  return errors;
 }
-function titleFromKey(k) {
-  return k.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+function hasErrors(err) {
+  if (!err) return false;
+  if (err.name || err.orgId) return true;
+  return Object.values(err.attr || {}).some(Boolean);
 }
-function nf(v) {
-  return typeof v === "number" ? new Intl.NumberFormat().format(v) : v;
+
+/* ------------------------------ Utilities ------------------------------ */
+function toNumberOrNull(v) {
+  if (v === "" || v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 function normalizeNumbers(obj) {
   const out = {};
@@ -30,329 +79,368 @@ function normalizeNumbers(obj) {
   }
   return out;
 }
+function coord(v) {
+  return typeof v === "number" ? v.toFixed(6) : v ?? "—";
+}
 
-/**
- * Props:
- * - type: "GREENHOUSE" | "POULTRY" | "COWSHED" | ...
- * - orgId?: number
- * - title?: string
- */
-export default function FacilityCrudTable({ type, orgId, title }) {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
+/* ------------------------- Lightweight org fetch ------------------------ */
+/** Backend: GET /api/orgs => PageResponse with { content: [{id,name,...}] } */
+async function fetchOrgOptions() {
+  try {
+    const data = await listOrgsPage({
+      page: 0,
+      size: 1000,
+      sort: ["name,asc"],
+    });
+    const items = Array.isArray(data?.content) ? data.content : [];
+    return items.map((x) => ({
+      value: x.id ?? x?.orgId ?? x?.key,
+      label: x.name ?? x?.title ?? `#${x.id}`,
+    }));
+  } catch {
+    return [];
+  }
+}
 
-  // Toolbar: search & status
-  const [searchInput, setSearchInput] = useState("");
+/* ============================ Main component ============================ */
+export default function FacilityCrudTable({ type, title }) {
+  const schema = FACILITY_TYPES[type] || {
+    label: FACILITY_TYPES?.[type]?.label || String(type),
+    fields: [],
+  };
+
+  // Filters
+  const [orgId, setOrgId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("ALL"); // ALL | ACTIVE | INACTIVE
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
 
+  // Server-side pagination
+  const [rows, setRows] = useState([]);
+  const [pageIdx, setPageIdx] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  // Orgs
+  const [orgOptions, setOrgOptions] = useState([]);
   useEffect(() => {
-    const t = setTimeout(() => setSearch(searchInput.trim()), 300);
-    return () => clearTimeout(t);
-  }, [searchInput]);
+    let alive = true;
+    fetchOrgOptions().then((opts) => alive && setOrgOptions(opts));
+    return () => (alive = false);
+  }, []);
 
-  // Create/Edit/Delete modal state
-  const schema = FACILITY_TYPES[type] || { fields: [], label: type };
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editRow, setEditRow] = useState(null);
-  const [deleteRow, setDeleteRow] = useState(null);
-  const delFocusRef = useRef(null); // delete modal uchun default fokus
-
-  // Form state (create/edit bir xil)
-  const [formName, setFormName] = useState("");
-  const [formStatus, setFormStatus] = useState("ACTIVE");
-  const [formOrgId, setFormOrgId] = useState(orgId ?? null);
-  const [formAttr, setFormAttr] = useState({});
-
-  const resetForm = () => {
-    setFormName("");
-    setFormStatus("ACTIVE");
-    setFormOrgId(orgId ?? null);
-    const base = {};
-    for (const f of schema.fields) base[f.key] = "";
-    setFormAttr(base);
-  };
-
-  const load = async () => {
-    setLoading(true);
-    setErr("");
-    try {
-      const data = await listFacilities({
-        types: [type],
-        orgId,
-        status: statusFilter !== "ALL" ? statusFilter : undefined,
-        q: search || undefined,
-      });
-      setRows(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error(e);
-      setErr(e?.message || "Yuklashda xatolik");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Load rows
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const pageRes = await listFacilitiesPage({
+          type,
+          orgId,
+          status: statusFilter !== "ALL" ? statusFilter : undefined,
+          q: search || undefined,
+          page: pageIdx,
+          size: pageSize,
+          sort: "createdAt,desc",
+        });
+        if (!alive) return;
+        setRows(Array.isArray(pageRes?.content) ? pageRes.content : []);
+        setTotal(pageRes?.totalElements ?? 0);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => (alive = false);
+  }, [type, orgId, statusFilter, search, pageIdx, pageSize]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPageIdx(0);
   }, [type, orgId, statusFilter, search]);
 
-  // Klient tomonda “sug‘urta” filtrlash
-  const filteredRows = useMemo(() => {
-    let out = rows;
-    if (statusFilter !== "ALL") {
-      out = out.filter((r) => (r.status || "") === statusFilter);
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      out = out.filter((r) => {
-        const a = pickAttr(r);
-        return (
-          (r.name || "").toLowerCase().includes(q) ||
-          (r.orgName || "").toLowerCase().includes(q) ||
-          (r.type || "").toLowerCase().includes(q) ||
-          Object.entries(a || {}).some(([k, v]) =>
-            String(v ?? "")
-              .toLowerCase()
-              .includes(q)
-          )
-        );
-      });
-    }
-    return out;
-  }, [rows, statusFilter, search]);
-
-  // Dinamik atribut ustunlari
+  /* --------------------- Derived: attr columns & labels --------------------- */
   const attrKeysOrdered = useMemo(() => {
-    const present = new Set();
-    for (const r of filteredRows) {
-      const a = pickAttr(r);
-      if (a && typeof a === "object") {
-        Object.keys(a).forEach((k) => present.add(k));
-      }
-    }
     const schemaKeys = (schema.fields || []).map((f) => f.key);
-    const inSchema = schemaKeys.filter((k) => present.has(k));
-    const notInSchema = [...present]
-      .filter((k) => !schemaKeys.includes(k))
-      .sort();
-    return [...inSchema, ...notInSchema];
-  }, [filteredRows, schema.fields]);
+    const present = new Set();
+    for (const r of rows) {
+      const a = r?.attributes;
+      if (a && typeof a === "object")
+        Object.keys(a).forEach((k) => present.add(k));
+    }
+    const extras = [...present].filter((k) => !schemaKeys.includes(k)).sort();
+    return [...schemaKeys, ...extras];
+  }, [rows, schema.fields]);
 
   const labelByKey = useMemo(() => {
-    const obj = {};
-    for (const f of schema.fields || []) obj[f.key] = f.label;
-    return obj;
+    const m = {};
+    for (const f of schema.fields || []) m[f.key] = f.label;
+    return m;
   }, [schema.fields]);
 
   const suffixByKey = useMemo(() => {
-    const obj = {};
-    for (const f of schema.fields || []) obj[f.key] = f.suffix;
-    return obj;
+    const m = {};
+    for (const f of schema.fields || []) m[f.key] = f.suffix || null;
+    return m;
   }, [schema.fields]);
 
-  // Create
-  const openCreate = () => {
-    resetForm();
-    setCreateOpen(true);
+  /* --------------------------- Create / Edit modals --------------------------- */
+  const [openCreate, setOpenCreate] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [editing, setEditing] = useState(null); // current row
+
+  // Shared form state
+  const [formName, setFormName] = useState("");
+  const [formOrgId, setFormOrgId] = useState(null);
+  const [formStatus, setFormStatus] = useState("ACTIVE");
+  const [formAttr, setFormAttr] = useState({});
+  const [formErrors, setFormErrors] = useState({
+    name: null,
+    orgId: null,
+    attr: {},
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Focus control
+  const nameInputRef = useRef(null);
+
+  useEffect(() => {
+    setFormErrors(
+      validateByRules(schema, {
+        name: formName,
+        orgId: formOrgId,
+        attributes: formAttr,
+      })
+    );
+  }, [schema, formName, formOrgId, formAttr]);
+
+  const resetForm = () => {
+    setFormErrors({ name: null, orgId: null, attr: {} });
+    setFormName("");
+    setFormOrgId(null);
+    setFormStatus("ACTIVE");
+    const init = {};
+    for (const f of schema.fields || []) init[f.key] = null;
+    setFormAttr(init);
   };
+
+  // Open create
+  const onOpenCreate = () => {
+    resetForm();
+    if (orgId != null) setFormOrgId(orgId);
+    setOpenCreate(true);
+  };
+
+  // Open edit
+  const onOpenEdit = (row) => {
+    resetForm();
+    setEditing(row);
+    setFormName(row?.name ?? "");
+    setFormOrgId(row?.orgId ?? null);
+    setFormStatus(row?.status ?? "ACTIVE");
+    const init = {};
+    for (const f of schema.fields || [])
+      init[f.key] = row?.attributes?.[f.key] ?? null;
+    setFormAttr(init);
+    setOpenEdit(true);
+  };
+
+  // Submit create
   const submitCreate = async () => {
+    const errs = validateByRules(schema, {
+      name: formName,
+      orgId: formOrgId,
+      attributes: formAttr,
+    });
+    setFormErrors(errs);
+    if (hasErrors(errs)) return;
+
+    setSaving(true);
     try {
-      await createFacility({
+      const payload = {
         name: formName.trim(),
         type,
         status: formStatus,
         orgId: formOrgId,
-        details: normalizeNumbers(formAttr),
-      });
-      setCreateOpen(false);
-      await load();
-    } catch (e) {
-      console.error(e);
-      alert(e?.data?.message || "Saqlashda xatolik");
+        attributes: normalizeNumbers(formAttr),
+        lat: null,
+        lng: null,
+        geometry: null,
+      };
+      await createFacility(payload);
+      setOpenCreate(false);
+      setPageIdx(0);
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Edit
-  const openEdit = (row) => {
-    setEditRow(row);
-    setFormName(row?.name || "");
-    setFormStatus(row?.status || "ACTIVE");
-    setFormOrgId(row?.orgId ?? orgId ?? null);
-
-    const base = {};
-    for (const f of schema.fields) base[f.key] = "";
-    const a = pickAttr(row) || {};
-    const merged = { ...base };
-    for (const [k, v] of Object.entries(a)) merged[k] = v ?? "";
-    setFormAttr(merged);
-  };
+  // Submit edit
   const submitEdit = async () => {
-    if (!editRow) return;
+    const errs = validateByRules(schema, {
+      name: formName,
+      orgId: formOrgId,
+      attributes: formAttr,
+    });
+    setFormErrors(errs);
+    if (hasErrors(errs)) return;
+
+    setSaving(true);
     try {
-      await patchFacility(editRow.id, {
+      await patchFacility(editing.id, {
         name: formName.trim(),
         status: formStatus,
         orgId: formOrgId,
-        details: normalizeNumbers(formAttr),
+        attributes: normalizeNumbers(formAttr),
       });
-      setEditRow(null);
-      await load();
-    } catch (e) {
-      console.error(e);
-      alert(e?.data?.message || "Saqlashda xatolik");
+      setOpenEdit(false);
+      setPageIdx(0);
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Delete → modal confirm
-  const confirmDelete = async () => {
-    if (!deleteRow) return;
-    try {
-      await deleteFacility(deleteRow.id);
-      setDeleteRow(null);
-      await load();
-    } catch (e) {
-      console.error(e);
-      alert(e?.data?.message || "O‘chirishda xatolik");
-    }
+  const onDelete = async (row) => {
+    if (!window.confirm(`O‘chirishni tasdiqlaysizmi?\n“${row?.name}”`)) return;
+    await deleteFacility(row.id);
+    setPageIdx(0);
   };
 
-  const clearFilters = () => {
-    setSearchInput("");
-    setSearch("");
-    setStatusFilter("ALL");
-  };
-
-  const colSpan = 5 + attrKeysOrdered.length; // ID, Nom, Bo‘lim, Status, ...attrs..., Amallar
+  /* ------------------------------- Rendering ------------------------------- */
+  // Nomi, Tashkilot, Status, Lat, Lng, ...Atributlar..., Amallar
+  const baseCols = 5; // name/org/status/lat/lng
+  const colSpan = baseCols + attrKeysOrdered.length + 1; // + actions
 
   return (
-    <div className={s.root}>
-      {/* ===== Toolbar ===== */}
-      <div className={s.toolbar}>
-        <div className={s.titleWrap}>
+    <div className={s.wrapper}>
+      {/* Header */}
+      <div className={s.header}>
+        <div className={s.headerLeft}>
           <h2 className={s.title}>
-            {title ||
-              (schema.label ? `${schema.label} ro‘yxati` : "Inshootlar")}
+            {title || schema.label} <span className={s.typePill}>{type}</span>
           </h2>
-          <span className={s.count}>
-            {loading ? "Yuklanmoqda…" : `${filteredRows.length} ta`}
-          </span>
+          <div className={s.filters}>
+            {/* Org select */}
+            <div className={s.fItem}>
+              <label className={s.lbl}>Tashkilot</label>
+              <select
+                className={s.selectLike}
+                value={orgId ?? ""}
+                onChange={(e) =>
+                  setOrgId(e.target.value ? Number(e.target.value) : null)
+                }
+              >
+                <option value="">— Barchasi —</option>
+                {orgOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status */}
+            <div className={s.fItem}>
+              <label className={s.lbl}>Status</label>
+              <select
+                className={s.selectLike}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="ALL">ALL</option>
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE</option>
+              </select>
+            </div>
+
+            {/* Search */}
+            <div className={s.fItem + " " + s.grow}>
+              <label className={s.lbl}>Qidiruv</label>
+              <input
+                className={s.inputLike}
+                placeholder="Nomi bo‘yicha..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className={s.controls}>
-          {/* Qidirish */}
-          <div className={s.search}>
-            <input
-              className={s.searchInput}
-              placeholder="Qidirish (nom, org, atribut)…"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && setSearch(searchInput)}
-            />
-            <span className={s.searchIcon}>🔎</span>
-            {searchInput && (
-              <button
-                className={s.clearBtn}
-                aria-label="Tozalash"
-                onClick={clearFilters}
-              >
-                ×
-              </button>
-            )}
-          </div>
-
-          {/* Status filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className={s.select}
-          >
-            <option value="ALL">Barchasi</option>
-            <option value="ACTIVE">ACTIVE</option>
-            <option value="INACTIVE">INACTIVE</option>
-            <option value="UNDER_MAINTENANCE">UNDER_MAINTENANCE</option>
-          </select>
-
-          <button className={s.btn} onClick={clearFilters}>
-            Tozalash
-          </button>
-
-          <button className={`${s.btn} ${s.btnPrimary}`} onClick={openCreate}>
+        <div className={s.headerRight}>
+          <button className={s.btnPrimary} onClick={onOpenCreate}>
             + Yangi
           </button>
         </div>
       </div>
 
-      {err && (
-        <div className="error" style={{ marginBottom: 10 }}>
-          {err}
-        </div>
-      )}
-
-      {/* ===== Table ===== */}
+      {/* Table */}
       <div className={s.tableWrap}>
         <table className={s.table}>
           <thead>
             <tr>
-              <th>#ID</th>
-              <th>Nom</th>
-              <th>Bo‘lim</th>
+              <th>Nomi</th>
+              <th>Tashkilot</th>
               <th>Status</th>
+              <th>Lat</th>
+              <th>Lng</th>
               {attrKeysOrdered.map((k) => (
                 <th key={k}>
-                  {(labelByKey[k] ?? titleFromKey(k)) +
-                    (suffixByKey[k] ? ` (${suffixByKey[k]})` : "")}
+                  {labelByKey[k] || k}
+                  {suffixByKey[k] ? ` (${suffixByKey[k]})` : ""}
                 </th>
               ))}
-              <th className={s.nowrap}>Amallar</th>
+              <th style={{ width: 140, textAlign: "right" }}>Amallar</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={colSpan}>Yuklanmoqda…</td>
+                <td colSpan={colSpan} className={s.centerMuted}>
+                  Yuklanmoqda...
+                </td>
               </tr>
-            ) : filteredRows.length === 0 ? (
+            ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan}>Ma’lumot yo‘q</td>
+                <td colSpan={colSpan} className={s.centerMuted}>
+                  Ma’lumot topilmadi
+                </td>
               </tr>
             ) : (
-              filteredRows.map((r) => {
-                const a = pickAttr(r);
-                const active = (r.status || "") === "ACTIVE";
+              rows.map((r) => {
+                const active = r.status === "ACTIVE";
+                const a = r.attributes || {};
                 return (
                   <tr key={r.id}>
-                    <td>{r.id}</td>
                     <td>{r.name}</td>
-                    <td>{r.orgName || r.orgId || "—"}</td>
+                    <td>{r.orgName || (r.orgId ? `#${r.orgId}` : "—")}</td>
                     <td>
-                      <span className={`${s.status} ${active ? s.active : ""}`}>
-                        <span className={s.dot} />
-                        {r.status || "—"}
+                      <span className={active ? s.badgeGreen : s.badgeGray}>
+                        {r.status}
                       </span>
                     </td>
+                    <td style={{ whiteSpace: "nowrap" }}>{coord(r.lat)}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{coord(r.lng)}</td>
+
                     {attrKeysOrdered.map((k) => (
                       <td key={k}>
                         {a?.[k] === null ||
                         a?.[k] === undefined ||
                         a?.[k] === ""
                           ? "—"
-                          : nf(a[k])}
+                          : a[k]}
                       </td>
                     ))}
-                    <td>
-                      <div className={s.actions}>
-                        <button className={s.btn} onClick={() => openEdit(r)}>
-                          Tahrirlash
-                        </button>
-                        <button
-                          className={`${s.btn} ${s.btnDanger}`}
-                          onClick={() => setDeleteRow(r)}
-                        >
-                          O‘chirish
-                        </button>
-                      </div>
+
+                    <td style={{ textAlign: "right" }}>
+                      <button className={s.btn} onClick={() => onOpenEdit(r)}>
+                        Tahrirlash
+                      </button>
+                      <button
+                        className={s.btnDanger}
+                        onClick={() => onDelete(r)}
+                      >
+                        O‘chirish
+                      </button>
                     </td>
                   </tr>
                 );
@@ -362,125 +450,164 @@ export default function FacilityCrudTable({ type, orgId, title }) {
         </table>
       </div>
 
-      {/* ===== CREATE MODAL ===== */}
-      <Modal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        title={`${schema.label || type} — yangi yozuv`}
-        size="lg"
-      >
-        <FormFields
-          schema={schema}
-          formName={formName}
-          setFormName={setFormName}
-          formStatus={formStatus}
-          setFormStatus={setFormStatus}
-          formOrgId={formOrgId}
-          setFormOrgId={setFormOrgId}
-          formAttr={formAttr}
-          setFormAttr={setFormAttr}
-        />
-        <div className={s.actions} style={{ marginTop: 8 }}>
-          <button className={s.btn} onClick={() => setCreateOpen(false)}>
-            Bekor
+      {/* Pagination */}
+      <div className={s.pager}>
+        <div className={s.pagerInfo}>
+          {total > 0 ? (
+            <>
+              <b>{pageIdx * pageSize + 1}</b>–
+              <b>{Math.min((pageIdx + 1) * pageSize, total)}</b> / {total}
+            </>
+          ) : (
+            "0 / 0"
+          )}
+        </div>
+        <div className={s.pagerCtrls}>
+          <button
+            className={s.btn}
+            disabled={pageIdx === 0}
+            onClick={() => setPageIdx((p) => Math.max(0, p - 1))}
+          >
+            ‹ Oldingi
           </button>
           <button
-            className={`${s.btn} ${s.btnPrimary}`}
-            onClick={submitCreate}
-            disabled={!formName.trim() || formOrgId == null}
+            className={s.btn}
+            disabled={(pageIdx + 1) * pageSize >= total}
+            onClick={() => setPageIdx((p) => p + 1)}
           >
-            Saqlash
+            Keyingi ›
           </button>
-        </div>
-      </Modal>
-
-      {/* ===== EDIT MODAL ===== */}
-      <Modal
-        open={!!editRow}
-        onClose={() => setEditRow(null)}
-        title={`${schema.label || type} — tahrirlash`}
-        size="lg"
-      >
-        <FormFields
-          schema={schema}
-          readOnlyType
-          formName={formName}
-          setFormName={setFormName}
-          formStatus={formStatus}
-          setFormStatus={setFormStatus}
-          formOrgId={formOrgId}
-          setFormOrgId={setFormOrgId}
-          formAttr={formAttr}
-          setFormAttr={setFormAttr}
-        />
-        <div className={s.actions} style={{ marginTop: 8 }}>
-          <button className={s.btn} onClick={() => setEditRow(null)}>
-            Bekor
-          </button>
-          <button
-            className={`${s.btn} ${s.btnPrimary}`}
-            onClick={submitEdit}
-            disabled={!formName.trim() || formOrgId == null}
+          <select
+            className={s.pageSize}
+            value={pageSize}
+            onChange={(e) => {
+              setPageIdx(0);
+              setPageSize(Number(e.target.value));
+            }}
           >
-            Saqlash
-          </button>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
         </div>
-      </Modal>
+      </div>
 
-      {/* ===== DELETE CONFIRM MODAL ===== */}
+      {/* Create modal */}
       <Modal
-        open={!!deleteRow}
-        onClose={() => setDeleteRow(null)}
-        title="O‘chirishni tasdiqlash"
-        size="sm"
-        initialFocusRef={delFocusRef}
-        // preventCloseOnBackdrop={false} // xohlasangiz yoqing
+        open={openCreate}
+        onClose={() => !saving && setOpenCreate(false)}
+        title={`Yangi obyekt – ${schema.label}`}
+        initialFocusRef={nameInputRef}
+        preventCloseOnBackdrop={saving}
+        disableEscapeClose={saving}
       >
-        {deleteRow && (
-          <div style={{ display: "grid", gap: 10 }}>
-            <div style={{ fontSize: 14 }}>
-              Quyidagi obyektni o‘chirmoqchimisiz?
-            </div>
-            <div
-              style={{
-                border: "1px solid var(--fc-border)",
-                borderRadius: 12,
-                padding: 12,
-                display: "grid",
-                gap: 4,
-              }}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitCreate();
+          }}
+        >
+          <FormFields
+            schema={schema}
+            errors={formErrors}
+            readOnlyType
+            formName={formName}
+            setFormName={setFormName}
+            formStatus={formStatus}
+            setFormStatus={setFormStatus}
+            formOrgId={formOrgId}
+            setFormOrgId={setFormOrgId}
+            orgOptions={orgOptions}
+            formAttr={formAttr}
+            setFormAttr={setFormAttr}
+            nameRef={nameInputRef}
+          />
+          <div className={s.modalFooter}>
+            <button
+              className={s.btn}
+              onClick={() => setOpenCreate(false)}
+              type="button"
             >
-              <div style={{ fontWeight: 700 }}>{deleteRow.name}</div>
-              <div style={{ fontSize: 13, opacity: 0.8 }}>
-                {FACILITY_TYPES[deleteRow.type]?.label || deleteRow.type} •{" "}
-                {deleteRow.orgName || `Org ID: ${deleteRow.orgId ?? "—"}`}
-              </div>
-            </div>
-
-            <div
-              className={s.actions}
-              style={{ marginTop: 6, alignItems: "center" }}
+              Bekor qilish
+            </button>
+            <button
+              className={s.btnPrimary}
+              type="submit"
+              disabled={
+                !formName.trim() ||
+                formOrgId == null ||
+                hasErrors(formErrors) ||
+                saving
+              }
             >
-              <button className={s.btn} onClick={() => setDeleteRow(null)}>
-                Bekor
-              </button>
-              <button
-                ref={delFocusRef}
-                className={`${s.btn} ${s.btnDanger}`}
-                onClick={confirmDelete}
-              >
-                O‘chirish
-              </button>
-            </div>
+              {saving ? "Saqlanmoqda..." : "Saqlash"}
+            </button>
           </div>
-        )}
+        </form>
+      </Modal>
+
+      {/* Edit modal */}
+      <Modal
+        open={openEdit}
+        onClose={() => !saving && setOpenEdit(false)}
+        title={`Tahrirlash – ${schema.label}`}
+        initialFocusRef={nameInputRef}
+        preventCloseOnBackdrop={saving}
+        disableEscapeClose={saving}
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitEdit();
+          }}
+        >
+          <FormFields
+            schema={schema}
+            errors={formErrors}
+            readOnlyType
+            formName={formName}
+            setFormName={setFormName}
+            formStatus={formStatus}
+            setFormStatus={setFormStatus}
+            formOrgId={formOrgId}
+            setFormOrgId={setFormOrgId}
+            orgOptions={orgOptions}
+            formAttr={formAttr}
+            setFormAttr={setFormAttr}
+            nameRef={nameInputRef}
+          />
+          <div className={s.modalFooter}>
+            <button
+              className={s.btn}
+              onClick={() => setOpenEdit(false)}
+              type="button"
+            >
+              Bekor qilish
+            </button>
+            <button
+              className={s.btnPrimary}
+              type="submit"
+              disabled={
+                !formName.trim() ||
+                formOrgId == null ||
+                hasErrors(formErrors) ||
+                saving
+              }
+            >
+              {saving ? "Saqlanmoqda..." : "Saqlash"}
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );
 }
 
+/* ---------------------------- Sub components ---------------------------- */
 function FormFields({
   schema,
+  errors,
   readOnlyType = false,
   formName,
   setFormName,
@@ -488,86 +615,96 @@ function FormFields({
   setFormStatus,
   formOrgId,
   setFormOrgId,
+  orgOptions = [],
   formAttr,
   setFormAttr,
+  nameRef,
 }) {
-  const onAttr = (k, v) => setFormAttr((s) => ({ ...s, [k]: v }));
+  const onAttr = (k, v) => setFormAttr((p) => ({ ...p, [k]: v }));
 
   return (
-    <div className={s.form}>
-      <div className={s.field}>
-        <label>Nom *</label>
+    <div className={s.formGrid}>
+      {/* Name */}
+      <div className={s.formRow}>
+        <label className={s.lbl}>Nomi</label>
         <input
+          ref={nameRef}
           className={s.inputLike}
           value={formName}
           onChange={(e) => setFormName(e.target.value)}
-          placeholder="Masalan: Issiqxona #1"
-          autoFocus
+          placeholder={schema?.label || "Nomi"}
         />
+        {errors?.name && <div className={s.err}>{errors.name}</div>}
       </div>
 
-      <div className={s.grid3}>
-        <div className={s.field}>
-          <label>Tur</label>
-          <input
-            className={s.inputLike}
-            value={schema?.label ?? "—"}
-            readOnly={true}
-          />
-        </div>
-        <div className={s.field}>
-          <label>Status</label>
-          <select
-            className={s.inputLike}
-            value={formStatus}
-            onChange={(e) => setFormStatus(e.target.value)}
-          >
-            <option value="ACTIVE">ACTIVE</option>
-            <option value="INACTIVE">INACTIVE</option>
-            <option value="UNDER_MAINTENANCE">UNDER_MAINTENANCE</option>
-          </select>
-        </div>
-        <div className={s.field}>
-          <label>Bo‘lim (orgId) *</label>
-          <input
-            className={s.inputLike}
-            type="number"
-            value={formOrgId ?? ""}
-            onChange={(e) => {
-              const v = e.target.value;
-              const n = v === "" ? null : Number(v);
-              setFormOrgId(Number.isFinite(n) ? n : null);
-            }}
-            placeholder="Masalan: 1"
-          />
-        </div>
+      {/* Status */}
+      <div className={s.formRow}>
+        <label className={s.lbl}>Status</label>
+        <select
+          className={s.selectLike}
+          value={formStatus}
+          onChange={(e) => setFormStatus(e.target.value)}
+        >
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="INACTIVE">INACTIVE</option>
+        </select>
       </div>
 
-      <hr style={{ opacity: 0.25 }} />
+      {/* Organization */}
+      <div className={s.formRow}>
+        <label className={s.lbl}>Tashkilot</label>
+        <select
+          className={s.selectLike}
+          value={formOrgId ?? ""}
+          onChange={(e) =>
+            setFormOrgId(e.target.value ? Number(e.target.value) : null)
+          }
+        >
+          <option value="">— Tanlang —</option>
+          {orgOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        {errors?.orgId && <div className={s.err}>{errors.orgId}</div>}
+      </div>
 
-      <div style={{ fontWeight: 700, marginBottom: 6 }}>Maxsus maydonlar</div>
-      {(schema.fields || []).map((f) => (
-        <div key={f.key} className={s.field}>
-          <label>
-            {f.label}
-            {f.suffix ? ` (${f.suffix})` : ""}
-          </label>
-          {f.type === "text" ? (
-            <input
-              className={s.inputLike}
-              value={formAttr[f.key] ?? ""}
-              onChange={(e) => onAttr(f.key, e.target.value)}
-            />
-          ) : (
-            <input
-              className={s.inputLike}
-              type="number"
-              value={formAttr[f.key] ?? ""}
-              onChange={(e) => onAttr(f.key, e.target.value)}
-            />
-          )}
+      {/* Dynamic attributes */}
+      {schema?.fields?.length ? (
+        <div className={s.attrsGrid}>
+          {schema.fields.map((f) => (
+            <div key={f.key} className={s.formRow}>
+              <label className={s.lbl}>
+                {f.label}
+                {f.rules?.required ? " *" : ""}
+                {f.suffix ? (
+                  <span className={s.muted}> ({f.suffix})</span>
+                ) : null}
+              </label>
+              {f.type === "text" ? (
+                <input
+                  className={s.inputLike}
+                  value={formAttr[f.key] ?? ""}
+                  onChange={(e) => onAttr(f.key, e.target.value)}
+                />
+              ) : (
+                <input
+                  className={s.inputLike}
+                  type="number"
+                  value={formAttr[f.key] ?? ""}
+                  onChange={(e) =>
+                    onAttr(f.key, toNumberOrNull(e.target.value))
+                  }
+                />
+              )}
+              {errors?.attr?.[f.key] && (
+                <div className={s.err}>{errors.attr[f.key]}</div>
+              )}
+            </div>
+          ))}
         </div>
-      ))}
+      ) : null}
     </div>
   );
 }

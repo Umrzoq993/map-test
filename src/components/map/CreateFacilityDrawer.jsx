@@ -1,350 +1,60 @@
 // src/components/map/CreateFacilityDrawer.jsx
 import { useEffect, useMemo, useState } from "react";
+import Modal from "../ui/Modal";
 import { createFacility } from "../../api/facilities";
-import { centroidOfGeometry } from "../../utils/geo"; // ⬅️ YANGI
+import { centroidOfGeometry } from "../../utils/geo";
+import { listOrgsPage } from "../../api/org";
+import * as FT from "../../data/facilityTypes";
+const FACILITY_TYPES = FT.FACILITY_TYPES;
 
-/** ---------------- FIELD SCHEMA (bitta joydan boshqariladi) ----------------
- * Har bir type uchun: label va fields (kalit, label, input type, suffix).
- * details ichida shu kalitlar saqlanadi.
- */
-export const FACILITY_TYPES = {
-  GREENHOUSE: {
-    label: "Issiqxona",
-    fields: [
-      {
-        key: "area_ha",
-        label: "Umumiy yer maydoni",
-        type: "number",
-        suffix: "ga",
-      },
-      { key: "heating_type", label: "Isitish tizimi turi", type: "text" },
-      {
-        key: "yield_amount",
-        label: "Olinadigan hosildorlik miqdori",
-        type: "number",
-      },
-      { key: "revenue", label: "Olinadigan daromad miqdori", type: "number" },
-      { key: "profit", label: "Olingan sof foyda", type: "number" },
-    ],
-  },
-  POULTRY: {
-    label: "Tovuqxona",
-    fields: [
-      {
-        key: "area_m2",
-        label: "Umumiy yer maydoni",
-        type: "number",
-        suffix: "m²",
-      },
-      { key: "capacity", label: "Umumiy sig‘imi", type: "number" },
-      { key: "current", label: "Hozirda mavjud", type: "number" },
-      {
-        key: "product_amount",
-        label: "Olinadigan mahsulot (kg yoki dona)",
-        type: "number",
-      },
-      { key: "revenue", label: "Olinadigan daromad", type: "number" },
-      { key: "profit", label: "Olingan sof foyda", type: "number" },
-    ],
-  },
-  COWSHED: {
-    label: "Molxona",
-    fields: [
-      {
-        key: "area_m2",
-        label: "Umumiy yer maydoni",
-        type: "number",
-        suffix: "m²",
-      },
-      { key: "capacity", label: "Umumiy sig‘imi", type: "number" },
-      { key: "current", label: "Hozirda mavjud", type: "number" },
-      { key: "product_kg", label: "Olinadigan mahsulot (kg)", type: "number" },
-      { key: "revenue", label: "Olinadigan daromad", type: "number" },
-      { key: "profit", label: "Olingan sof foyda", type: "number" },
-    ],
-  },
-  TURKEY: {
-    label: "Kurkaxona",
-    fields: [
-      {
-        key: "area_m2",
-        label: "Umumiy yer maydoni",
-        type: "number",
-        suffix: "m²",
-      },
-      { key: "capacity", label: "Umumiy sig‘imi", type: "number" },
-      { key: "current", label: "Hozirda mavjud", type: "number" },
-      { key: "product_kg", label: "Olinadigan mahsulot (kg)", type: "number" },
-      { key: "revenue", label: "Olinadigan daromad", type: "number" },
-      { key: "profit", label: "Olingan sof foyda", type: "number" },
-    ],
-  },
-  SHEEPFOLD: {
-    label: "Qo‘yxona",
-    fields: [
-      {
-        key: "area_m2",
-        label: "Umumiy yer maydoni",
-        type: "number",
-        suffix: "m²",
-      },
-      { key: "capacity", label: "Umumiy sig‘imi", type: "number" },
-      { key: "current", label: "Hozirda mavjud", type: "number" },
-      { key: "product_kg", label: "Olinadigan mahsulot (kg)", type: "number" },
-      { key: "revenue", label: "Olinadigan daromad", type: "number" },
-      { key: "profit", label: "Olingan sof foyda", type: "number" },
-    ],
-  },
-  WORKSHOP: {
-    label: "Ishlab chiqarish sexi",
-    fields: [
-      {
-        key: "area_m2",
-        label: "Umumiy yer maydoni",
-        type: "number",
-        suffix: "m²",
-      },
-      { key: "product_kg", label: "Olinadigan mahsulot (kg)", type: "number" },
-      { key: "revenue", label: "Olinadigan daromad", type: "number" },
-      { key: "profit", label: "Olingan sof foyda", type: "number" },
-    ],
-  },
-  AUX_LAND: {
-    label: "Yordamchi xo‘jalik yerlari",
-    fields: [
-      {
-        key: "area_m2",
-        label: "Umumiy yer maydoni",
-        type: "number",
-        suffix: "m²",
-      },
-      {
-        key: "harvest_amount",
-        label: "Olinadigan hosil miqdori",
-        type: "number",
-      },
-      { key: "revenue", label: "Olinadigan daromad miqdori", type: "number" },
-      { key: "profit", label: "Olinadigan sof foyda", type: "number" },
-      { key: "tenant", label: "Ijarachi", type: "text" },
-      { key: "government_decision", label: "Hukumat qarori", type: "text" },
-    ],
-  },
-  BORDER_LAND: {
-    label: "Chegara oldi yer maydonlari",
-    fields: [
-      {
-        key: "area_m2",
-        label: "Umumiy yer maydoni",
-        type: "number",
-        suffix: "m²",
-      },
-      {
-        key: "harvest_amount",
-        label: "Olinadigan hosil miqdori",
-        type: "number",
-      },
-      { key: "revenue", label: "Olinadigan daromad miqdori", type: "number" },
-      { key: "profit", label: "Olinadigan sof foyda", type: "number" },
-      { key: "tenant", label: "Ijarachi", type: "text" },
-      { key: "government_decision", label: "Hukumat qarori", type: "text" },
-    ],
-  },
-  FISHPOND: {
-    label: "Baliqchilik ko‘llari",
-    fields: [
-      {
-        key: "area_m2",
-        label: "Umumiy yer maydoni",
-        type: "number",
-        suffix: "m²",
-      },
-      {
-        key: "product_amount",
-        label: "Olinadigan mahsulot miqdori",
-        type: "number",
-      },
-      { key: "revenue", label: "Olinadigan daromad miqdori", type: "number" },
-      { key: "profit", label: "Olinadigan sof foyda", type: "number" },
-      { key: "tenant", label: "Ijarachi", type: "text" },
-      { key: "government_decision", label: "Hukumat qarori", type: "text" },
-    ],
-  },
-};
-
-const DEFAULT_STATUS = "ACTIVE";
-
-export default function CreateFacilityDrawer({
-  open,
-  onClose,
-  geometry, // GeoJSON Geometry (marker/polygon/rectangle)
-  center, // {lat,lng} (marker yoki bounds center)
-  selectedOrgId, // org id (optional)
-  onSaved, // callback
-}) {
-  const [name, setName] = useState("");
-  const [type, setType] = useState("GREENHOUSE");
-  const [orgId, setOrgId] = useState(selectedOrgId ?? null);
-  const [status, setStatus] = useState(DEFAULT_STATUS);
-  const fields = FACILITY_TYPES[type]?.fields || [];
-
-  const [details, setDetails] = useState({});
-  useEffect(() => {
-    // type o'zgarsa, eski keys saqlanib qolmasin
-    const next = {};
-    for (const f of fields) next[f.key] = "";
-    setDetails(next);
-  }, [type]); // eslint-disable-line
-
-  useEffect(() => {
-    setOrgId(selectedOrgId ?? null);
-  }, [selectedOrgId]);
-
-  const canSave = name.trim().length > 0 && type && orgId != null;
-
-  const onChangeDetail = (k, v) => {
-    setDetails((d) => ({ ...d, [k]: v }));
-  };
-
-  const onSubmit = async () => {
-    if (!canSave) return;
-    try {
-      const payload = {
-        name: name.trim(),
-        type,
-        status,
-        orgId,
-        attributes: normalizeNumbers(details),
-      };
-      // Geometriyani biriktiramiz
-      if (geometry) {
-        payload.geometry = geometry;
-      }
-      // LAT/LNG: avvalo geometriyaning haqiqiy centroidi, bo'lmasa fallback sifatida Drawerga uzatilgan center
-      const c = geometry ? centroidOfGeometry(geometry) : center || null;
-      if (c?.lat != null && c?.lng != null) {
-        payload.lat = c.lat;
-        payload.lng = c.lng;
-      }
-      await createFacility(payload);
-      onClose?.();
-      onSaved?.();
-    } catch (e) {
-      console.error(e);
-      alert(e?.data?.message || "Saqlashda xatolik");
+/* -------------------------- Validation helpers -------------------------- */
+function validateByRules(schema, { name, attributes }) {
+  const errors = { name: null, attr: {} };
+  if (!name || !name.trim()) errors.name = "Nomi majburiy";
+  for (const f of schema.fields || []) {
+    const v = attributes?.[f.key];
+    const r = f.rules || {};
+    if (r.required && (v === null || v === undefined || v === "")) {
+      errors.attr[f.key] = "Majburiy maydon";
+      continue;
     }
-  };
-
-  if (!open) return null;
-
-  return (
-    <aside className="facility-drawer">
-      <div className="facility-drawer__header">
-        Yangi obyekt
-        <button className="fd-close" onClick={onClose} aria-label="Yopish">
-          ×
-        </button>
-      </div>
-
-      <div className="facility-drawer__body">
-        <div className="fd-field">
-          <label>Nom *</label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Masalan: Issiqxona #1"
-          />
-        </div>
-
-        <div className="fd-grid">
-          <div className="fd-field">
-            <label>Tur *</label>
-            <select value={type} onChange={(e) => setType(e.target.value)}>
-              {Object.entries(FACILITY_TYPES).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="fd-field">
-            <label>Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="INACTIVE">INACTIVE</option>
-              <option value="UNDER_MAINTENANCE">UNDER_MAINTENANCE</option>
-            </select>
-          </div>
-          <div className="fd-field">
-            <label>Bo‘lim (orgId)</label>
-            <input
-              type="number"
-              value={orgId ?? ""}
-              onChange={(e) => setOrgId(toNumberOrNull(e.target.value))}
-              placeholder="Masalan: 12"
-            />
-          </div>
-        </div>
-
-        {geometry ? (
-          <div className="fd-geom">
-            Geometriya: <code>{geometry.type}</code>
-          </div>
-        ) : center ? (
-          <div className="fd-geom">
-            Koordinata: {center.lat?.toFixed(6)}, {center.lng?.toFixed(6)}
-          </div>
-        ) : (
-          <div className="fd-alert">
-            Eslatma: geometriya yoki nuqta tanlanmagan. Baribir saqlash mumkin.
-          </div>
-        )}
-
-        <hr style={{ opacity: 0.2 }} />
-
-        <div style={{ fontWeight: 700 }}>
-          {FACILITY_TYPES[type]?.label} — ma’lumotlar
-        </div>
-        <div className="fd-fields">
-          {fields.map((f) => (
-            <div key={f.key} className="fd-field">
-              <label>
-                {f.label}
-                {f.suffix ? ` (${f.suffix})` : ""}
-              </label>
-              {f.type === "text" ? (
-                <input
-                  value={details[f.key] ?? ""}
-                  onChange={(e) => onChangeDetail(f.key, e.target.value)}
-                />
-              ) : (
-                <input
-                  type="number"
-                  value={details[f.key] ?? ""}
-                  onChange={(e) => onChangeDetail(f.key, e.target.value)}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-
-        <div className="fd-hint">
-          * Sonli maydonlar serverga number sifatida yuboriladi (bo‘sh
-          qoldirilsa null).
-        </div>
-      </div>
-
-      <div className="facility-drawer__footer">
-        <button className="fd-secondary" onClick={onClose}>
-          Bekor
-        </button>
-        <button className="fd-primary" onClick={onSubmit} disabled={!canSave}>
-          Saqlash
-        </button>
-      </div>
-    </aside>
-  );
+    if (v !== null && v !== undefined && v !== "") {
+      if (f.type === "number") {
+        const n = Number(v);
+        if (!Number.isFinite(n)) {
+          errors.attr[f.key] = "Raqam kiritilishi kerak";
+          continue;
+        }
+        if (r.integer && !Number.isInteger(n)) {
+          errors.attr[f.key] = "Butun son bo‘lishi kerak";
+          continue;
+        }
+        if (typeof r.min === "number" && n < r.min) {
+          errors.attr[f.key] = `Qiymat ${r.min} dan kichik bo‘lmasin`;
+          continue;
+        }
+        if (typeof r.max === "number" && n > r.max) {
+          errors.attr[f.key] = `Qiymat ${r.max} dan katta bo‘lmasin`;
+          continue;
+        }
+      } else if (f.type === "text") {
+        const sv = String(v);
+        if (typeof r.maxLength === "number" && sv.length > r.maxLength) {
+          errors.attr[f.key] = `Maksimal ${r.maxLength} ta belgi`;
+          continue;
+        }
+      }
+    }
+  }
+  return errors;
+}
+function hasErrors(err) {
+  if (!err) return false;
+  if (err.name) return true;
+  return Object.values(err.attr || {}).some(Boolean);
 }
 
+/* ------------------------------ Utilities ------------------------------ */
 function toNumberOrNull(v) {
   if (v === "" || v == null) return null;
   const n = Number(v);
@@ -361,4 +71,289 @@ function normalizeNumbers(obj) {
     out[k] = Number.isFinite(n) && String(v).trim() !== "" ? n : v;
   }
   return out;
+}
+
+/* ------------------------------- Component ------------------------------ */
+/**
+ * Props:
+ *  - open: boolean
+ *  - onClose: () => void
+ *  - onSaved: () => void
+ *  - geometry: GeoJSON Geometry (marker/polygon/rectangle)
+ *  - center: {lat, lng} | null  (marker yoki chizilgan shakl markazi)
+ *  - selectedOrgId: number | null (chapdagi tree’dan tanlangan org)
+ */
+export default function CreateFacilityDrawer({
+  open,
+  onClose,
+  onSaved,
+  geometry,
+  center,
+  selectedOrgId,
+}) {
+  // type tanlovi
+  const typeKeys = Object.keys(FACILITY_TYPES || {});
+  const [type, setType] = useState(typeKeys[0] || "OTHER");
+  useEffect(() => {
+    if (open && !FACILITY_TYPES?.[type]) {
+      setType(typeKeys[0] || "OTHER");
+    }
+  }, [open]); // eslint-disable-line
+
+  const schema =
+    FACILITY_TYPES && FACILITY_TYPES[type]
+      ? FACILITY_TYPES[type]
+      : {
+          label: FT.getFacilityTypeLabel
+            ? FT.getFacilityTypeLabel(type)
+            : String(type),
+          fields: [],
+        };
+
+  // form states
+  const [name, setName] = useState("");
+  const [status, setStatus] = useState("ACTIVE");
+  const [orgId, setOrgId] = useState(selectedOrgId ?? null);
+  const [attr, setAttr] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({ name: null, attr: {} });
+
+  // org options
+  const [orgOptions, setOrgOptions] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const data = await listOrgsPage({
+          page: 0,
+          size: 1000,
+          sort: ["name,asc"],
+        });
+        const items = Array.isArray(data?.content) ? data.content : [];
+        const opts = items.map((x) => ({ value: x.id, label: x.name }));
+        if (alive) setOrgOptions(opts);
+      } catch {}
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // reset on open/close
+  useEffect(() => {
+    if (!open) return;
+    setName("");
+    setStatus("ACTIVE");
+    setOrgId(selectedOrgId ?? null);
+    const init = {};
+    for (const f of schema.fields || []) init[f.key] = null;
+    setAttr(init);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // rebuild attributes form when type changes
+  useEffect(() => {
+    const init = {};
+    for (const f of schema.fields || []) init[f.key] = null;
+    setAttr(init);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type]);
+
+  // validation live
+  useEffect(() => {
+    setErrors(validateByRules(schema, { name, attributes: attr }));
+  }, [schema, name, attr]);
+
+  const onAttr = (k, v) => setAttr((p) => ({ ...p, [k]: v }));
+
+  // center fallback from geometry
+  const centerLL = useMemo(() => {
+    if (center?.lat && center?.lng) return center;
+    try {
+      const c = centroidOfGeometry(geometry); // { lat, lng } yoki null
+      if (c && Number.isFinite(c.lat) && Number.isFinite(c.lng))
+        return { lat: c.lat, lng: c.lng };
+    } catch {}
+    return { lat: null, lng: null };
+  }, [center, geometry]);
+
+  const canSave =
+    open && name.trim() && orgId != null && !hasErrors(errors) && geometry;
+
+  const onSubmit = async (e) => {
+    e?.preventDefault?.();
+    if (!canSave) return;
+    setSaving(true);
+    try {
+      await createFacility({
+        name: name.trim(),
+        type,
+        status,
+        orgId,
+        attributes: normalizeNumbers(attr),
+        lat: centerLL.lat,
+        lng: centerLL.lng,
+        geometry,
+      });
+      onSaved?.();
+      onClose?.();
+    } catch (err) {
+      console.error(err);
+      alert("Saqlashda xatolik yuz berdi");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={() => !saving && onClose?.()}
+      title="Yangi obyekt qo‘shish"
+      size="xl"
+      preventCloseOnBackdrop={saving}
+      disableEscapeClose={saving}
+    >
+      <form
+        onSubmit={onSubmit}
+        className="form-grid"
+        style={{ display: "grid", gap: 12 }}
+      >
+        {/* Type */}
+        <div style={{ display: "grid", gap: 6 }}>
+          <label className="lbl">Turi</label>
+          <select
+            className="selectLike"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+          >
+            {typeKeys.map((k) => (
+              <option key={k} value={k}>
+                {FT.getFacilityTypeLabel ? FT.getFacilityTypeLabel(k) : k}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Name */}
+        <div style={{ display: "grid", gap: 6 }}>
+          <label className="lbl">Nomi</label>
+          <input
+            className="inputLike"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={schema?.label || "Nomi"}
+            autoFocus
+          />
+          {errors?.name && <div className="err">{errors.name}</div>}
+        </div>
+
+        {/* Status */}
+        <div style={{ display: "grid", gap: 6 }}>
+          <label className="lbl">Status</label>
+          <select
+            className="selectLike"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="INACTIVE">INACTIVE</option>
+          </select>
+        </div>
+
+        {/* Organization */}
+        <div style={{ display: "grid", gap: 6 }}>
+          <label className="lbl">Tashkilot</label>
+          <select
+            className="selectLike"
+            value={orgId ?? ""}
+            onChange={(e) =>
+              setOrgId(e.target.value ? Number(e.target.value) : null)
+            }
+          >
+            <option value="">— Tanlang —</option>
+            {orgOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Dynamic attributes */}
+        {schema?.fields?.length ? (
+          <div className="attrsGrid">
+            {schema.fields.map((f) => (
+              <div key={f.key} style={{ display: "grid", gap: 6 }}>
+                <label className="lbl">
+                  {f.label}
+                  {f.rules?.required ? " *" : ""}
+                  {f.suffix ? (
+                    <span className="muted"> ({f.suffix})</span>
+                  ) : null}
+                </label>
+                {f.type === "text" ? (
+                  <input
+                    className="inputLike"
+                    value={attr[f.key] ?? ""}
+                    onChange={(e) => onAttr(f.key, e.target.value)}
+                  />
+                ) : (
+                  <input
+                    className="inputLike"
+                    type="number"
+                    value={attr[f.key] ?? ""}
+                    onChange={(e) =>
+                      onAttr(f.key, toNumberOrNull(e.target.value))
+                    }
+                  />
+                )}
+                {errors?.attr?.[f.key] && (
+                  <div className="err">{errors.attr[f.key]}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {/* Lat/Lng preview (read-only) */}
+        <div style={{ display: "grid", gap: 6 }}>
+          <label className="lbl">Markaz (readonly)</label>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <input
+              className="inputLike"
+              readOnly
+              value={centerLL.lat ?? ""}
+              placeholder="lat"
+            />
+            <input
+              className="inputLike"
+              readOnly
+              value={centerLL.lng ?? ""}
+              placeholder="lng"
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="modalFooter">
+          <button
+            className="btn"
+            type="button"
+            onClick={() => onClose?.()}
+            disabled={saving}
+          >
+            Bekor qilish
+          </button>
+          <button
+            className="btnPrimary"
+            type="submit"
+            disabled={!canSave || saving}
+          >
+            {saving ? "Saqlanmoqda..." : "Saqlash"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
 }

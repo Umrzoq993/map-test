@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import Modal from "../ui/Modal";
-import { FACILITY_TYPES } from "./CreateFacilityDrawer";
 import { patchFacility } from "../../api/facilities";
 import styles from "./FacilityEditModal.module.scss";
+import { FACILITY_TYPES } from "../../data/facilityTypes";
 
 export default function FacilityEditModal({
   open,
