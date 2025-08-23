@@ -1,6 +1,13 @@
 // src/components/map/MapView.jsx
 import { useRef, useState, useCallback, useMemo, useEffect } from "react";
-import { MapContainer, Marker, Popup, FeatureGroup, Pane } from "react-leaflet";
+import {
+  MapContainer,
+  Marker,
+  Popup,
+  FeatureGroup,
+  Pane,
+  useMap,
+} from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
 import MapTiles from "./MapTiles";
@@ -17,6 +24,90 @@ import CreateFacilityDrawer from "./CreateFacilityDrawer";
 import OrgTreePanel from "./OrgTreePanel";
 import FacilityEditModal from "./FacilityEditModal";
 
+/* 🔧 DARK MODE PATCH — drawer/slide-over’lar portaldan render bo‘lsa ham ishlaydi */
+const darkDrawerCss = `
+/* Drawer/slide-over konteynerlari (nomida drawer/Drawer bo‘lgan har qanday class), shuningdek sheet/slide-over */
+html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .sheet, .slide-over) {
+  color: #e6eef9 !important;
+  background: transparent;
+}
+html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .sheet, .slide-over)
+  :where(h1,h2,h3,h4,h5,h6,p,span,div,li,label,strong,em,small) {
+  color: #e6eef9 !important;
+}
+html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .sheet, .slide-over)
+  :where(.muted,.help,.description,.subtle) {
+  color: #94a3b8 !important;
+}
+html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .sheet, .slide-over)
+  :where(input,select,textarea) {
+  background: #0b1220 !important;
+  color: #e6eef9 !important;
+  border: 1px solid #223046 !important;
+}
+html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .sheet, .slide-over)
+  :where(input::placeholder, textarea::placeholder) {
+  color: #94a3b8 !important;
+}
+html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .sheet, .slide-over)
+  :where(button,.btn) {
+  background: #111827 !important;
+  color: #e6eef9 !important;
+  border-color: #374151 !important;
+}
+html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .sheet, .slide-over) a {
+  color: #93c5fd !important;
+}
+
+/* Agar drawer ichida karta/panel bo‘lsa ham chegara/fon kontrasti */
+html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .sheet, .slide-over)
+  :where(.card,.panel,.modal-card,.drawer-card,.sheet) {
+  background: #0f172a !important;
+  border-color: #223046 !important;
+}
+`;
+
+/** Leaflet control: faqat Tashkilot panelini ko‘rsatish/yashirish (T) */
+function MapControls({ panelHidden, onTogglePanel }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const PanelCtrl = L.Control.extend({
+      options: { position: "topright" },
+      onAdd() {
+        const container = L.DomUtil.create(
+          "div",
+          "leaflet-bar leaflet-control"
+        );
+        const a = L.DomUtil.create("a", "", container);
+        a.href = "#";
+        a.title = "Tashkilot panelini ko‘rsatish/yashirish (T)";
+        a.setAttribute("aria-label", a.title);
+        a.innerHTML = panelHidden ? "▤" : "×";
+        Object.assign(a.style, {
+          width: "34px",
+          height: "34px",
+          lineHeight: "34px",
+          textAlign: "center",
+          fontWeight: "700",
+          userSelect: "none",
+        });
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.on(a, "click", (e) => {
+          L.DomEvent.preventDefault(e);
+          onTogglePanel?.();
+        });
+        return container;
+      },
+    });
+    const panelCtrl = new PanelCtrl();
+    map.addControl(panelCtrl);
+    return () => map.removeControl(panelCtrl);
+  }, [map, panelHidden, onTogglePanel]);
+
+  return null;
+}
+
 export default function MapView({
   center = [41.3111, 69.2797],
   zoom = 12,
@@ -27,7 +118,7 @@ export default function MapView({
 }) {
   const featureGroupRef = useRef(null);
 
-  // Draw state
+  // ---- Draw state
   const [geojson, setGeojson] = useState(null);
   const updateGeoJSON = useCallback(() => {
     const fg = featureGroupRef.current;
@@ -37,12 +128,16 @@ export default function MapView({
   const onEdited = useCallback(updateGeoJSON, [updateGeoJSON]);
   const onDeleted = useCallback(updateGeoJSON, [updateGeoJSON]);
 
-  // Tree & nav
+  // ---- Tree & nav
   const [checkedKeys, setCheckedKeys] = useState([]);
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [navTarget, setNavTarget] = useState(null);
 
-  // Search
+  // Panel ko‘rsatish/yashirish
+  const [panelHidden, setPanelHidden] = useState(!!hideTree);
+  const togglePanel = () => setPanelHidden((v) => !v);
+
+  // ---- Qidiruv
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   useEffect(() => {
@@ -52,10 +147,10 @@ export default function MapView({
   const onEnterSearch = () => setQuery(searchInput.trim());
   const onClearSearch = () => setSearchInput("");
 
-  // Viewport
+  // ---- Viewport (BBOX)
   const [bbox, setBbox] = useState(null);
 
-  // Facilities
+  // ---- Facilities
   const [facilities, setFacilities] = useState([]);
   const [typeFilter, setTypeFilter] = useState({
     GREENHOUSE: true,
@@ -67,9 +162,6 @@ export default function MapView({
     WORKSHOP: true,
     AUX_LAND: false,
     BORDER_LAND: false,
-    WAREHOUSE: false,
-    ORCHARD: false,
-    FIELD: false,
   });
   const enabledTypes = useMemo(
     () =>
@@ -92,7 +184,7 @@ export default function MapView({
   const [reloadKey, setReloadKey] = useState(0);
   const [showPolys, setShowPolys] = useState(true);
 
-  // Load latest drawing (optional)
+  // Oxirgi chizmani yuklash (ixtiyoriy)
   useEffect(() => {
     (async () => {
       try {
@@ -110,7 +202,7 @@ export default function MapView({
     })();
   }, []);
 
-  // Flatten org tree
+  // Org-tree flatten
   const flatNodes = useMemo(() => {
     const out = [];
     const walk = (arr) => {
@@ -123,7 +215,7 @@ export default function MapView({
     return out;
   }, [orgTree]);
 
-  // Filtered tree for search (same)
+  // Org-tree qidiruv bo‘yicha filtrlash
   const [expandedKeys, setExpandedKeys] = useState(undefined);
   const { rcData, visibleKeySet } = useMemo(() => {
     const q = query.toLowerCase();
@@ -240,7 +332,7 @@ export default function MapView({
     [updateGeoJSON]
   );
 
-  // EDIT modal state
+  // EDIT modal
   const [editOpen, setEditOpen] = useState(false);
   const [editFacility, setEditFacility] = useState(null);
   const handleOpenEdit = (f) => {
@@ -250,7 +342,8 @@ export default function MapView({
 
   const geojsonPretty = geojson ? JSON.stringify(geojson, null, 2) : "";
   const importFromTextarea = () => {
-    const text = document.getElementById("gj-input")?.value;
+    const el = document.getElementById("gj-input");
+    const text = el ? el.value : "";
     try {
       const parsed = JSON.parse(text);
       const fg = featureGroupRef.current;
@@ -263,14 +356,34 @@ export default function MapView({
     }
   };
 
+  // Klaviatura: faqat T (panel)
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = (e.target?.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+      if (e.key.toLowerCase() === "t") togglePanel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <div className="map-wrapper" style={{ position: "relative" }}>
+      {/* 🔧 Dark-mode drawer patch CSS */}
+      <style>{darkDrawerCss}</style>
+
       <MapContainer
         center={center}
         zoom={zoom}
         style={{ height, width: "100%" }}
       >
         <MapTiles dark={dark} />
+
+        {/* Leaflet control: Panel toggle */}
+        <MapControls
+          panelHidden={panelHidden}
+          onTogglePanel={() => setPanelHidden((v) => !v)}
+        />
 
         {/* Panes */}
         <Pane name="facilities-polys" style={{ zIndex: 410 }} />
@@ -287,7 +400,7 @@ export default function MapView({
           </Marker>
         ))}
 
-        {/* Poligonlar + centroids (info popup + Edit button) */}
+        {/* Poligonlar + centroids */}
         <FacilityGeoLayer
           facilities={visibleFacilities}
           showPolys={showPolys}
@@ -295,13 +408,13 @@ export default function MapView({
           onOpenEdit={handleOpenEdit}
         />
 
-        {/* Geometry yo‘q obyektlar yoki umumiy marker ko‘rsatish (info popup + Edit button) */}
+        {/* Geometry yo‘q obyektlar */}
         <FacilityMarkers
           facilities={visibleFacilities}
           onOpenEdit={handleOpenEdit}
         />
 
-        {/* Draw */}
+        {/* Draw controls (topright) */}
         <FeatureGroup ref={featureGroupRef}>
           <EditControl
             position="topright"
@@ -320,14 +433,14 @@ export default function MapView({
         </FeatureGroup>
       </MapContainer>
 
-      {/* Tree panel */}
+      {/* Org tree panel (T bilan yashirish/ko‘rsatish) */}
       <OrgTreePanel
         rcData={rcData}
         checkedKeys={checkedKeys}
         selectedKeys={selectedKeys}
         expandedKeys={expandedKeys}
-        onTreeExpand={onTreeExpand}
-        onTreeCheck={onTreeCheck}
+        onTreeExpand={setExpandedKeys}
+        onTreeCheck={(keys) => setCheckedKeys(keys.map(String))}
         onTreeSelect={onTreeSelect}
         searchInput={searchInput}
         setSearchInput={setSearchInput}
@@ -340,10 +453,11 @@ export default function MapView({
         bbox={bbox}
         facilitiesCount={visibleFacilities.length}
         selectedOrgId={null}
-        hide={hideTree}
+        hide={panelHidden}
+        onRequestHide={() => setPanelHidden(true)}
       />
 
-      {/* Create Drawer */}
+      {/* Create Drawer — o‘z joyida */}
       <CreateFacilityDrawer
         open={createOpen}
         geometry={draftGeom}
@@ -369,7 +483,7 @@ export default function MapView({
       {/* Pastki panel: GeoJSON import/export (dev) */}
       <div className="panel">
         <div className="panel-col">
-          <h4>GeoJSON (readonly)</h4>
+          <h4>GeoJSON (faqat o‘qish)</h4>
           <textarea readOnly value={geojsonPretty} />
         </div>
         <div className="panel-col">
@@ -387,12 +501,15 @@ export default function MapView({
               }
               download="drawings.geojson"
             >
-              <button disabled={!geojsonPretty}>Download .geojson</button>
+              <button disabled={!geojsonPretty}>.geojson yuklab olish</button>
             </a>
             <button
               onClick={async () => {
                 try {
-                  if (!saveDrawing) return alert("API topilmadi.");
+                  if (!saveDrawing) {
+                    alert("API topilmadi.");
+                    return;
+                  }
                   await saveDrawing(geojson || {}, "map-drawings");
                   alert("Saqlash muvaffaqiyatli!");
                 } catch (e) {
@@ -402,7 +519,7 @@ export default function MapView({
               }}
               disabled={!geojson}
             >
-              Save to backend
+              Backend’ga saqlash
             </button>
           </div>
         </div>

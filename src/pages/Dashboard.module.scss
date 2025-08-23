@@ -1,24 +1,19 @@
 /* src/pages/Dashboard.module.scss */
-/* Elegant, brand-mos Dashboard */
+/* Qo'shimcha styling: filters, wide grid, badges, kpi extra */
 
 .root {
-  /* BARCHA ranglar global tokenlardan olinsin */
   --db-bg: var(--bg);
   --db-card: var(--card);
   --db-fg: var(--text);
   --db-muted: var(--muted);
   --db-border: var(--border);
   --db-row: color-mix(in srgb, var(--card) 90%, transparent);
-
   --db-accent: var(--brand);
   --db-accent-2: var(--brand-2);
-
   --db-shadow: var(--shadow-md);
-
   color: var(--db-fg);
 }
 
-/* Header */
 .header {
   display: flex;
   align-items: baseline;
@@ -45,22 +40,7 @@
   font-size: 12px;
   color: var(--db-muted);
 }
-.error {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-  padding: 10px 12px;
-  border-radius: 12px;
-  margin-bottom: 12px;
-}
-:where(.dark, [data-theme="dark"], .theme-dark) .root .error,
-.root[data-theme="dark"] .error {
-  background: #3f1d1d;
-  color: #fecaca;
-  border-color: #7f1d1d;
-}
 
-/* Toolbar (filters) */
 .toolbar {
   display: flex;
   gap: 8px;
@@ -68,7 +48,8 @@
   justify-content: flex-end;
   flex-wrap: wrap;
 }
-.select {
+.select,
+.btn {
   height: 38px;
   padding: 0 12px;
   border-radius: 12px;
@@ -78,12 +59,6 @@
   outline: none;
 }
 .btn {
-  height: 38px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1px solid var(--db-border);
-  background: var(--db-card);
-  color: var(--db-fg);
   cursor: pointer;
   transition: background 0.15s ease, transform 0.03s ease-in-out;
 }
@@ -118,19 +93,22 @@
   border-color: color-mix(in srgb, var(--db-accent) 35%, transparent);
 }
 
-/* KPI GRID */
+.error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  padding: 10px 12px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
 .kpiGrid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 12px;
 }
 @media (max-width: 1200px) {
-  .kpiGrid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-@media (max-width: 720px) {
   .kpiGrid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -169,6 +147,9 @@
   font-weight: 800;
   letter-spacing: 0.2px;
 }
+.kpiExtra {
+  font-size: 12px;
+}
 
 .good .kpiIcon {
   background: linear-gradient(135deg, #22c55e, #16a34a);
@@ -178,19 +159,6 @@
 }
 .danger .kpiIcon {
   background: linear-gradient(135deg, #ef4444, #b91c1c);
-}
-
-/* CARDS + GRIDS */
-.grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-@media (max-width: 1200px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .card {
@@ -209,7 +177,19 @@
   color: var(--db-fg);
 }
 
-/* TABLE (Top orgs) */
+/* Wide grid for many charts */
+.gridWide {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 1200px) {
+  .gridWide {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Table */
 .tableWrap {
   margin-top: 8px;
   overflow-x: auto;
@@ -237,12 +217,31 @@
 .table tbody tr:nth-child(2n) td {
   background: var(--db-row);
 }
-
 .right {
   text-align: right;
 }
 
-/* Loading */
+/* YoY badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--db-border);
+}
+.badgeUp {
+  color: #065f46;
+  background: #ecfdf5;
+  border-color: #a7f3d0aa;
+}
+.badgeDown {
+  color: #991b1b;
+  background: #fef2f2;
+  border-color: #fecacaaa;
+}
+
 .loading {
   margin-top: 10px;
   font-size: 14px;

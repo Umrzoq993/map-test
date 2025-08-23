@@ -1,13 +1,10 @@
-// src/api/facilities.js
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
-/** Authorization header from localStorage (if any) */
 function authHeaders() {
   const t = localStorage.getItem("token");
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
-/** Low-level HTTP helper (adds /api prefix for relative paths) */
 async function http(path, { method = "GET", body, headers, query } = {}) {
   const isAbs = /^https?:\/\//i.test(path);
   let url = isAbs
@@ -46,7 +43,7 @@ async function http(path, { method = "GET", body, headers, query } = {}) {
   return res.text();
 }
 
-/* ------------------------------ Normalizers ------------------------------ */
+/* Normalizers */
 function normalizeFacility(x) {
   if (!x) return null;
   return {
@@ -79,13 +76,16 @@ function withAttributes(obj = {}) {
   return o;
 }
 
-/* --------------------------------- READ --------------------------------- */
-/** Paged list (PageResponse yoki array qaytishi mumkin) */
+/* READ */
 export async function listFacilitiesPage(params = {}) {
   const query = {};
   if (params.orgId != null) query.orgId = params.orgId;
   if (params.q) query.q = params.q;
   if (params.status) query.status = params.status;
+  if (params.type) {
+    query.type = params.type;
+    if (!params.types) query.types = params.type;
+  }
   if (params.types)
     query.types = Array.isArray(params.types)
       ? params.types.join(",")
@@ -95,72 +95,60 @@ export async function listFacilitiesPage(params = {}) {
   if (params.size != null) query.size = params.size;
   if (params.sort) {
     const s = Array.isArray(params.sort) ? params.sort : [params.sort];
-    query.sort = s; // ko'p martalik sort param uchun
+    query.sort = s;
   }
   return http("/facilities", { query });
 }
 
-/** Barcha sahifalarni to‘plab qaytaradi */
 export async function listFacilitiesAll(params = {}, opts = {}) {
   const size = opts.size ?? 500;
   const maxPages = opts.maxPages ?? 50;
   let page = 0;
   let out = [];
-
   while (page < maxPages) {
     const pageRes = await listFacilitiesPage({ ...params, page, size });
-
-    // Agar server array qaytarsa — paging yo‘q, shu bilan tugaydi
     if (Array.isArray(pageRes)) {
       out = out.concat(normalizeList(pageRes));
       break;
     }
-
     const items = normalizeList(pageRes);
     out = out.concat(items);
-
     const isLast =
       pageRes?.last === true ||
       (typeof pageRes?.totalPages === "number" &&
         page >= pageRes.totalPages - 1) ||
       items.length < size;
-
     if (isLast) break;
     page += 1;
   }
   return out;
 }
 
-/** Orqaga mos kelish: listFacilities -> all-in-one */
 export async function listFacilities(params = {}, opts = {}) {
   return listFacilitiesAll(params, opts);
 }
 
-/** Bitta obyekt */
 export async function getFacility(id) {
   const data = await http(`/facilities/${id}`);
   return normalizeFacility(data);
 }
 
-/* --------------------------------- WRITE -------------------------------- */
+/* WRITE */
 export async function createFacility(payload) {
   const body = withAttributes(payload);
   const data = await http("/facilities", { method: "POST", body });
   return normalizeFacility(data);
 }
-
 export async function patchFacility(id, partial) {
   const body = withAttributes(partial);
   const data = await http(`/facilities/${id}`, { method: "PATCH", body });
   return normalizeFacility(data);
 }
-
 export async function putFacility(id, full) {
   const body = withAttributes(full);
   const data = await http(`/facilities/${id}`, { method: "PUT", body });
   return normalizeFacility(data);
 }
-
 export async function deleteFacility(id) {
   return http(`/facilities/${id}`, { method: "DELETE" });
 }

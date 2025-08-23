@@ -1,4 +1,3 @@
-// src/App.jsx
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import SidebarMenu from "./components/SidebarMenu";
@@ -9,8 +8,6 @@ import OrgManager from "./pages/OrgManager";
 import OrgTablePage from "./pages/OrgTablePage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import HeaderBar from "./components/layout/HeaderBar";
-
-// ⬇️ Yangi: persistent tema
 import { useTheme } from "./hooks/useTheme";
 import GenericFacilityPage from "./pages/facilities/GenericFacilityPage";
 
@@ -30,8 +27,6 @@ export default function App() {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [toggled, setToggled] = useState(false);
-
-  // ⬇️ useTheme: default=dark, localStorage’da saqlanadi, html[data-theme] va .dark classni qo‘yadi
   const { isDark, toggle } = useTheme();
 
   useEffect(() => {
@@ -54,7 +49,6 @@ export default function App() {
           path="/*"
           element={
             <div className="app-layout" style={{ "--sidebar-w": sidebarWidth }}>
-              {/* Desktop sidebar */}
               {!isMobile && (
                 <div style={{ height: "100vh" }}>
                   <SidebarMenu
@@ -66,7 +60,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* Mobile drawer */}
               {isMobile && (
                 <div className={`mobile-overlay ${toggled ? "is-open" : ""}`}>
                   <div
@@ -84,11 +77,10 @@ export default function App() {
                 </div>
               )}
 
-              {/* Main */}
               <main className="app-main">
                 <HeaderBar
                   dark={isDark}
-                  onToggleTheme={toggle} // ⬅️ endi persistent toggle
+                  onToggleTheme={toggle}
                   onHamburger={onHamburger}
                 />
 
@@ -114,7 +106,8 @@ export default function App() {
                     />
                     <Route path="/orgs" element={<OrgManager />} />
                     <Route path="/orgs-table" element={<OrgTablePage />} />
-                    {/* Facilities */}
+
+                    {/* Facilities: kanonik yo‘llar */}
                     <Route
                       path="/facilities"
                       element={<Navigate to="/facilities/greenhouse" replace />}
@@ -124,10 +117,36 @@ export default function App() {
                       element={<GenericFacilityPage />}
                     />
 
-                    {/* /facilities ni mavjud bir sahifaga yo‘naltiramiz */}
+                    {/* Legacy -> canonical */}
                     <Route
-                      path="/facilities"
-                      element={<Navigate to="/facilities/greenhouse" replace />}
+                      path="/facilities/poultry"
+                      element={
+                        <Navigate to="/facilities/poultry-meat" replace />
+                      }
+                    />
+                    <Route
+                      path="/facilities/workshops"
+                      element={
+                        <Navigate to="/facilities/workshops-sausage" replace />
+                      }
+                    />
+                    <Route
+                      path="/facilities/fur-farm"
+                      element={<Navigate to="/facilities/turkey" replace />}
+                    />
+                    <Route
+                      path="/facilities/fish-farm"
+                      element={<Navigate to="/facilities/fish-ponds" replace />}
+                    />
+                    <Route
+                      path="/facilities/aux-land"
+                      element={<Navigate to="/facilities/aux-lands" replace />}
+                    />
+                    <Route
+                      path="/facilities/border-land"
+                      element={
+                        <Navigate to="/facilities/border-lands" replace />
+                      }
                     />
 
                     <Route
