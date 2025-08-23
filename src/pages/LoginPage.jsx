@@ -57,8 +57,8 @@ export default function LoginPage() {
             </h1>
             <p className={styles.tagline}>
               Qishloq xo‘jaligi va yordamchi xo‘jalik resurslarini{" "}
-              <span>interaktiv xarita</span> orqali kuzating, boshqaring va
-              tahlil qiling.
+              <span>interaktiv xarita</span> orqali kuzatish, boshqarish va
+              tahlil qilish.
             </p>
           </div>
         </div>
