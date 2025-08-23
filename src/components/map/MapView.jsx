@@ -1,4 +1,3 @@
-// src/components/map/MapView.jsx
 import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import {
   MapContainer,
@@ -367,6 +366,88 @@ export default function MapView({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  /** 👇 Helper: orgTree dan targetKey’ning barcha ota-onalari (ancestor) key’larini topish */
+  const collectAncestorsKeys = useCallback(
+    (nodes, targetKey, trail = []) => {
+      for (const n of nodes || []) {
+        const key = String(n.key);
+        const nextTrail = [...trail, key];
+        if (key === String(targetKey)) {
+          // faqat ota-onalar: targetning o‘zi kirmaydi
+          return trail.map(String);
+        }
+        if (n.children && n.children.length) {
+          const res = collectAncestorsKeys(n.children, targetKey, nextTrail);
+          if (res) return res;
+        }
+      }
+      return null;
+    },
+    [orgTree]
+  );
+
+  /** ✅ KOD BO‘YICHA SAKRASH: backenddan org va resurslarni olish, tree’ni belgilash,
+   *  expand qilish va xaritaga flyTo qilish */
+  const handleCodeJump = useCallback(
+    async (raw) => {
+      const code = (raw || "").trim();
+      if (!code) return;
+
+      try {
+        // Auth tokenni local/session storage’dan olib headerga qo‘yamiz
+        const token =
+          localStorage.getItem("token") || sessionStorage.getItem("token");
+        const res = await fetch(
+          `/api/orgs/locate?code=${encodeURIComponent(code)}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }
+        );
+        if (!res.ok) throw new Error("Org not found");
+        const data = await res.json();
+
+        // Backend javobi: { org: { id, pos:[lat,lng], zoom, level }, facilities:[...] }
+        const org = data?.org || data;
+        const idStr = String(org.id);
+
+        // Tree: check + select
+        setCheckedKeys((prev) =>
+          prev.includes(idStr) ? prev : [...prev, idStr]
+        );
+        setSelectedKeys([idStr]);
+
+        // Tree: ancestors’ni expand qilish
+        const ancestors = collectAncestorsKeys(orgTree, idStr) || [];
+        setExpandedKeys((prev) => {
+          const prevArr = prev ? prev.map(String) : [];
+          return Array.from(new Set([...prevArr, ...ancestors, idStr]));
+        });
+
+        // Fly to
+        const [lat, lng] = org.pos || [];
+        const z =
+          typeof org.zoom === "number"
+            ? org.zoom
+            : org.level === 0
+            ? 6
+            : org.level === 1
+            ? 12
+            : 15;
+        if (
+          Array.isArray(org.pos) &&
+          Number.isFinite(lat) &&
+          Number.isFinite(lng)
+        ) {
+          setNavTarget({ lat, lng, zoom: z, ts: Date.now() });
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Kod topilmadi yoki ruxsat yo‘q.");
+      }
+    },
+    [orgTree, collectAncestorsKeys]
+  );
 
   return (
     <div className="map-wrapper" style={{ position: "relative" }}>
