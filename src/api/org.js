@@ -4,6 +4,17 @@ import { api } from "./http";
 // TREE (parent select uchun)
 export const getOrgTree = async () => (await api.get("/api/orgs/tree")).data;
 
+// GET by id
+export const getOrg = async (id) => (await api.get(`/api/orgs/${id}`)).data;
+
+// GET by code (unique bo'lim/bo'linma raqami)
+export const getOrgByCode = async (code) =>
+  (
+    await api.get(
+      `/api/orgs/by-code/${encodeURIComponent(String(code).trim())}`
+    )
+  ).data;
+
 // PAGE (server-side pagination + sort + search)
 export const listOrgsPage = async ({
   page = 0,
@@ -37,6 +48,3 @@ export const moveOrg = async (id, payload) =>
 
 export const deleteOrg = async (id) =>
   (await api.delete(`/api/orgs/${id}`)).data;
-
-export const locateByOrgCode = async (code) =>
-  (await api.get("/api/orgs/locate", { params: { code } })).data;

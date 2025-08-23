@@ -23,6 +23,7 @@ import FacilityMarkers from "./FacilityMarkers";
 import CreateFacilityDrawer from "./CreateFacilityDrawer";
 import OrgTreePanel from "./OrgTreePanel";
 import FacilityEditModal from "./FacilityEditModal";
+import CodeJumpBox from "./CodeJumpBox";
 
 /* 🔧 DARK MODE PATCH — drawer/slide-over’lar portaldan render bo‘lsa ham ishlaydi */
 const darkDrawerCss = `
@@ -372,6 +373,7 @@ export default function MapView({
       {/* 🔧 Dark-mode drawer patch CSS */}
       <style>{darkDrawerCss}</style>
 
+      <CodeJumpBox orgTree={orgTree} onJump={handleCodeJump} />
       <MapContainer
         center={center}
         zoom={zoom}
