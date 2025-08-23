@@ -353,3 +353,77 @@
 .appshell[data-admin="false"] .org-table-wrap .toolbar .primary {
   display: none;
 }
+
+/* --- Org Table: modal & form polishing (scoped) --- */
+.org-table-page {
+  /* Modal ichidagi kontent */
+  .org-table-modal .form-grid .field input,
+  .org-table-modal .form-grid .field select {
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 12px;
+    padding: 10px 12px;
+    outline: none;
+  }
+
+  .org-table-modal .form-grid .field input:focus,
+  .org-table-modal .form-grid .field select:focus {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 28%, transparent);
+    border-color: var(--border);
+  }
+
+  .org-table-modal .form-grid .grid3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 720px) {
+    .org-table-modal .form-grid .grid3 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .org-table-modal .modal-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .org-table-modal .modal-actions .btn {
+    height: 38px;
+    border-radius: 12px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .org-table-modal .modal-actions .btn.primary {
+    background: linear-gradient(135deg, var(--brand), var(--brand-2));
+    border: none;
+    color: #fff;
+  }
+  .org-table-modal .modal-actions .btn.danger {
+    background: #ef4444;
+    border: 1px solid #ef4444;
+    color: #fff;
+  }
+
+  .org-table-modal .confirm {
+    font-size: 14px;
+    .muted {
+      color: var(--muted);
+    }
+  }
+}
+
+/* Dark’da ham mos ishlasin (agar dark mavjud bo‘lsa) */
+:where(.dark, [data-theme="dark"], .theme-dark) .org-table-page {
+  /* rang tokenlari allaqachon styles’da bor bo‘lsa, bu blokni qoldiring;
+     bo‘lmasa quyidagilar bilan yangilang */
+  --card: #0f172a;
+  --text: #e6eef9;
+  --muted: #9aa5b1;
+  --border: #253045;
+}

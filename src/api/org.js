@@ -37,3 +37,6 @@ export const moveOrg = async (id, payload) =>
 
 export const deleteOrg = async (id) =>
   (await api.delete(`/api/orgs/${id}`)).data;
+
+export const locateByOrgCode = async (code) =>
+  (await api.get("/api/orgs/locate", { params: { code } })).data;

@@ -1,5 +1,6 @@
 // src/pages/OrgManager.jsx
 import OrgTreeEditor from "../components/org/OrgTreeEditor";
+import "../styles/_org_tree.scss";
 
 export default function OrgManager() {
   return (

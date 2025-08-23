@@ -1,5 +1,5 @@
 // src/components/org/OrgTable.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Modal from "../ui/Modal";
 import MapPickerModal from "../map/MapPickerModal.jsx";
 import {
@@ -102,6 +102,10 @@ export default function OrgTable({ isAdmin }) {
 
   // Loading overlay
   const [loading, setLoading] = useState(false);
+
+  // Autofocus refs for modals
+  const createNameRef = useRef(null);
+  const editNameRef = useRef(null);
 
   /* ---------- Data loaders ---------- */
 
@@ -224,7 +228,7 @@ export default function OrgTable({ isAdmin }) {
   };
 
   const handleCreate = async () => {
-    if (!draft.name.trim()) return alert("Nom majburiy");
+    if (!String(draft.name || "").trim()) return alert("Nom majburiy");
     setLoading(true);
     try {
       await createOrg({
@@ -260,7 +264,7 @@ export default function OrgTable({ isAdmin }) {
 
   const handleEdit = async () => {
     if (!draft.id) return;
-    if (!draft.name.trim()) return alert("Nom majburiy");
+    if (!String(draft.name || "").trim()) return alert("Nom majburiy");
     setLoading(true);
     try {
       const originalParentId = contextRow?.parentId ?? null;
@@ -315,6 +319,8 @@ export default function OrgTable({ isAdmin }) {
     setParentId(e.target.value);
     setPage(0);
   };
+
+  const nameMissing = !String(draft.name || "").trim();
 
   /* ---------- Render ---------- */
 
@@ -476,76 +482,98 @@ export default function OrgTable({ isAdmin }) {
         open={createOpen}
         title="Bo‘lim qo‘shish"
         onClose={() => setCreateOpen(false)}
+        initialFocusRef={createNameRef}
+        preventCloseOnBackdrop={true}
         dark={document.body.classList.contains("theme-dark")}
       >
-        <div className="form-grid">
-          <div className="field">
-            <label>Nom *</label>
-            <input
-              value={draft.name}
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-              placeholder="Masalan: Issiqxona bo‘limi"
-            />
-          </div>
-          <div className="field">
-            <label>Parent</label>
-            <select
-              value={draft.parentId ?? ""}
-              onChange={(e) => setDraft({ ...draft, parentId: e.target.value })}
-            >
-              {modalParentOptions.map((o) => (
-                <option key={o.value ?? "root"} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid3">
+        <div className="org-table-modal">
+          <div className="form-grid">
             <div className="field">
-              <label>Lat</label>
+              <label>Nom *</label>
               <input
-                type="number"
-                value={draft.lat}
-                onChange={(e) => setDraft({ ...draft, lat: e.target.value })}
+                ref={createNameRef}
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                placeholder="Masalan: Issiqxona bo‘limi"
+                autoFocus
               />
             </div>
             <div className="field">
-              <label>Lng</label>
-              <input
-                type="number"
-                value={draft.lng}
-                onChange={(e) => setDraft({ ...draft, lng: e.target.value })}
-              />
+              <label>Parent</label>
+              <select
+                value={draft.parentId ?? ""}
+                onChange={(e) =>
+                  setDraft({ ...draft, parentId: e.target.value || "" })
+                }
+              >
+                {modalParentOptions.map((o) => (
+                  <option key={o.value ?? "root"} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="field">
-              <label>Zoom</label>
-              <input
-                type="number"
-                min={3}
-                max={19}
-                value={draft.zoom}
-                onChange={(e) => setDraft({ ...draft, zoom: e.target.value })}
-              />
+
+            <div className="grid3">
+              <div className="field">
+                <label>Lat</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  inputMode="decimal"
+                  value={draft.lat}
+                  onChange={(e) => setDraft({ ...draft, lat: e.target.value })}
+                  placeholder="41.311081"
+                />
+              </div>
+              <div className="field">
+                <label>Lng</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  inputMode="decimal"
+                  value={draft.lng}
+                  onChange={(e) => setDraft({ ...draft, lng: e.target.value })}
+                  placeholder="69.240562"
+                />
+              </div>
+              <div className="field">
+                <label>Zoom</label>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="21"
+                  inputMode="numeric"
+                  value={draft.zoom}
+                  onChange={(e) => setDraft({ ...draft, zoom: e.target.value })}
+                  placeholder="12"
+                />
+              </div>
             </div>
-          </div>
 
-          <div>
-            <button className="btn" onClick={() => setPickOpen(true)}>
-              Mapdan tanlash
-            </button>
-            <span className="muted" style={{ marginLeft: 8 }}>
-              * Xarita oynasini ochib, nuqtani bosing.
-            </span>
-          </div>
+            <div>
+              <button className="btn" onClick={() => setPickOpen(true)}>
+                Mapdan tanlash
+              </button>
+              <span className="muted" style={{ marginLeft: 8 }}>
+                * Xarita oynasini ochib, nuqtani bosing.
+              </span>
+            </div>
 
-          <div className="modal-actions">
-            <button className="btn" onClick={() => setCreateOpen(false)}>
-              Bekor
-            </button>
-            <button className="btn primary" onClick={handleCreate}>
-              Saqlash
-            </button>
+            <div className="modal-actions">
+              <button className="btn" onClick={() => setCreateOpen(false)}>
+                Bekor
+              </button>
+              <button
+                className="btn primary"
+                onClick={handleCreate}
+                disabled={loading || nameMissing}
+                title={nameMissing ? "Nom majburiy" : "Saqlash"}
+              >
+                {loading ? "Saqlanmoqda…" : "Saqlash"}
+              </button>
+            </div>
           </div>
         </div>
       </Modal>
@@ -555,75 +583,95 @@ export default function OrgTable({ isAdmin }) {
         open={editOpen}
         title="Bo‘limni tahrirlash"
         onClose={() => setEditOpen(false)}
+        initialFocusRef={editNameRef}
+        preventCloseOnBackdrop={true}
         dark={document.body.classList.contains("theme-dark")}
       >
-        <div className="form-grid">
-          <div className="field">
-            <label>Nom *</label>
-            <input
-              value={draft.name}
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            />
-          </div>
-          <div className="field">
-            <label>Parent</label>
-            <select
-              value={draft.parentId ?? ""}
-              onChange={(e) => setDraft({ ...draft, parentId: e.target.value })}
-            >
-              {modalParentOptions.map((o) => (
-                <option key={o.value ?? "root"} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid3">
+        <div className="org-table-modal">
+          <div className="form-grid">
             <div className="field">
-              <label>Lat</label>
+              <label>Nom *</label>
               <input
-                type="number"
-                value={draft.lat}
-                onChange={(e) => setDraft({ ...draft, lat: e.target.value })}
+                ref={editNameRef}
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                placeholder="Nomi"
+                autoFocus
               />
             </div>
             <div className="field">
-              <label>Lng</label>
-              <input
-                type="number"
-                value={draft.lng}
-                onChange={(e) => setDraft({ ...draft, lng: e.target.value })}
-              />
+              <label>Parent</label>
+              <select
+                value={draft.parentId ?? ""}
+                onChange={(e) =>
+                  setDraft({ ...draft, parentId: e.target.value || "" })
+                }
+              >
+                {modalParentOptions.map((o) => (
+                  <option key={o.value ?? "root"} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="field">
-              <label>Zoom</label>
-              <input
-                type="number"
-                min={3}
-                max={19}
-                value={draft.zoom}
-                onChange={(e) => setDraft({ ...draft, zoom: e.target.value })}
-              />
+
+            <div className="grid3">
+              <div className="field">
+                <label>Lat</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  inputMode="decimal"
+                  value={draft.lat}
+                  onChange={(e) => setDraft({ ...draft, lat: e.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label>Lng</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  inputMode="decimal"
+                  value={draft.lng}
+                  onChange={(e) => setDraft({ ...draft, lng: e.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label>Zoom</label>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="21"
+                  inputMode="numeric"
+                  value={draft.zoom}
+                  onChange={(e) => setDraft({ ...draft, zoom: e.target.value })}
+                />
+              </div>
             </div>
-          </div>
 
-          <div>
-            <button className="btn" onClick={() => setPickOpen(true)}>
-              Mapdan tanlash
-            </button>
-            <span className="muted" style={{ marginLeft: 8 }}>
-              * Tanlang va “Tanlash” tugmasini bosing.
-            </span>
-          </div>
+            <div>
+              <button className="btn" onClick={() => setPickOpen(true)}>
+                Mapdan tanlash
+              </button>
+              <span className="muted" style={{ marginLeft: 8 }}>
+                * Tanlang va “Tanlash” tugmasini bosing.
+              </span>
+            </div>
 
-          <div className="modal-actions">
-            <button className="btn" onClick={() => setEditOpen(false)}>
-              Bekor
-            </button>
-            <button className="btn primary" onClick={handleEdit}>
-              Saqlash
-            </button>
+            <div className="modal-actions">
+              <button className="btn" onClick={() => setEditOpen(false)}>
+                Bekor
+              </button>
+              <button
+                className="btn primary"
+                onClick={handleEdit}
+                disabled={loading || nameMissing}
+                title={nameMissing ? "Nom majburiy" : "Saqlash"}
+              >
+                {loading ? "Saqlanmoqda…" : "Saqlash"}
+              </button>
+            </div>
           </div>
         </div>
       </Modal>
@@ -634,19 +682,26 @@ export default function OrgTable({ isAdmin }) {
         title="Bo‘limni o‘chirish"
         onClose={() => setDeleteOpen(false)}
         width={440}
+        preventCloseOnBackdrop={true}
         dark={document.body.classList.contains("theme-dark")}
       >
-        <div className="confirm">
-          <p>
-            <b>{contextRow?.name}</b> bo‘limini o‘chirishni tasdiqlaysizmi?
-          </p>
-          <p className="muted">* Bolalari bo‘lsa, backend 409 qaytaradi.</p>
+        <div className="org-table-modal">
+          <div className="confirm">
+            <p>
+              <b>{contextRow?.name}</b> bo‘limini o‘chirishni tasdiqlaysizmi?
+            </p>
+            <p className="muted">* Bolalari bo‘lsa, backend 409 qaytaradi.</p>
+          </div>
           <div className="modal-actions">
             <button className="btn" onClick={() => setDeleteOpen(false)}>
               Bekor
             </button>
-            <button className="btn danger" onClick={handleDelete}>
-              O‘chirish
+            <button
+              className="btn danger"
+              onClick={handleDelete}
+              disabled={loading}
+            >
+              {loading ? "O‘chirilmoqda…" : "Ha, o‘chirish"}
             </button>
           </div>
         </div>

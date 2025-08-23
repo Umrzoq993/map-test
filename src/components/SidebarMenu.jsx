@@ -15,7 +15,7 @@ import appLogo from "../assets/zamin-logo.png";
 
 export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
   const { pathname } = useLocation();
-  const { isAdmin } = useAuth();
+  const { isAdmin /*, isAuthed*/ } = useAuth(); // isAuthed kerak bo'lsa qo'llang
 
   useEffect(() => {
     if (toggled) setToggled(false);
@@ -98,6 +98,7 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
             </span>
           </MenuItem>
 
+          {/* Tashkilotlar: faqat ADMIN */}
           {isAdmin && (
             <MenuItem
               active={isActive("/orgs-table", false)}
@@ -108,95 +109,94 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
             </MenuItem>
           )}
 
-          {isAdmin && (
-            <SubMenu
-              defaultOpen={isActive("/facilities", false)}
-              label={<span className={styles.text}>Inshootlar</span>}
-              icon={"🏭"}
+          {/* Inshootlar: ENDILIKDA HAMMA UCHUN OCHIQ (admin shart emas) */}
+          <SubMenu
+            defaultOpen={isActive("/facilities", false)}
+            label={<span className={styles.text}>Inshootlar</span>}
+            icon={"🏭"}
+          >
+            <MenuItem
+              active={isActive("/facilities/greenhouse")}
+              component={<Link to="/facilities/greenhouse" />}
+              icon={"🌿"}
             >
-              <MenuItem
-                active={isActive("/facilities/greenhouse")}
-                component={<Link to="/facilities/greenhouse" />}
-                icon={"🌿"}
-              >
-                <span className={styles.text}>Issiqxona</span>
-              </MenuItem>
+              <span className={styles.text}>Issiqxona</span>
+            </MenuItem>
 
-              <MenuItem
-                active={isActive("/facilities/poultry-meat")}
-                component={<Link to="/facilities/poultry-meat" />}
-                icon={"🍗"}
-              >
-                <span className={styles.text}>Tovuqxona (go‘sht)</span>
-              </MenuItem>
-              <MenuItem
-                active={isActive("/facilities/poultry-egg")}
-                component={<Link to="/facilities/poultry-egg" />}
-                icon={"🥚"}
-              >
-                <span className={styles.text}>Tovuqxona (tuxum)</span>
-              </MenuItem>
+            <MenuItem
+              active={isActive("/facilities/poultry-meat")}
+              component={<Link to="/facilities/poultry-meat" />}
+              icon={"🍗"}
+            >
+              <span className={styles.text}>Tovuqxona (go‘sht)</span>
+            </MenuItem>
+            <MenuItem
+              active={isActive("/facilities/poultry-egg")}
+              component={<Link to="/facilities/poultry-egg" />}
+              icon={"🥚"}
+            >
+              <span className={styles.text}>Tovuqxona (tuxum)</span>
+            </MenuItem>
 
-              <MenuItem
-                active={isActive("/facilities/turkey")}
-                component={<Link to="/facilities/turkey" />}
-                icon={"🦃"}
-              >
-                <span className={styles.text}>Kurkaxona</span>
-              </MenuItem>
-              <MenuItem
-                active={isActive("/facilities/cowshed")}
-                component={<Link to="/facilities/cowshed" />}
-                icon={"🐄"}
-              >
-                <span className={styles.text}>Molxona</span>
-              </MenuItem>
-              <MenuItem
-                active={isActive("/facilities/sheepfold")}
-                component={<Link to="/facilities/sheepfold" />}
-                icon={"🐑"}
-              >
-                <span className={styles.text}>Qo‘yxona</span>
-              </MenuItem>
+            <MenuItem
+              active={isActive("/facilities/turkey")}
+              component={<Link to="/facilities/turkey" />}
+              icon={"🦃"}
+            >
+              <span className={styles.text}>Kurkaxona</span>
+            </MenuItem>
+            <MenuItem
+              active={isActive("/facilities/cowshed")}
+              component={<Link to="/facilities/cowshed" />}
+              icon={"🐄"}
+            >
+              <span className={styles.text}>Molxona</span>
+            </MenuItem>
+            <MenuItem
+              active={isActive("/facilities/sheepfold")}
+              component={<Link to="/facilities/sheepfold" />}
+              icon={"🐑"}
+            >
+              <span className={styles.text}>Qo‘yxona</span>
+            </MenuItem>
 
-              <MenuItem
-                active={isActive("/facilities/workshops-sausage")}
-                component={<Link to="/facilities/workshops-sausage" />}
-                icon={"🥓"}
-              >
-                <span className={styles.text}>Sex (kolbasa)</span>
-              </MenuItem>
-              <MenuItem
-                active={isActive("/facilities/workshops-cookie")}
-                component={<Link to="/facilities/workshops-cookie" />}
-                icon={"🍪"}
-              >
-                <span className={styles.text}>Sex (pechenye)</span>
-              </MenuItem>
+            <MenuItem
+              active={isActive("/facilities/workshops-sausage")}
+              component={<Link to="/facilities/workshops-sausage" />}
+              icon={"🥓"}
+            >
+              <span className={styles.text}>Sex (kolbasa)</span>
+            </MenuItem>
+            <MenuItem
+              active={isActive("/facilities/workshops-cookie")}
+              component={<Link to="/facilities/workshops-cookie" />}
+              icon={"🍪"}
+            >
+              <span className={styles.text}>Sex (pechenye)</span>
+            </MenuItem>
 
-              <MenuItem
-                active={isActive("/facilities/aux-lands")}
-                component={<Link to="/facilities/aux-lands" />}
-                icon={"🌾"}
-              >
-                <span className={styles.text}>Yordamchi xo‘jalik yerlar</span>
-              </MenuItem>
-              <MenuItem
-                active={isActive("/facilities/border-lands")}
-                component={<Link to="/facilities/border-lands" />}
-                icon={"🧭"}
-              >
-                <span className={styles.text}>Chegara oldi yerlar</span>
-              </MenuItem>
-              <MenuItem
-                active={isActive("/facilities/fish-ponds")}
-                component={<Link to="/facilities/fish-ponds" />}
-                icon={"🐟"}
-              >
-                <span className={styles.text}>Baliqchilik ko‘llari</span>
-              </MenuItem>
-            </SubMenu>
-          )}
+            <MenuItem
+              active={isActive("/facilities/aux-lands")}
+              component={<Link to="/facilities/aux-lands" />}
+              icon={"🌾"}
+            >
+              <span className={styles.text}>Yordamchi xo‘jalik yerlar</span>
+            </MenuItem>
+            <MenuItem
+              active={isActive("/facilities/border-lands")}
+              component={<Link to="/facilities/border-lands" />}
+              icon={"🧭"}
+            >
+              <span className={styles.text}>Chegara oldi yerlar</span>
+            </MenuItem>
+            <MenuItem
+              active={isActive("/facilities/fish-ponds")}
+              component={<Link to="/facilities/fish-ponds" />}
+              icon={"🐟"}
+            >
+              <span className={styles.text}>Baliqchilik ko‘llari</span>
+            </MenuItem>
+          </SubMenu>
 
           <SubMenu
             label={<span className={styles.text}>Settings</span>}
