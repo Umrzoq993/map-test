@@ -1,47 +1,5 @@
-const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
-
-function authHeaders() {
-  const t = localStorage.getItem("token");
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
-
-async function http(path, { method = "GET", body, headers, query } = {}) {
-  const isAbs = /^https?:\/\//i.test(path);
-  let url = isAbs
-    ? path
-    : `${BASE.replace(/\/$/, "")}/api${path.startsWith("/") ? "" : "/"}${path}`;
-  if (query && typeof query === "object") {
-    const sp = new URLSearchParams();
-    Object.entries(query).forEach(([k, v]) => {
-      if (v === undefined || v === null || v === "") return;
-      if (Array.isArray(v)) v.forEach((x) => sp.append(k, x));
-      else sp.append(k, String(v));
-    });
-    const qs = sp.toString();
-    if (qs) url += (url.includes("?") ? "&" : "?") + qs;
-  }
-
-  const res = await fetch(url, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-      ...(headers || {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) {
-    let msg = `HTTP ${res.status}`;
-    try {
-      const t = await res.text();
-      if (t) msg += `: ${t}`;
-    } catch {}
-    throw new Error(msg);
-  }
-  const ct = res.headers.get("content-type") || "";
-  if (ct.includes("application/json")) return res.json();
-  return res.text();
-}
+// src/api/facilities.js
+import { api } from "./http";
 
 /* Normalizers */
 function normalizeFacility(x) {
@@ -62,55 +20,47 @@ function normalizeFacility(x) {
     updatedAt: x.updatedAt,
   };
 }
-
 function normalizeList(list) {
   if (Array.isArray(list)) return list.map(normalizeFacility);
   if (list && Array.isArray(list.content))
     return list.content.map(normalizeFacility);
   return [];
 }
-
 function withAttributes(obj = {}) {
   const o = { ...(obj || {}) };
   if (!o.attributes || typeof o.attributes !== "object") o.attributes = {};
   return o;
 }
 
-/* READ */
-export async function listFacilitiesPage(params = {}) {
-  const query = {};
-  if (params.orgId != null) query.orgId = params.orgId;
-  if (params.q) query.q = params.q;
-  if (params.status) query.status = params.status;
-  if (params.type) {
-    query.type = params.type;
-    if (!params.types) query.types = params.type;
-  }
-  if (params.types)
-    query.types = Array.isArray(params.types)
-      ? params.types.join(",")
-      : String(params.types);
-  if (params.bbox) query.bbox = params.bbox;
-  if (params.page != null) query.page = params.page;
-  if (params.size != null) query.size = params.size;
-  if (params.sort) {
-    const s = Array.isArray(params.sort) ? params.sort : [params.sort];
-    query.sort = s;
-  }
-  return http("/facilities", { query });
+/* READ (page) */
+export async function listFacilitiesPage(opts = {}) {
+  const { orgId, q, status, type, types, bbox, page, size, sort } = opts;
+
+  const params = {
+    orgId,
+    q,
+    status,
+    bbox,
+    page,
+    size,
+  };
+  if (type) params.type = type;
+  if (types)
+    params.types = Array.isArray(types) ? types.join(",") : String(types);
+  if (Array.isArray(sort)) params.sort = sort;
+
+  const { data } = await api.get("/facilities", { params });
+  return data;
 }
 
-export async function listFacilitiesAll(params = {}, opts = {}) {
-  const size = opts.size ?? 500;
-  const maxPages = opts.maxPages ?? 50;
+/* READ (all pages merge) */
+export async function listFacilities(params = {}, mergeOpts = {}) {
+  const size = mergeOpts.size ?? 500;
+  const maxPages = mergeOpts.maxPages ?? 50;
   let page = 0;
   let out = [];
   while (page < maxPages) {
     const pageRes = await listFacilitiesPage({ ...params, page, size });
-    if (Array.isArray(pageRes)) {
-      out = out.concat(normalizeList(pageRes));
-      break;
-    }
     const items = normalizeList(pageRes);
     out = out.concat(items);
     const isLast =
@@ -124,31 +74,28 @@ export async function listFacilitiesAll(params = {}, opts = {}) {
   return out;
 }
 
-export async function listFacilities(params = {}, opts = {}) {
-  return listFacilitiesAll(params, opts);
-}
-
 export async function getFacility(id) {
-  const data = await http(`/facilities/${id}`);
+  const { data } = await api.get(`/facilities/${id}`);
   return normalizeFacility(data);
 }
 
 /* WRITE */
 export async function createFacility(payload) {
-  const body = withAttributes(payload);
-  const data = await http("/facilities", { method: "POST", body });
+  const { data } = await api.post("/facilities", withAttributes(payload));
   return normalizeFacility(data);
 }
 export async function patchFacility(id, partial) {
-  const body = withAttributes(partial);
-  const data = await http(`/facilities/${id}`, { method: "PATCH", body });
+  const { data } = await api.patch(
+    `/facilities/${id}`,
+    withAttributes(partial)
+  );
   return normalizeFacility(data);
 }
 export async function putFacility(id, full) {
-  const body = withAttributes(full);
-  const data = await http(`/facilities/${id}`, { method: "PUT", body });
+  const { data } = await api.put(`/facilities/${id}`, withAttributes(full));
   return normalizeFacility(data);
 }
 export async function deleteFacility(id) {
-  return http(`/facilities/${id}`, { method: "DELETE" });
+  const { data } = await api.delete(`/facilities/${id}`);
+  return data;
 }

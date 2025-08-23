@@ -14,31 +14,31 @@ export async function listByType(type, params = {}) {
   // bbox bo'lsa "minLng,minLat,maxLng,maxLat"
   if (params.bbox) q.set("bbox", params.bbox);
 
-  const res = await api.get(`/api/facilities?${q.toString()}`);
+  const res = await api.get(`/facilities?${q.toString()}`);
   return res.data;
 }
 
 // Create with forced type
 export async function createWithType(type, payload) {
   const body = { ...payload, type };
-  const res = await api.post("/api/facilities", body);
+  const res = await api.post("/facilities", body);
   return res.data;
 }
 
 // Update all fields (PUT)
 export async function putOne(id, payload) {
-  const res = await api.put(`/api/facilities/${id}`, payload);
+  const res = await api.put(`/facilities/${id}`, payload);
   return res.data;
 }
 
 // Partial update (PATCH)
 export async function patchOne(id, patch) {
-  const res = await api.patch(`/api/facilities/${id}`, patch);
+  const res = await api.patch(`/facilities/${id}`, patch);
   return res.data;
 }
 
 // Delete
 export async function removeOne(id) {
-  const res = await api.delete(`/api/facilities/${id}`);
+  const res = await api.delete(`/facilities/${id}`);
   return res.data;
 }

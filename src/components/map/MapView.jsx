@@ -11,6 +11,7 @@ import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
 import MapTiles from "./MapTiles";
 import "../../styles/leaflet-theme.css";
+import { api } from "../../api/http";
 
 import { getLatestDrawing, saveDrawing } from "../../api/drawings";
 import { listFacilities } from "../../api/facilities";
@@ -154,12 +155,14 @@ export default function MapView({
   const [facilities, setFacilities] = useState([]);
   const [typeFilter, setTypeFilter] = useState({
     GREENHOUSE: true,
-    COWSHED: true,
+    POULTRY_MEAT: true,
+    POULTRY_EGG: true,
     TURKEY: true,
+    COWSHED: true,
     SHEEPFOLD: true,
-    POULTRY: true,
+    WORKSHOP_SAUSAGE: true,
+    WORKSHOP_COOKIE: true,
     FISHPOND: true,
-    WORKSHOP: true,
     AUX_LAND: false,
     BORDER_LAND: false,
   });
@@ -387,27 +390,47 @@ export default function MapView({
     [orgTree]
   );
 
-  /** ✅ KOD BO‘YICHA SAKRASH: backenddan org va resurslarni olish, tree’ni belgilash,
-   *  expand qilish va xaritaga flyTo qilish */
+  /** ✅ KOD BO‘YICHA SAKRASH: string yoki (org, pathIds, target) imzalarini qo‘llab-quvvatlaydi */
   const handleCodeJump = useCallback(
-    async (raw) => {
-      const code = (raw || "").trim();
+    async (...args) => {
+      // CodeJumpBox hozir onJump(org, pathIds, target) jo‘natadi.
+      // Ehtimol boshqa joyda faqat kod string ham berilishi mumkin.
+      let code = "";
+      let maybeTarget = null;
+
+      if (args.length === 1) {
+        // onJump("10123") holati
+        const raw = args[0];
+        code =
+          typeof raw === "string" ? raw.trim() : String(raw?.code || "").trim();
+      } else if (args.length >= 1) {
+        // onJump(org, pathIds?, target?)
+        const org = args[0];
+        const target = args[2];
+        code = String(org?.code || "").trim();
+        // Agar CodeJumpBox target hisoblab bergan bo‘lsa, optimistik flyTo qilamiz:
+        if (
+          target &&
+          Number.isFinite(target.lat) &&
+          Number.isFinite(target.lng)
+        ) {
+          setNavTarget({
+            lat: target.lat,
+            lng: target.lng,
+            zoom: target.zoom ?? 12,
+            ts: Date.now(),
+          });
+        }
+      }
+
       if (!code) return;
 
       try {
-        // Auth tokenni local/session storage’dan olib headerga qo‘yamiz
-        const token =
-          localStorage.getItem("token") || sessionStorage.getItem("token");
-        const res = await fetch(
-          `/api/orgs/locate?code=${encodeURIComponent(code)}`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          }
-        );
-        if (!res.ok) throw new Error("Org not found");
-        const data = await res.json();
-
-        // Backend javobi: { org: { id, pos:[lat,lng], zoom, level }, facilities:[...] }
+        // Backend locate endpointidan aniq koordinata va zoom olamiz
+        const { data } = await api.get("/orgs/locate", {
+          params: { code },
+        });
+        // Backend javobi: { org: { id, pos:[lat,lng], zoom, level }, facilities:[...] } yoki faqat org
         const org = data?.org || data;
         const idStr = String(org.id);
 
@@ -424,7 +447,7 @@ export default function MapView({
           return Array.from(new Set([...prevArr, ...ancestors, idStr]));
         });
 
-        // Fly to
+        // Xarita flyTo
         const [lat, lng] = org.pos || [];
         const z =
           typeof org.zoom === "number"
@@ -434,6 +457,7 @@ export default function MapView({
             : org.level === 1
             ? 12
             : 15;
+
         if (
           Array.isArray(org.pos) &&
           Number.isFinite(lat) &&

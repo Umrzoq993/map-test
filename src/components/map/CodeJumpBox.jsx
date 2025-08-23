@@ -86,7 +86,7 @@ export default function CodeJumpBox({ orgTree, onJump }) {
       <style>{`
         .code-jump {
           position: absolute;
-          top: 12px;
+          bottom: 50px;
           left: 12px;
           z-index: 1000;
           background: rgba(255,255,255,0.9);
@@ -98,12 +98,13 @@ export default function CodeJumpBox({ orgTree, onJump }) {
           gap: 4px;
         }
         .code-jump input {
-          width: 180px;
-          height: 32px;
+          width: 220px;
+          height: 40px;
           border: 1px solid #d0d7de;
           border-radius: 6px;
           padding: 0 10px;
           outline: none;
+          font-size: 16px;
         }
         .code-jump input:disabled { opacity: .6; }
         .code-jump .err { color: #b42318; font-size: 12px; }

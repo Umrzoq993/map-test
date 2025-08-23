@@ -108,7 +108,7 @@ export default function Dashboard({ dark = false }) {
     setLoading(true);
     setErr("");
     try {
-      const res = await httpGet("/api/stats/overview", buildParams());
+      const res = await httpGet("/stats/overview", buildParams());
       setData(res);
     } catch (e) {
       console.error(e);

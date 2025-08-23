@@ -2,17 +2,17 @@
 import axios from "axios";
 import { getToken, logout } from "./auth";
 
-const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+// Dev: "/api" (Vite proxy orqali)
+// Prod: VITE_API_BASE (masalan, https://api.example.com/api)
+const BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
-// Bitta axios instance
-export const api = axios.create({ baseURL: BASE });
+export const api = axios.create({ baseURL: `${BASE}/api` });
 
-// Har bir so'rovga JWT qo'shib yuboramiz
+// Har bir so'rovga JWT qo'shish + sort[] ni takroriy ?sort= ga aylantirish
 api.interceptors.request.use((config) => {
-  const t = getToken();
+  const t = typeof getToken === "function" ? getToken() : null;
   if (t) config.headers.Authorization = `Bearer ${t}`;
 
-  // (ixtiyoriy) ?sort[]=... o‘rniga bir nechta ?sort=... ga aylantirish:
   if (config.params?.sort && Array.isArray(config.params.sort)) {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(config.params)) {
@@ -24,23 +24,27 @@ api.interceptors.request.use((config) => {
     }
     config.params = p;
   }
-
   return config;
 });
 
-// 401 bo‘lsa tokenni tozalab, login sahifasiga
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    if (err?.code === "ERR_NETWORK") {
+      console.warn("[API] Network error. Backend ishlayaptimi? baseURL=", BASE);
+    }
     if (err?.response?.status === 401) {
-      logout();
-      window.location.assign("/login");
+      try {
+        logout?.();
+      } catch {}
+      // ixtiyoriy: sahifaga qayta yo'naltirish
+      // window.location.assign("/login");
     }
     return Promise.reject(err);
   }
 );
 
-// Kichik helperlar (login va boshqalar qulay ishlatishi uchun)
+// Qulay helperlar (ixtiyoriy)
 export async function httpGet(url, params) {
   const res = await api.get(url, { params });
   return res.data;

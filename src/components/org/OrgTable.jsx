@@ -59,7 +59,7 @@ export default function OrgTable({ isAdmin }) {
   // Server-side listing
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(0); // zero-based
-  const [size, setSize] = useState(20);
+  const [size, setSize] = useState(10);
   const [total, setTotal] = useState(0);
   const totalPages = Math.max(1, Math.ceil(total / size));
 
@@ -356,7 +356,7 @@ export default function OrgTable({ isAdmin }) {
         >
           {[10, 20, 30, 50, 100].map((s) => (
             <option key={s} value={s}>
-              {s}/page
+              {s} qator
             </option>
           ))}
         </select>

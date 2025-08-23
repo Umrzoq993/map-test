@@ -1,9 +1,9 @@
 // src/api/auth.js
 import { httpPost } from "./http";
 
-/** Login – backend: POST /api/auth/login  (response: { token }) */
+/** Login – backend: POST /auth/login  (response: { token }) */
 export async function login(username, password) {
-  const data = await httpPost("/api/auth/login", { username, password });
+  const data = await httpPost("/auth/login", { username, password });
   const token = data?.token;
   if (token) localStorage.setItem("token", token);
   return !!token;

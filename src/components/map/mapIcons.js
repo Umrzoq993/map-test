@@ -3,29 +3,35 @@ import L from "leaflet";
 
 export const colorMap = {
   GREENHOUSE: "#16a34a",
+  POULTRY_MEAT: "#dc2626",
+  POULTRY_EGG: "#f59e0b",
+  TURKEY: "#ea580c",
   COWSHED: "#a16207",
-  STABLE: "#7c3aed",
-  FISHFARM: "#2563eb",
-  WAREHOUSE: "#525252",
-  ORCHARD: "#22c55e",
-  FIELD: "#84cc16",
-  POULTRY: "#dc2626",
-  APIARY: "#f59e0b",
+  SHEEPFOLD: "#7c3aed",
+  WORKSHOP_SAUSAGE: "#525252",
+  WORKSHOP_COOKIE: "#9ca3af",
+  AUX_LAND: "#84cc16",
+  BORDER_LAND: "#0ea5e9",
+  FISHPOND: "#2563eb",
 };
+
 export const emojiMap = {
   GREENHOUSE: "🌿",
+  POULTRY_MEAT: "🍗",
+  POULTRY_EGG: "🥚",
+  TURKEY: "🦃",
   COWSHED: "🐄",
-  STABLE: "🐎",
-  FISHFARM: "🐟",
-  WAREHOUSE: "🏚",
-  ORCHARD: "🍎",
-  FIELD: "🌾",
-  POULTRY: "🐔",
-  APIARY: "🐝",
+  SHEEPFOLD: "🐑",
+  WORKSHOP_SAUSAGE: "🏭",
+  WORKSHOP_COOKIE: "🍪",
+  AUX_LAND: "🟩",
+  BORDER_LAND: "🟦",
+  FISHPOND: "🐟",
 };
-export const typeColor = (t = "WAREHOUSE") => colorMap[t] || "#525252";
 
-export const iconFor = (type = "WAREHOUSE") =>
+export const typeColor = (t = "GREENHOUSE") => colorMap[t] || "#3b82f6";
+
+export const iconFor = (type = "GREENHOUSE") =>
   L.divIcon({
     className: "facility-pin",
     html: `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;
@@ -36,11 +42,11 @@ export const iconFor = (type = "WAREHOUSE") =>
     iconAnchor: [6, 6],
   });
 
-export const badgeIconFor = (type = "WAREHOUSE", size = 28) => {
-  const col = typeColor(type),
-    emoji = emojiMap[type] || "📍";
-  const pad = Math.round(size * 0.18),
-    fz = Math.round(size * 0.64);
+export const badgeIconFor = (type = "GREENHOUSE", size = 28) => {
+  const col = typeColor(type);
+  const emoji = emojiMap[type] || "📍";
+  const pad = Math.round(size * 0.18);
+  const fz = Math.round(size * 0.64);
   return L.divIcon({
     className: "facility-badge",
     html: `<div style="display:inline-flex;align-items:center;justify-content:center;
