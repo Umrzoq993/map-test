@@ -1,16 +1,57 @@
-// src/hooks/useAuth.jsx
-import { decodeJWT, isAuthenticated } from "../utils/auth";
+import { useEffect, useMemo, useState } from "react";
+import { decodeJWT, isAuthenticated } from "../api/auth";
+
+function hasAdminRole(payload) {
+  if (!payload) return false;
+  const single = (
+    payload.role ||
+    payload.user_role ||
+    payload["x-role"] ||
+    ""
+  ).toString();
+  if (single === "ADMIN" || single === "ROLE_ADMIN") return true;
+
+  const arr = []
+    .concat(payload.roles || [])
+    .concat(payload.authorities || [])
+    .concat(payload.scopes || [])
+    .map(String);
+
+  return arr.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
+}
 
 export function useAuth() {
-  const payload = decodeJWT();
+  const [payload, setPayload] = useState(() => decodeJWT());
+  const [isAuthed, setIsAuthed] = useState(() => isAuthenticated());
+
+  // Token o'zgarsa (boshqa tab/lokal) — auto-update
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === "token" || e.key === "refreshToken") {
+        setPayload(decodeJWT());
+        setIsAuthed(isAuthenticated());
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  // Har bir renderda ham tekshirib turamiz (bir tabli holatlar uchun)
+  useEffect(() => {
+    setPayload(decodeJWT());
+    setIsAuthed(isAuthenticated());
+  }, []);
+
   const role = payload?.role || null;
   const username = payload?.sub || payload?.username || null;
   const orgId = payload?.orgId ?? null;
 
+  const isAdmin = useMemo(() => hasAdminRole(payload), [payload]);
+
   return {
-    isAuthed: isAuthenticated(),
+    isAuthed,
     role,
-    isAdmin: role === "ADMIN",
+    isAdmin,
     username,
     orgId,
     payload,

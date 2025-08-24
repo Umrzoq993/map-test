@@ -8,6 +8,7 @@ import {
   LuUser,
   LuShield,
   LuNetwork,
+  LuMonitorSmartphone,
 } from "react-icons/lu";
 import { useAuth } from "../hooks/useAuth";
 import styles from "./SidebarMenu.module.scss";
@@ -15,7 +16,7 @@ import appLogo from "../assets/zamin-logo.png";
 
 export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
   const { pathname } = useLocation();
-  const { isAdmin /*, isAuthed*/ } = useAuth(); // isAuthed kerak bo'lsa qo'llang
+  const { isAdmin /*, isAuthed*/ } = useAuth();
 
   useEffect(() => {
     if (toggled) setToggled(false);
@@ -109,7 +110,23 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
             </MenuItem>
           )}
 
-          {/* Inshootlar: ENDILIKDA HAMMA UCHUN OCHIQ (admin shart emas) */}
+          {isAdmin && (
+            <SubMenu
+              label={<span className={styles.text}>Admin</span>}
+              icon={<LuShield size={18} />}
+              defaultOpen={isActive("/admin")}
+            >
+              <MenuItem
+                icon={<LuMonitorSmartphone size={18} />}
+                component={<Link to="/admin/sessions" />}
+                active={isActive("/admin/sessions")}
+              >
+                <span className={styles.text}>Sessions</span>
+              </MenuItem>
+            </SubMenu>
+          )}
+
+          {/* Inshootlar: hamma uchun ochiq */}
           <SubMenu
             defaultOpen={isActive("/facilities", false)}
             label={<span className={styles.text}>Inshootlar</span>}

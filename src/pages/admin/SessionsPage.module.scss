@@ -1,0 +1,184 @@
+/* src/pages/admin/SessionsPage.module.scss */
+
+/* Tema o'zgaruvchilari */
+.page {
+  --card-bg: #ffffff;
+  --border: #e5e7eb;
+  --thead-bg: #f3f4f6;
+  --tbody-border: #f1f5f9;
+  --text: #111827;
+  --muted: #6b7280;
+  --btn-bg: #f9fafb;
+  --btn-fg: #111827;
+  --btn-border: #e5e7eb;
+  --badge-bg: #eef2ff;
+  --badge-fg: #4338ca;
+  --badge-border: #e0e7ff;
+
+  padding: 16px;
+  color: var(--text);
+}
+
+.dark {
+  --card-bg: #111827; /* panel/card */
+  --border: #1f2937; /* border */
+  --thead-bg: #0b1220; /* table header */
+  --tbody-border: #111827; /* row divider */
+  --text: #e5e7eb; /* asosiy matn */
+  --muted: #9ca3af; /* ikkilamchi matn */
+  --btn-bg: #0b1220;
+  --btn-fg: #e5e7eb;
+  --btn-border: #1f2937;
+  --badge-bg: #111827;
+  --badge-fg: #c7d2fe;
+  --badge-border: #1f2937;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+  }
+}
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* KPIs */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.02);
+}
+
+.kpiTitle {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.kpiValue {
+  font-weight: 800;
+  font-size: 22px;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.input {
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--btn-border);
+  outline: none;
+  min-width: 200px;
+  background: var(--card-bg);
+  color: var(--text);
+}
+
+/* Buttons */
+.btn {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.btnPrimary {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+.btnDanger {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Table */
+.tableWrap {
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: var(--text);
+}
+.table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--thead-bg);
+  text-align: left;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.table tbody td {
+  padding: 10px;
+  border-bottom: 1px solid var(--tbody-border);
+  vertical-align: top;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+  border: 1px solid var(--badge-border);
+}
+
+/* Utils */
+.truncate {
+  max-width: 360px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}

@@ -1,19 +1,63 @@
 // src/api/http.js
 import axios from "axios";
-import { getToken, logout } from "./auth";
+import {
+  getToken,
+  getRefreshToken,
+  setAccessToken,
+  setRefreshToken,
+  logout,
+} from "./auth";
 
-// Dev: "/api" (Vite proxy orqali)
-// Prod: VITE_API_BASE (masalan, https://api.example.com/api)
-const BASE = import.meta.env.VITE_API_BASE ?? "/api";
+// BASE aniqlash ("/api" yoki VITE_API_BASE)
+const RAW_BASE = import.meta.env.VITE_API_BASE ?? "/api";
+const BASE = RAW_BASE.endsWith("/api") ? RAW_BASE : `${RAW_BASE}/api`;
 
-export const api = axios.create({ baseURL: `${BASE}/api` });
+// Barqaror deviceId
+function getDeviceId() {
+  try {
+    let id = localStorage.getItem("deviceId");
+    if (!id) {
+      const rndBytes = (len = 16) =>
+        window.crypto?.getRandomValues
+          ? Array.from(window.crypto.getRandomValues(new Uint8Array(len)))
+          : Array.from({ length: len }, () => Math.floor(Math.random() * 256));
+      const toHex = (arr) =>
+        arr.map((b) => (b & 0xff).toString(16).padStart(2, "0")).join("");
+      const p1 = toHex(rndBytes(8)).slice(0, 8);
+      const p2 = toHex(rndBytes(4)).slice(0, 4);
+      const p3 = toHex(rndBytes(4)).slice(0, 4);
+      const p4 = toHex(rndBytes(4)).slice(0, 4);
+      const p5 = toHex(rndBytes(12)).slice(0, 12);
+      id = `${p1}-${p2}-${p3}-${p4}-${p5}`;
+      localStorage.setItem("deviceId", id);
+    }
+    return id;
+  } catch {
+    return "unknown-device";
+  }
+}
 
-// Har bir so'rovga JWT qo'shish + sort[] ni takroriy ?sort= ga aylantirish
+export const api = axios.create({ baseURL: BASE });
+
+// Request: DeviceID + Bearer + sort[] flatten
 api.interceptors.request.use((config) => {
-  const t = typeof getToken === "function" ? getToken() : null;
-  if (t) config.headers.Authorization = `Bearer ${t}`;
+  config.headers = config.headers || {};
 
-  if (config.params?.sort && Array.isArray(config.params.sort)) {
+  // device header
+  if (!config.headers["X-Device-Id"]) {
+    config.headers["X-Device-Id"] = getDeviceId();
+  }
+
+  // Bearer — LOGIN va REFRESHdan boshqa HAMMA so'rovlarga qo'shamiz
+  const url = config.url || "";
+  const addBearer = url !== "/auth/login" && url !== "/auth/refresh";
+  const t = typeof getToken === "function" ? getToken() : null;
+  if (t && addBearer) {
+    config.headers.Authorization = `Bearer ${t}`;
+  }
+
+  // sort[]= to ?sort=a&sort=b
+  if (config?.params?.sort && Array.isArray(config.params.sort)) {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(config.params)) {
       if (k === "sort") {
@@ -27,24 +71,78 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// ---- 401 -> auto refresh (single-flight) ----
+let isRefreshing = false;
+let refreshPromise = null;
+
+async function doRefresh() {
+  const rt = getRefreshToken();
+  if (!rt) throw new Error("No refresh token");
+  const deviceId = getDeviceId();
+
+  // Interceptor loop'idan qochish uchun to'g'ridan-to'g'ri axios
+  const { data } = await axios.post(
+    `${BASE}/auth/refresh`,
+    { refreshToken: rt, deviceId },
+    { headers: { "X-Device-Id": deviceId } }
+  );
+
+  const { accessToken: newAccess, refreshToken: newRefresh } = data || {};
+  if (!newAccess || !newRefresh) throw new Error("Malformed refresh response");
+
+  setAccessToken(newAccess);
+  setRefreshToken(newRefresh);
+  return newAccess;
+}
+
+function queueRefresh() {
+  if (!isRefreshing) {
+    isRefreshing = true;
+    refreshPromise = doRefresh().finally(() => {
+      isRefreshing = false;
+    });
+  }
+  return refreshPromise;
+}
+
+// Response: 429 bubble, 401 auto-refresh (LEKIN login/refresh/logout uchun emas)
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
+  async (err) => {
+    const { response, config } = err || {};
+    const status = response?.status;
+    const original = config || {};
+    const url = original.url || "";
+    const refreshExcluded =
+      url === "/auth/login" ||
+      url === "/auth/refresh" ||
+      url === "/auth/logout";
+
     if (err?.code === "ERR_NETWORK") {
-      console.warn("[API] Network error. Backend ishlayaptimi? baseURL=", BASE);
+      console.warn("[API] Network error. BACKEND running? baseURL=", BASE);
     }
-    if (err?.response?.status === 401) {
+
+    if (status === 429) {
+      return Promise.reject(err);
+    }
+
+    if (status === 401 && !refreshExcluded) {
       try {
-        logout?.();
-      } catch {}
-      // ixtiyoriy: sahifaga qayta yo'naltirish
-      // window.location.assign("/login");
+        const newAccess = await queueRefresh();
+        original.headers = original.headers || {};
+        original.headers.Authorization = `Bearer ${newAccess}`;
+        return api(original);
+      } catch {
+        try {
+          await logout();
+        } catch {}
+      }
     }
     return Promise.reject(err);
   }
 );
 
-// Qulay helperlar (ixtiyoriy)
+// Qulay helpers
 export async function httpGet(url, params) {
   const res = await api.get(url, { params });
   return res.data;
