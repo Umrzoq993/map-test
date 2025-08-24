@@ -13,6 +13,8 @@ import { useTheme } from "./hooks/useTheme";
 import GenericFacilityPage from "./pages/facilities/GenericFacilityPage";
 import { startHeartbeat } from "./boot/heartbeat";
 import SessionsPage from "./pages/admin/SessionsPage";
+import AuditPage from "./pages/admin/AuditPage";
+import UsersPage from "./pages/admin/UsersPage";
 
 function useIsMobile(query = "(max-width: 1024px)") {
   const [isMobile, setIsMobile] = useState(false);
@@ -121,6 +123,22 @@ export default function App() {
                       element={
                         <AdminRoute>
                           <SessionsPage />
+                        </AdminRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/audit"
+                      element={
+                        <AdminRoute>
+                          <AuditPage />
+                        </AdminRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/users"
+                      element={
+                        <AdminRoute>
+                          <UsersPage />
                         </AdminRoute>
                       }
                     />

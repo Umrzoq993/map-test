@@ -9,6 +9,8 @@ import {
   LuShield,
   LuNetwork,
   LuMonitorSmartphone,
+  LuListChecks,
+  LuUsers,
 } from "react-icons/lu";
 import { useAuth } from "../hooks/useAuth";
 import styles from "./SidebarMenu.module.scss";
@@ -86,7 +88,7 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
             component={<Link to="/dashboard" />}
             icon={<LuLayoutDashboard size={18} />}
           >
-            <span className={styles.text}>Dashboard</span>
+            <span className={styles.text}>Boshqaruv paneli</span>
           </MenuItem>
 
           <MenuItem
@@ -95,7 +97,7 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
             icon={<LuMap size={18} />}
           >
             <span className={styles.text}>
-              Map {!collapsed && <span className={styles.badge}>New</span>}
+              Xarita {!collapsed && <span className={styles.badge}>Yangi</span>}
             </span>
           </MenuItem>
 
@@ -112,7 +114,7 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
 
           {isAdmin && (
             <SubMenu
-              label={<span className={styles.text}>Admin</span>}
+              label={<span className={styles.text}>Boshqaruv</span>}
               icon={<LuShield size={18} />}
               defaultOpen={isActive("/admin")}
             >
@@ -121,7 +123,21 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
                 component={<Link to="/admin/sessions" />}
                 active={isActive("/admin/sessions")}
               >
-                <span className={styles.text}>Sessions</span>
+                <span className={styles.text}>Sessiyalar</span>
+              </MenuItem>
+              <MenuItem
+                icon={<LuListChecks size={18} />}
+                component={<Link to="/admin/audit" />}
+                active={isActive("/admin/audit")}
+              >
+                <span className={styles.text}>Audit jurnali</span>
+              </MenuItem>
+              <MenuItem
+                icon={<LuUsers size={18} />}
+                component={<Link to="/admin/users" />}
+                active={isActive("/admin/users")}
+              >
+                <span className={styles.text}>Foydalanuvchilar</span>
               </MenuItem>
             </SubMenu>
           )}
@@ -216,14 +232,14 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
           </SubMenu>
 
           <SubMenu
-            label={<span className={styles.text}>Settings</span>}
+            label={<span className={styles.text}>Sozlamalar</span>}
             icon={<LuSettings size={18} />}
           >
             <MenuItem icon={<LuUser size={18} />}>
-              <span className={styles.text}>Profile</span>
+              <span className={styles.text}>Profil</span>
             </MenuItem>
             <MenuItem icon={<LuShield size={18} />}>
-              <span className={styles.text}>Security</span>
+              <span className={styles.text}>Xavfsizlik</span>
             </MenuItem>
           </SubMenu>
         </Menu>

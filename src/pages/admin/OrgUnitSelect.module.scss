@@ -1,0 +1,156 @@
+.wrap {
+  position: relative;
+  min-width: 260px;
+}
+.wrap[data-disabled] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--card-border, #e5e7eb);
+  border-radius: 10px;
+  padding: 6px 8px 6px 10px;
+  background: var(--card-bg, #fff);
+  color: inherit;
+  cursor: pointer;
+}
+
+.inputWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.icon {
+  opacity: 0.6;
+}
+.input {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  width: 100%;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.iconBtn {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border, #e5e7eb);
+  background: transparent;
+  cursor: pointer;
+}
+.iconBtn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+.chev {
+  opacity: 0.7;
+}
+
+/* ➜ Portal menyu (body ga render qilinadi) */
+.menu {
+  position: fixed;
+  z-index: 1500; /* overlay(1200) dan yuqori */
+  border: 1px solid var(--card-border, #e5e7eb);
+  background: var(--card-bg, #fff);
+  color: inherit;
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.15);
+  max-height: 320px;
+  overflow: auto;
+  transform-origin: top;
+  animation: dropdown 0.12s ease-out;
+}
+.up {
+  transform-origin: bottom;
+}
+
+@keyframes dropdown {
+  from {
+    transform: scale(0.98);
+    opacity: 0.85;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.item {
+  padding: 10px 12px;
+  border-top: 1px solid var(--row-border, #f1f5f9);
+  cursor: pointer;
+}
+.item:first-child {
+  border-top: 0;
+}
+.item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+.itemRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.itemName {
+  font-weight: 600;
+}
+.code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+  font-size: 12px;
+  opacity: 0.75;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px dashed var(--card-border, #e5e7eb);
+}
+.itemMeta {
+  font-size: 12px;
+  opacity: 0.7;
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+.root {
+  color: #059669;
+}
+.parent {
+  color: #64748b;
+}
+
+.empty {
+  padding: 12px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+/* Dark */
+:global([data-theme="dark"]) .control {
+  --card-bg: #0f172a;
+  --card-border: #243042;
+}
+:global([data-theme="dark"]) .menu {
+  --card-bg: #0f172a;
+  --card-border: #243042;
+}
+:global([data-theme="dark"]) .iconBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+:global([data-theme="dark"]) .item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+:global([data-theme="dark"]) .code {
+  border-color: #2f3c52;
+}

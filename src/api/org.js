@@ -1,18 +1,33 @@
 // src/api/org.js
-import { api } from "./http";
+import { api, httpGet } from "./http";
 
-// TREE
+// ======================== TREE ========================
+/** Org strukturani daraxt ko‘rinishida olish */
 export const getOrgTree = async () => (await api.get("/orgs/tree")).data;
 
-// GET by id
+// ======================== GET ========================
+/** ID bo‘yicha org (batafsil DTO) */
 export const getOrg = async (id) => (await api.get(`/orgs/${id}`)).data;
 
-// GET by code
-export const getOrgByCode = async (code) =>
-  (await api.get(`/orgs/by-code/${encodeURIComponent(String(code).trim())}`))
-    .data;
+/** ID bo‘yicha bitta org (soddalashtirilgan DTO, httpGet bilan) */
+export async function getOrgUnit(id) {
+  return httpGet(`/orgs/${id}`); // OrgDto
+}
 
-// PAGE (search/sort)
+/** Code bo‘yicha org (asosiy endpoint) */
+export async function getOrgByCode(code) {
+  return httpGet(`/orgs/by-code/${encodeURIComponent(String(code).trim())}`);
+  // OrgDto yoki 403 (agar ruxsat yo‘q bo‘lsa)
+}
+
+/** ✅ Map uchun: org + facilities + viewport (ruxsat tekshiriladi) */
+export async function locateOrg(code) {
+  const params = new URLSearchParams({ code });
+  return httpGet(`/orgs/locate?${params.toString()}`); // { org, facilities }
+}
+
+// ======================== PAGE / SEARCH ========================
+/** Org’larni paginate + qidiruv + sort bilan olish (asosiy page) */
 export const listOrgsPage = async ({
   page = 0,
   size = 20,
@@ -30,6 +45,22 @@ export const listOrgsPage = async ({
   return res.data;
 };
 
+/** Qidiruv (sahifalangan) — PageResponse<OrgFlatRes> */
+export async function searchOrgUnits({
+  q,
+  page = 0,
+  size = 10,
+  sort = "name,asc",
+} = {}) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  params.set("page", page);
+  params.set("size", size);
+  params.set("sort", sort);
+  return httpGet(`/orgs?${params.toString()}`);
+}
+
+// ======================== CRUD ========================
 export const createOrg = async (payload) =>
   (await api.post("/orgs", payload)).data;
 

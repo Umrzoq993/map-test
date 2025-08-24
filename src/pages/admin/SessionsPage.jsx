@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   listSessions,
   revokeAllForUser,
+  revokeDevice,
   getOnlineCount,
 } from "../../api/admin";
 import { useTheme } from "../../hooks/useTheme";
@@ -13,33 +14,45 @@ import {
   LuRefreshCw,
   LuTrash2,
   LuMonitorSmartphone,
-  LuCalendarClock,
+  LuChevronsUpDown,
   LuSearch,
+  LuSmartphoneNfc,
 } from "react-icons/lu";
 
-function fmt(d) {
-  if (!d) return "-";
-  try {
-    return new Date(d).toLocaleString();
-  } catch {
-    return String(d);
-  }
+function fmt(v) {
+  if (!v) return "-";
+  const d = new Date(v);
+  if (Number.isNaN(+d)) return String(v);
+  return d.toLocaleString();
 }
 
 export default function SessionsPage() {
-  const { isDark } = useTheme(); // <— App’dagi theme bilan bir xil manba
+  const { isDark } = useTheme();
   const [rows, setRows] = useState([]);
   const [online, setOnline] = useState(0);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState("");
   const [sortBy, setSortBy] = useState({ key: "lastSeenAt", dir: "desc" });
+
+  // Administratorlar uchun: boshqa foydalanuvchi sessiyalarini ko‘rish
+  const [userId, setUserId] = useState("");
+  const [includeRevoked, setIncludeRevoked] = useState(false);
+  const [includeExpired, setIncludeExpired] = useState(false);
+
   const [forbidden, setForbidden] = useState(false);
 
   async function load() {
     setBusy(true);
     setForbidden(false);
     try {
-      const [sess, oc] = await Promise.all([listSessions(), getOnlineCount()]);
+      const [sess, oc] = await Promise.all([
+        listSessions({
+          userId: userId ? Number(userId) : undefined,
+          includeRevoked,
+          includeExpired,
+        }),
+        getOnlineCount(),
+      ]);
       setRows(sess);
       setOnline(oc?.online ?? 0);
     } catch (e) {
@@ -55,13 +68,14 @@ export default function SessionsPage() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = useMemo(() => {
-    const q = filter.trim().toLowerCase();
     let r = rows;
+    const q = filter.trim().toLowerCase();
     if (q) {
-      r = rows.filter((x) =>
+      r = r.filter((x) =>
         [x.username, x.deviceId, x.ip, x.userAgent]
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(q))
@@ -86,132 +100,115 @@ export default function SessionsPage() {
     );
   }
 
-  if (forbidden) {
-    return (
-      <div
-        className={`${styles.page} ${isDark ? styles.dark : ""}`}
-        data-theme={isDark ? "dark" : "light"}
-      >
-        <div className={styles.header}>
-          <div className={styles.title}>
-            <LuShieldAlert size={22} />
-            <div>
-              <h2>Active Sessions</h2>
-              <div className={styles.muted}>
-                Access denied — ADMIN role required
-              </div>
-            </div>
-          </div>
-          <div className={styles.actions}>
-            <button
-              className={styles.btn}
-              onClick={() => window.history.back()}
-            >
-              Go back
-            </button>
-          </div>
-        </div>
-        <div className={styles.card} style={{ padding: 20 }}>
-          Ushbu sahifaga faqat <b>ADMIN</b> foydalanuvchilar kira oladi.
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div
-      className={`${styles.page} ${isDark ? styles.dark : ""}`}
-      data-theme={isDark ? "dark" : "light"}
-    >
+    <div className={styles.page} data-theme={isDark ? "dark" : "light"}>
       <div className={styles.header}>
         <div className={styles.title}>
-          <LuShieldAlert size={22} />
-          <div>
-            <h2>Active Sessions</h2>
-            <div className={styles.muted}>
-              Device-based login & rotation monitoring
-            </div>
-          </div>
+          <LuMonitorSmartphone /> Sessiyalar
+          <span
+            className={styles.badge}
+            title="Taxminiy onlayn foydalanuvchilar soni"
+          >
+            <LuActivity /> {online}
+          </span>
         </div>
         <div className={styles.actions}>
-          <button className={styles.btn} onClick={load} disabled={busy}>
-            <LuRefreshCw size={16} /> Refresh
+          <button
+            className={styles.btn}
+            onClick={load}
+            disabled={busy}
+            title="Qayta yuklash"
+          >
+            <LuRefreshCw />
+            Qayta yuklash
           </button>
         </div>
       </div>
 
-      <div className={styles.kpis}>
-        <div className={styles.card}>
-          <div className={styles.kpiTitle}>Online (last 60s)</div>
-          <div className={styles.kpiValue}>
-            <span className={styles.badge}>
-              <LuActivity /> {online}
-            </span>
-          </div>
+      <div className={styles.toolbar}>
+        <div className={styles.searchBox}>
+          <LuSearch />
+          <input
+            placeholder="Foydalanuvchi / qurilma / IP / UA bo‘yicha qidirish..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
         </div>
-        <div className={styles.card}>
-          <div className={styles.kpiTitle}>Active sessions</div>
-          <div className={styles.kpiValue}>{rows.length}</div>
-        </div>
-        <div className={styles.card}>
-          <div className={styles.kpiTitle}>Filters</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ position: "relative", flex: 1 }}>
-              <LuSearch
-                style={{ position: "absolute", left: 10, top: 9, opacity: 0.6 }}
-              />
-              <input
-                className={styles.input}
-                style={{ paddingLeft: 30, width: "100%" }}
-                placeholder="Search (user, device, IP, UA)…"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              />
-            </div>
-            <button
-              className={styles.btn}
-              onClick={() => setFilter("")}
-              disabled={!filter}
-            >
-              Clear
-            </button>
+
+        <div className={styles.filters}>
+          <div className={styles.fieldInline}>
+            <label>Foydalanuvchi ID</label>
+            <input
+              className={styles.input}
+              placeholder="(joriy)"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value.replace(/[^\d]/g, ""))}
+              inputMode="numeric"
+            />
           </div>
+
+          <label className={styles.switch}>
+            <input
+              type="checkbox"
+              checked={includeRevoked}
+              onChange={(e) => setIncludeRevoked(e.target.checked)}
+            />
+            <span>Bekor qilinganlarni ham ko‘rsat</span>
+          </label>
+
+          <label className={styles.switch}>
+            <input
+              type="checkbox"
+              checked={includeExpired}
+              onChange={(e) => setIncludeExpired(e.target.checked)}
+            />
+            <span>Muddati o‘tganlarni ham ko‘rsat</span>
+          </label>
+
+          <button
+            className={styles.btn}
+            onClick={load}
+            disabled={busy}
+            title="Filtrlarni qo‘llash"
+          >
+            <LuChevronsUpDown /> Qo‘llash
+          </button>
         </div>
       </div>
+
+      {forbidden && (
+        <div className={styles.alert}>
+          <LuShieldAlert /> Sizda bu sahifani ko‘rish uchun ruxsat yo‘q (403).
+        </div>
+      )}
 
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
             <tr>
-              <th onClick={() => changeSort("id")}>ID</th>
-              <th>User</th>
-              <th>Device</th>
-              <th className={styles.truncate}>User-Agent</th>
+              <th onClick={() => changeSort("id")}>№</th>
+              <th>Foydalanuvchi</th>
+              <th>Qurilma</th>
+              <th className={styles.truncate}>Brauzer (User-Agent)</th>
               <th>IP</th>
-              <th onClick={() => changeSort("createdAt")}>
-                <LuCalendarClock /> Created
-              </th>
-              <th onClick={() => changeSort("lastSeenAt")}>
-                <LuCalendarClock /> Last seen
-              </th>
-              <th onClick={() => changeSort("expiresAt")}>
-                <LuCalendarClock /> Expires
-              </th>
-              <th>Actions</th>
+              <th onClick={() => changeSort("createdAt")}>Yaratilgan</th>
+              <th onClick={() => changeSort("lastSeenAt")}>Oxirgi ko‘rildi</th>
+              <th onClick={() => changeSort("expiresAt")}>Tugash vaqti</th>
+              <th>Harakatlar</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((r) => (
-              <tr key={r.id}>
+              <tr key={`${r.userId}:${r.deviceId}:${r.tokenSuffix}`}>
                 <td>{r.id}</td>
                 <td className={styles.truncate}>
                   <span className={styles.badge}>
-                    {r.username}{" "}
+                    {r.username ?? "(foydalanuvchi)"}{" "}
                     <small style={{ opacity: 0.7 }}>#{r.userId}</small>
                   </span>
                 </td>
-                <td className={styles.truncate}>
-                  <span className={styles.badge}>
+                <td className={styles.truncate} title={r.deviceId}>
+                  <span className={styles.badgeOutline}>
                     <LuMonitorSmartphone /> {r.deviceId}
                   </span>
                 </td>
@@ -222,18 +219,40 @@ export default function SessionsPage() {
                 <td>{fmt(r.createdAt)}</td>
                 <td>{fmt(r.lastSeenAt)}</td>
                 <td>{fmt(r.expiresAt)}</td>
-                <td>
+                <td className={styles.rowActions}>
+                  <button
+                    className={`${styles.btn} ${styles.btnWarn}`}
+                    title="Ushbu qurilma sessiyasini bekor qilish"
+                    onClick={async () => {
+                      if (
+                        !confirm(
+                          `Qurilma sessiyasi bekor qilinsinmi?\n\nDevice ID: ${r.deviceId}`
+                        )
+                      )
+                        return;
+                      await revokeDevice(r.userId, r.deviceId);
+                      await load();
+                    }}
+                  >
+                    <LuSmartphoneNfc size={16} /> Qurilmani bekor qilish
+                  </button>
                   <button
                     className={`${styles.btn} ${styles.btnDanger}`}
-                    title="Revoke all sessions for this user"
+                    title="Ushbu foydalanuvchining joriy qurilmadan tashqari barcha sessiyalarini bekor qilish"
                     onClick={async () => {
-                      if (!confirm(`Revoke ALL sessions for ${r.username}?`))
+                      if (
+                        !confirm(
+                          `Foydalanuvchining barcha sessiyalari bekor qilinsinmi? (joriy qurilma saqlab qolinadi)\n\nFoydalanuvchi: ${
+                            r.username ?? ""
+                          } #${r.userId}`
+                        )
+                      )
                         return;
                       await revokeAllForUser(r.userId);
                       await load();
                     }}
                   >
-                    <LuTrash2 size={16} /> Revoke user all
+                    <LuTrash2 size={16} /> Hammasini bekor qilish
                   </button>
                 </td>
               </tr>

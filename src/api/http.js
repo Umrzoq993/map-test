@@ -5,14 +5,14 @@ import {
   getRefreshToken,
   setAccessToken,
   setRefreshToken,
-  logout,
+  setAccessExpireAt,
 } from "./auth";
 
 // BASE aniqlash ("/api" yoki VITE_API_BASE)
 const RAW_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 const BASE = RAW_BASE.endsWith("/api") ? RAW_BASE : `${RAW_BASE}/api`;
 
-// Barqaror deviceId
+// Barqaror deviceId (duplicated small helper to avoid circular imports)
 function getDeviceId() {
   try {
     let id = localStorage.getItem("deviceId");
@@ -37,9 +37,10 @@ function getDeviceId() {
   }
 }
 
+// Single axios instance
 export const api = axios.create({ baseURL: BASE });
 
-// Request: DeviceID + Bearer + sort[] flatten
+// Request interceptor: X-Device-Id + Bearer + sort[]= flatten
 api.interceptors.request.use((config) => {
   config.headers = config.headers || {};
 
@@ -48,15 +49,16 @@ api.interceptors.request.use((config) => {
     config.headers["X-Device-Id"] = getDeviceId();
   }
 
-  // Bearer — LOGIN va REFRESHdan boshqa HAMMA so'rovlarga qo'shamiz
+  // Bearer — LOGIN/REFRESH/LOGOUT dan tashqari
   const url = config.url || "";
-  const addBearer = url !== "/auth/login" && url !== "/auth/refresh";
+  const addBearer =
+    url !== "/auth/login" && url !== "/auth/refresh" && url !== "/auth/logout";
   const t = typeof getToken === "function" ? getToken() : null;
   if (t && addBearer) {
     config.headers.Authorization = `Bearer ${t}`;
   }
 
-  // sort[]= to ?sort=a&sort=b
+  // sort[]= -> ?sort=a&sort=b
   if (config?.params?.sort && Array.isArray(config.params.sort)) {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(config.params)) {
@@ -87,11 +89,22 @@ async function doRefresh() {
     { headers: { "X-Device-Id": deviceId } }
   );
 
-  const { accessToken: newAccess, refreshToken: newRefresh } = data || {};
+  const {
+    accessToken: newAccess,
+    refreshToken: newRefresh,
+    accessExpiresAt,
+  } = data || {};
   if (!newAccess || !newRefresh) throw new Error("Malformed refresh response");
 
   setAccessToken(newAccess);
   setRefreshToken(newRefresh);
+  if (accessExpiresAt) {
+    const ms =
+      typeof accessExpiresAt === "string"
+        ? Date.parse(accessExpiresAt)
+        : accessExpiresAt;
+    if (ms) setAccessExpireAt(ms);
+  }
   return newAccess;
 }
 
@@ -105,7 +118,7 @@ function queueRefresh() {
   return refreshPromise;
 }
 
-// Response: 429 bubble, 401 auto-refresh (LEKIN login/refresh/logout uchun emas)
+// Response: 429 bubble, 401 auto-refresh (login/refresh/logout uchun emas)
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
@@ -134,7 +147,10 @@ api.interceptors.response.use(
         return api(original);
       } catch {
         try {
-          await logout();
+          // Logout helper imported where needed; here we only clear tokens
+          setAccessToken(null);
+          setRefreshToken(null);
+          setAccessExpireAt(null);
         } catch {}
       }
     }

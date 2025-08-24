@@ -1,4 +1,10 @@
-import { useRef, useState, useCallback, useMemo, useEffect } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   MapContainer,
   Marker,
@@ -9,10 +15,11 @@ import {
 } from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
+
 import MapTiles from "./MapTiles";
 import "../../styles/leaflet-theme.css";
-import { api } from "../../api/http";
 
+import { locateOrg } from "../../api/org";
 import { getLatestDrawing, saveDrawing } from "../../api/drawings";
 import { listFacilities } from "../../api/facilities";
 
@@ -27,7 +34,6 @@ import CodeJumpBox from "./CodeJumpBox";
 
 /* 🔧 DARK MODE PATCH — drawer/slide-over’lar portaldan render bo‘lsa ham ishlaydi */
 const darkDrawerCss = `
-/* Drawer/slide-over konteynerlari (nomida drawer/Drawer bo‘lgan har qanday class), shuningdek sheet/slide-over */
 html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .sheet, .slide-over) {
   color: #e6eef9 !important;
   background: transparent;
@@ -59,8 +65,6 @@ html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .s
 html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .sheet, .slide-over) a {
   color: #93c5fd !important;
 }
-
-/* Agar drawer ichida karta/panel bo‘lsa ham chegara/fon kontrasti */
 html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .sheet, .slide-over)
   :where(.card,.panel,.modal-card,.drawer-card,.sheet) {
   background: #0f172a !important;
@@ -377,7 +381,6 @@ export default function MapView({
         const key = String(n.key);
         const nextTrail = [...trail, key];
         if (key === String(targetKey)) {
-          // faqat ota-onalar: targetning o‘zi kirmaydi
           return trail.map(String);
         }
         if (n.children && n.children.length) {
@@ -390,48 +393,28 @@ export default function MapView({
     [orgTree]
   );
 
-  /** ✅ KOD BO‘YICHA SAKRASH: string yoki (org, pathIds, target) imzalarini qo‘llab-quvvatlaydi */
+  /**
+   * ✅ KOD BO‘YICHA SAKRASH:
+   * - Faqat `locateOrg(code)` muvaffaqiyatli bo‘lsa `flyTo` qilinadi.
+   */
   const handleCodeJump = useCallback(
     async (...args) => {
-      // CodeJumpBox hozir onJump(org, pathIds, target) jo‘natadi.
-      // Ehtimol boshqa joyda faqat kod string ham berilishi mumkin.
       let code = "";
-      let maybeTarget = null;
-
       if (args.length === 1) {
-        // onJump("10123") holati
         const raw = args[0];
         code =
           typeof raw === "string" ? raw.trim() : String(raw?.code || "").trim();
       } else if (args.length >= 1) {
-        // onJump(org, pathIds?, target?)
         const org = args[0];
-        const target = args[2];
         code = String(org?.code || "").trim();
-        // Agar CodeJumpBox target hisoblab bergan bo‘lsa, optimistik flyTo qilamiz:
-        if (
-          target &&
-          Number.isFinite(target.lat) &&
-          Number.isFinite(target.lng)
-        ) {
-          setNavTarget({
-            lat: target.lat,
-            lng: target.lng,
-            zoom: target.zoom ?? 12,
-            ts: Date.now(),
-          });
-        }
       }
-
       if (!code) return;
 
       try {
-        // Backend locate endpointidan aniq koordinata va zoom olamiz
-        const { data } = await api.get("/orgs/locate", {
-          params: { code },
-        });
-        // Backend javobi: { org: { id, pos:[lat,lng], zoom, level }, facilities:[...] } yoki faqat org
-        const org = data?.org || data;
+        const resp = await locateOrg(code); // { org, facilities }
+        const org = resp?.org || resp;
+        if (!org) throw new Error("Javobda org topilmadi");
+
         const idStr = String(org.id);
 
         // Tree: check + select
@@ -447,8 +430,20 @@ export default function MapView({
           return Array.from(new Set([...prevArr, ...ancestors, idStr]));
         });
 
-        // Xarita flyTo
-        const [lat, lng] = org.pos || [];
+        // Xarita flyTo — faqat muvaffaqiyatdan keyin
+        const lat =
+          typeof org.lat === "number"
+            ? org.lat
+            : Array.isArray(org.pos)
+            ? org.pos[0]
+            : undefined;
+        const lng =
+          typeof org.lng === "number"
+            ? org.lng
+            : Array.isArray(org.pos)
+            ? org.pos[1]
+            : undefined;
+
         const z =
           typeof org.zoom === "number"
             ? org.zoom
@@ -458,16 +453,14 @@ export default function MapView({
             ? 12
             : 15;
 
-        if (
-          Array.isArray(org.pos) &&
-          Number.isFinite(lat) &&
-          Number.isFinite(lng)
-        ) {
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
           setNavTarget({ lat, lng, zoom: z, ts: Date.now() });
         }
       } catch (e) {
         console.error(e);
-        alert("Kod topilmadi yoki ruxsat yo‘q.");
+        const msg =
+          e?.response?.status === 403 ? "Sizga ruxsat yo‘q." : "Kod topilmadi.";
+        alert(msg);
       }
     },
     [orgTree, collectAncestorsKeys]
