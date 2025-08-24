@@ -1,65 +1,102 @@
+// src/hooks/useTheme.js
 import { useEffect, useMemo, useState } from "react";
 
-const KEY = "theme"; // 'light' | 'dark' | 'system'
+const KEY = "theme"; // "light" | "dark" | "system"
 
-function getInitialTheme() {
+// ---- Helpers ----
+function systemPrefersDark() {
+  return !!(
+    window.matchMedia &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+}
+function readStoredTheme() {
   try {
-    const saved = localStorage.getItem(KEY);
-    if (saved === "light" || saved === "dark" || saved === "system") {
-      return saved;
-    }
+    const t = localStorage.getItem(KEY);
+    if (t === "light" || t === "dark" || t === "system") return t;
   } catch {}
-  // 🔥 DEFAULT: dark
+  // DEFAULT: dark
   return "dark";
 }
+function computeIsDark(theme) {
+  return theme === "dark" || (theme === "system" && systemPrefersDark());
+}
+function applyTheme(theme) {
+  const isDark = computeIsDark(theme);
+  const root = document.documentElement;
+  root.setAttribute("data-theme", isDark ? "dark" : "light");
+  root.classList.toggle("dark", isDark);
+}
 
-export function useTheme() {
-  const [theme, setTheme] = useState(getInitialTheme);
+// ---- Global state (pub/sub) ----
+const listeners = new Set();
+let currentTheme = readStoredTheme();
 
-  useEffect(() => {
-    const root = document.documentElement;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+// Ilk qo‘llash
+if (typeof document !== "undefined") {
+  applyTheme(currentTheme);
+}
 
-    const resolveMode = (t) =>
-      t === "system" ? (mq.matches ? "dark" : "light") : t;
-
-    const apply = (t) => {
-      const mode = resolveMode(t);
-      root.setAttribute("data-theme", mode);
-      // Ba’zi kutubxonalar .dark class’ni ko‘radi:
-      if (mode === "dark") root.classList.add("dark");
-      else root.classList.remove("dark");
-    };
-
-    apply(theme);
-
-    // System o‘zgarsa — jonli yangilash
-    let onChange;
-    if (theme === "system") {
-      onChange = () => apply("system");
-      mq.addEventListener("change", onChange);
-    }
-
+function setThemeInternal(next) {
+  if (next !== "light" && next !== "dark" && next !== "system") return;
+  currentTheme = next;
+  try {
+    localStorage.setItem(KEY, next);
+  } catch {}
+  applyTheme(next);
+  // barcha obunachilarni yangilash
+  listeners.forEach((fn) => {
     try {
-      localStorage.setItem(KEY, theme);
+      fn(currentTheme);
     } catch {}
+  });
+}
 
-    return () => {
-      if (onChange) mq.removeEventListener("change", onChange);
+// ---- Hook API ----
+export function useTheme() {
+  const [theme, setThemeState] = useState(currentTheme);
+
+  // Global o‘zgarishlarga obuna bo‘lish
+  useEffect(() => {
+    const handler = (t) => setThemeState(t);
+    listeners.add(handler);
+    return () => listeners.delete(handler);
+  }, []);
+
+  // System rejimi o‘zgarsa — darhol qo‘llash va bildirish
+  useEffect(() => {
+    if (theme !== "system" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => {
+      applyTheme("system");
+      listeners.forEach((fn) => {
+        try {
+          fn("system");
+        } catch {}
+      });
     };
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
   }, [theme]);
 
-  // Qulaylik uchun:
-  const isDark = useMemo(() => {
-    if (theme === "dark") return true;
-    if (theme === "light") return false;
-    return (
-      window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false
-    );
-  }, [theme]);
+  // Ko‘p tab sinxron
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === KEY) {
+        const next = readStoredTheme();
+        setThemeInternal(next);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
-  const toggle = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
-  const setSystem = () => setTheme("system");
+  const isDark = useMemo(() => computeIsDark(theme), [theme]);
+
+  // Public actions
+  const toggle = () => setThemeInternal(isDark ? "light" : "dark");
+  const setSystem = () => setThemeInternal("system");
+  const setTheme = (t) => setThemeInternal(t);
 
   return { theme, setTheme, isDark, toggle, setSystem };
 }

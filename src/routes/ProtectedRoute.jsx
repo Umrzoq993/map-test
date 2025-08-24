@@ -1,4 +1,3 @@
-// src/routes/ProtectedRoute.jsx
 import { Outlet, Navigate, useLocation } from "react-router-dom";
 import { isAuthenticated } from "../api/auth";
 
@@ -9,7 +8,7 @@ export default function ProtectedRoute() {
     <Navigate
       to="/login"
       replace
-      state={{ from: location }} // ⬅️ LoginPage aynan shuni o‘qiydi
+      state={{ from: location }} // LoginPage shuni o‘qishi mumkin
     />
   );
 }

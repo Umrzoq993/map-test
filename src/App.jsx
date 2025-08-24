@@ -7,9 +7,12 @@ import MapPage from "./pages/MapPage";
 import OrgManager from "./pages/OrgManager";
 import OrgTablePage from "./pages/OrgTablePage";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import AdminRoute from "./routes/AdminRoute";
 import HeaderBar from "./components/layout/HeaderBar";
 import { useTheme } from "./hooks/useTheme";
 import GenericFacilityPage from "./pages/facilities/GenericFacilityPage";
+import { startHeartbeat } from "./boot/heartbeat";
+import SessionsPage from "./pages/admin/SessionsPage";
 
 function useIsMobile(query = "(max-width: 1024px)") {
   const [isMobile, setIsMobile] = useState(false);
@@ -37,6 +40,11 @@ export default function App() {
     if (isMobile) setToggled((t) => !t);
     else setCollapsed((c) => !c);
   };
+
+  useEffect(() => {
+    const stop = startHeartbeat(40000);
+    return () => stop && stop();
+  }, []);
 
   const sidebarWidth = isMobile ? 0 : collapsed ? "80px" : "260px";
 
@@ -106,6 +114,16 @@ export default function App() {
                     />
                     <Route path="/orgs" element={<OrgManager />} />
                     <Route path="/orgs-table" element={<OrgTablePage />} />
+
+                    {/* Admin – faqat ADMIN roli */}
+                    <Route
+                      path="/admin/sessions"
+                      element={
+                        <AdminRoute>
+                          <SessionsPage />
+                        </AdminRoute>
+                      }
+                    />
 
                     {/* Facilities: kanonik yo‘llar */}
                     <Route
