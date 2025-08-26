@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Modal from "../ui/Modal";
 import { createFacility } from "../../api/facilities";
-import { centroidOfGeometry } from "../../utils/geo";
+import { centroidOfGeometry, areaOfGeometryM2 } from "../../utils/geo";
 import { listOrgsPage } from "../../api/org";
 import * as FT from "../../data/facilityTypes";
 const FACILITY_TYPES = FT.FACILITY_TYPES;
@@ -177,6 +177,52 @@ export default function CreateFacilityDrawer({
     return { lat: null, lng: null };
   }, [center, geometry]);
 
+  /* ---------- YANGI: maydon (m² va ga) avtomatik hisoblash ---------- */
+  const calcAreaM2 = useMemo(() => {
+    try {
+      const a = areaOfGeometryM2(geometry);
+      return Number.isFinite(a) ? a : null;
+    } catch {
+      return null;
+    }
+  }, [geometry]);
+  const calcAreaHa = useMemo(
+    () => (calcAreaM2 != null ? calcAreaM2 / 10000 : null),
+    [calcAreaM2]
+  );
+
+  // Schema’da mos maydon maydoni bo‘lsa — avtomatik to‘ldiramiz.
+  // - 'areaM2' mavjud bo‘lsa → m² bilan
+  // - 'totalAreaHa' mavjud bo‘lsa → ga bilan
+  useEffect(() => {
+    if (!open) return;
+    if (calcAreaM2 == null) return;
+    const fields = schema?.fields || [];
+
+    const hasAreaM2 = fields.some((f) => f.key === "areaM2");
+    const hasAreaHa = fields.some((f) => f.key === "totalAreaHa");
+
+    if (!hasAreaM2 && !hasAreaHa) return;
+
+    setAttr((prev) => {
+      const next = { ...prev };
+      let changed = false;
+
+      if (hasAreaM2 && (prev.areaM2 == null || prev.areaM2 === "")) {
+        next.areaM2 = Math.round(calcAreaM2); // butun m² (yaqinlashtirilgan)
+        changed = true;
+      }
+      if (hasAreaHa && (prev.totalAreaHa == null || prev.totalAreaHa === "")) {
+        const ha = calcAreaM2 / 10000;
+        // 4 ta kasr joyi bilan (yetarlicha aniq)
+        next.totalAreaHa = Number(ha.toFixed(4));
+        changed = true;
+      }
+
+      return changed ? next : prev;
+    });
+  }, [open, calcAreaM2, schema?.fields, type]);
+
   const canSave =
     open && name.trim() && orgId != null && !hasErrors(errors) && geometry;
 
@@ -204,6 +250,12 @@ export default function CreateFacilityDrawer({
       setSaving(false);
     }
   };
+
+  // Format helpers (faqat ko‘rsatish uchun)
+  const fmtM2 =
+    calcAreaM2 != null ? Math.round(calcAreaM2).toLocaleString() : "—";
+  const fmtHa =
+    calcAreaHa != null ? Number(calcAreaHa.toFixed(4)).toLocaleString() : "—";
 
   return (
     <Modal
@@ -315,6 +367,30 @@ export default function CreateFacilityDrawer({
             ))}
           </div>
         ) : null}
+
+        {/* YANGI: Hisoblangan maydon preview (readonly) */}
+        <div style={{ display: "grid", gap: 6 }}>
+          <label className="lbl">Hisoblangan maydon (readonly)</label>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <input
+              className="inputLike"
+              readOnly
+              value={fmtM2}
+              placeholder="m²"
+              title="m²"
+            />
+            <input
+              className="inputLike"
+              readOnly
+              value={fmtHa}
+              placeholder="ga"
+              title="ga"
+            />
+          </div>
+          <div className="muted" style={{ fontSize: 12 }}>
+            Poligon/to‘rtburchak geometriyasi chizilganda avtomatik hisoblanadi.
+          </div>
+        </div>
 
         {/* Lat/Lng preview (read-only) */}
         <div style={{ display: "grid", gap: 6 }}>

@@ -1,3 +1,4 @@
+// src/components/map/MapView.jsx
 import React, {
   useEffect,
   useState,
@@ -21,7 +22,8 @@ import "../../styles/leaflet-theme.css";
 
 import { locateOrg } from "../../api/org";
 import { getLatestDrawing, saveDrawing } from "../../api/drawings";
-import { listFacilities } from "../../api/facilities";
+import { listFacilities, patchFacility } from "../../api/facilities";
+import { centroidOfGeometry } from "../../utils/geo";
 
 import MapFlyer from "./MapFlyer";
 import ViewportWatcher from "./ViewportWatcher";
@@ -31,6 +33,7 @@ import CreateFacilityDrawer from "./CreateFacilityDrawer";
 import OrgTreePanel from "./OrgTreePanel";
 import FacilityEditModal from "./FacilityEditModal";
 import CodeJumpBox from "./CodeJumpBox";
+import ZoomIndicator from "./ZoomIndicator";
 
 /* 🔧 DARK MODE PATCH — drawer/slide-over’lar portaldan render bo‘lsa ham ishlaydi */
 const darkDrawerCss = `
@@ -116,6 +119,8 @@ function MapControls({ panelHidden, onTogglePanel }) {
 export default function MapView({
   center = [41.3111, 69.2797],
   zoom = 12,
+  minZoom = 1,
+  maxZoom = 20,
   height = "calc(100vh - 100px)",
   dark = false,
   orgTree = [],
@@ -133,10 +138,94 @@ export default function MapView({
   const onEdited = useCallback(updateGeoJSON, [updateGeoJSON]);
   const onDeleted = useCallback(updateGeoJSON, [updateGeoJSON]);
 
+  // ---- Geometry edit session (facility uchun)
+  const [geomEdit, setGeomEdit] = useState(null); // { facilityId, geometry }
+  // Window event orqali modal’dan keladi
+  useEffect(() => {
+    const handler = (e) => {
+      const { facilityId, geometry } = e.detail || {};
+      setGeomEdit({ facilityId, geometry: geometry || null });
+      // FG ni poligon uchun tayyorlaymiz
+      const fg = featureGroupRef.current;
+      if (!fg) return;
+      fg.clearLayers();
+      if (geometry) {
+        try {
+          L.geoJSON({ type: "Feature", geometry }).eachLayer((lyr) =>
+            fg.addLayer(lyr)
+          );
+        } catch (err) {
+          console.error("Geometry load failed:", err);
+        }
+      }
+    };
+    window.addEventListener("facility:edit-geometry", handler);
+    return () => window.removeEventListener("facility:edit-geometry", handler);
+  }, []);
+
+  const exitGeomEdit = useCallback(() => {
+    const fg = featureGroupRef.current;
+    if (fg) fg.clearLayers();
+    setGeomEdit(null);
+  }, []);
+
+  const saveGeomEdit = useCallback(async () => {
+    const fg = featureGroupRef.current;
+    const gj = fg?.toGeoJSON();
+    const feats = Array.isArray(gj?.features) ? gj.features : [];
+    const geoms = feats
+      .map((f) => f?.geometry)
+      .filter(Boolean)
+      .filter((g) => g.type !== "Point");
+
+    if (geoms.length === 0) {
+      alert(
+        "Poligon chizmadingiz. Iltimos, polygon/rectangle chizing yoki mavjudini tahrirlang."
+      );
+      return;
+    }
+
+    // Bir nechta bo‘lsa — MultiPolygon’ga birlashtiramiz
+    let geometry = null;
+    if (geoms.length === 1) {
+      geometry = geoms[0];
+    } else {
+      const polys = [];
+      for (const g of geoms) {
+        if (g.type === "Polygon") polys.push(g.coordinates);
+        else if (g.type === "MultiPolygon") polys.push(...g.coordinates);
+      }
+      geometry = { type: "MultiPolygon", coordinates: polys };
+    }
+
+    const c = centroidOfGeometry(geometry);
+    try {
+      await patchFacility(geomEdit.facilityId, {
+        geometry,
+        lat: Number.isFinite(c?.lat) ? c.lat : null,
+        lng: Number.isFinite(c?.lng) ? c.lng : null,
+      });
+      alert("Geometriya saqlandi!");
+      exitGeomEdit();
+      setReloadKey((k) => k + 1); // obyektlar ro‘yxatini qayta yuklaymiz
+    } catch (e) {
+      console.error(e);
+      alert("Geometriyani saqlashda xatolik yuz berdi.");
+    }
+  }, [geomEdit?.facilityId, exitGeomEdit]);
+
   // ---- Tree & nav
   const [checkedKeys, setCheckedKeys] = useState([]);
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [navTarget, setNavTarget] = useState(null);
+
+  // ✅ FacilityGeoLayer -> setNavTarget formatini moslashtirish
+  const flyTo = useCallback((latLng, z = 17) => {
+    if (!Array.isArray(latLng) || latLng.length < 2) return;
+    const [lat, lng] = latLng;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    setNavTarget({ lat, lng, zoom: z, ts: Date.now() });
+  }, []);
 
   // Panel ko‘rsatish/yashirish
   const [panelHidden, setPanelHidden] = useState(!!hideTree);
@@ -325,6 +414,9 @@ export default function MapView({
   const onCreated = useCallback(
     (e) => {
       updateGeoJSON();
+      // ✋ Edit-rejimda Create drawer ochilmasin
+      if (geomEdit) return;
+
       const layer = e.layer;
       const type = e.layerType;
       if (!["marker", "polygon", "rectangle"].includes(type)) return;
@@ -336,7 +428,7 @@ export default function MapView({
       setDraftCenter({ lat: c.lat, lng: c.lng });
       setCreateOpen(true);
     },
-    [updateGeoJSON]
+    [updateGeoJSON, geomEdit]
   );
 
   // EDIT modal
@@ -475,15 +567,18 @@ export default function MapView({
       <MapContainer
         center={center}
         zoom={zoom}
+        minZoom={minZoom}
+        maxZoom={maxZoom}
         style={{ height, width: "100%" }}
       >
-        <MapTiles dark={dark} />
+        <MapTiles dark={dark} minZoom={minZoom} maxZoom={maxZoom} />
 
-        {/* Leaflet control: Panel toggle */}
+        {/* Leaflet controls */}
         <MapControls
           panelHidden={panelHidden}
           onTogglePanel={() => setPanelHidden((v) => !v)}
         />
+        <ZoomIndicator position="bottomright" />
 
         {/* Panes */}
         <Pane name="facilities-polys" style={{ zIndex: 410 }} />
@@ -504,7 +599,7 @@ export default function MapView({
         <FacilityGeoLayer
           facilities={visibleFacilities}
           showPolys={showPolys}
-          onFlyTo={setNavTarget}
+          onFlyTo={flyTo}
           onOpenEdit={handleOpenEdit}
         />
 
@@ -527,7 +622,7 @@ export default function MapView({
               rectangle: true,
               circle: false,
               circlemarker: false,
-              marker: true,
+              marker: !geomEdit, // ✨ edit-rejimda marker o‘chiriladi
             }}
           />
         </FeatureGroup>
@@ -557,7 +652,7 @@ export default function MapView({
         onRequestHide={() => setPanelHidden(true)}
       />
 
-      {/* Create Drawer — o‘z joyida */}
+      {/* Create Drawer */}
       <CreateFacilityDrawer
         open={createOpen}
         geometry={draftGeom}
@@ -624,6 +719,41 @@ export default function MapView({
           </div>
         </div>
       </div>
+
+      {/* ✨ Geometriya tahrirlash bannerri — z-index endi 550 (modal(6000) dan past) */}
+      {geomEdit && (
+        <div
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            zIndex: 550,
+            background: "#fff",
+            border: "1px solid #e5e7eb",
+            padding: "10px 12px",
+            borderRadius: 12,
+            boxShadow: "0 10px 30px rgba(0,0,0,.12)",
+            maxWidth: 360,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>
+            Geometriya tahrirlash rejimi
+          </div>
+          <div style={{ fontSize: 13, color: "#475569", marginBottom: 8 }}>
+            Mavjud poligonni <b>Edit</b> bilan o‘zgartiring yoki yangi{" "}
+            <b>Polygon/Rectangle</b> chizing. Keyin “Geometriyani saqlash”
+            tugmasini bosing.
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button className="btn" onClick={exitGeomEdit}>
+              Bekor qilish
+            </button>
+            <button className="btn primary" onClick={saveGeomEdit}>
+              Geometriyani saqlash
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

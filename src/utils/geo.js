@@ -56,3 +56,64 @@ function centroidOfPolygon(rings) {
   cy /= 6 * area;
   return { lat: cy, lng: cx, area: Math.abs(area) };
 }
+
+/* ==================== YANGI: Maydon (m²) hisoblash ==================== */
+/**
+ * GeoJSON Geometry uchun maydon (m²) ni hisoblaydi.
+ * - Polygon: tashqi halqa − ichki halqalar (agar bo‘lsa)
+ * - MultiPolygon: barcha poligonlar yig‘indisi
+ * - Point: 0
+ * Eslatma: hisob Web Mercator (EPSG:3857) ga proyeksiya qilib, shoelace bilan.
+ */
+export function areaOfGeometryM2(geometry) {
+  if (!geometry || !geometry.type) return null;
+
+  if (geometry.type === "Point") return 0;
+
+  if (geometry.type === "Polygon") {
+    return Math.max(0, polygonAreaM2(geometry.coordinates));
+  }
+
+  if (geometry.type === "MultiPolygon") {
+    let sum = 0;
+    for (const poly of geometry.coordinates || []) {
+      sum += Math.max(0, polygonAreaM2(poly));
+    }
+    return sum;
+  }
+
+  return null;
+}
+
+function polygonAreaM2(rings) {
+  if (!Array.isArray(rings) || rings.length === 0) return 0;
+  const outer = rings[0];
+  let area = Math.abs(ringAreaM2(outer));
+  // Ichki halqalarni ayiramiz (holes)
+  for (let i = 1; i < rings.length; i++) {
+    area -= Math.abs(ringAreaM2(rings[i]));
+  }
+  return area;
+}
+
+function ringAreaM2(coords) {
+  // coords: [[lng,lat], ...]
+  if (!Array.isArray(coords) || coords.length < 3) return 0;
+  const pts = coords.map(([lng, lat]) => projectWebMercator(lng, lat));
+  let sum = 0;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const p1 = pts[j];
+    const p2 = pts[i];
+    sum += p1.x * p2.y - p2.x * p1.y;
+  }
+  return Math.abs(sum) / 2; // m²
+}
+
+function projectWebMercator(lng, lat) {
+  // EPSG:3857 (Spherical Mercator) — natija: metr
+  const R = 6378137.0;
+  const d2r = Math.PI / 180;
+  const x = R * lng * d2r;
+  const y = R * Math.log(Math.tan(Math.PI / 4 + (lat * d2r) / 2));
+  return { x, y };
+}
