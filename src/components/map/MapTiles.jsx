@@ -1,60 +1,73 @@
 // src/components/map/MapTiles.jsx
-// Dark/Lite rejimga qarab tile provider tanlaydi.
-// Agar MAPTILER_KEY bo'lsa, MapTiler-ning High-Contrast Dark/OSM Basic xaritalaridan ham foydalanish mumkin.
+import React from "react";
 import { TileLayer } from "react-leaflet";
 
-function pickProvider({ dark }) {
-  // 1) MapTiler (ixtiyoriy, eng barqaror) — .env: VITE_MAPTILER_KEY=xxxx
-  const mtKey = import.meta.env.VITE_MAPTILER_KEY;
-  if (mtKey) {
-    if (dark) {
-      return {
-        url: `https://api.maptiler.com/maps/toner-v2/{z}/{x}/{y}.png?key=${mtKey}`,
-        // variantlar: "toner-v2" (high-contrast), "darkmatter", "dataviz"
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & <a href="https://www.maptiler.com/copyright/">MapTiler</a>',
-        maxZoom: 20,
-      };
-    }
-    return {
-      url: `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${mtKey}`,
-      attribution:
-        '&copy; OSM & <a href="https://www.maptiler.com/">MapTiler</a>',
-      maxZoom: 20,
-    };
-  }
+/**
+ * OFFLINE XYZ yoki TMS tiles (z/x/y.{ext}) uchun qatlam.
+ *
+ * ⚙️ Konfiguratsiya (env orqali boshqariladi):
+ * - VITE_TILE_URL         -> tile URL shablon (masalan: http://localhost:8008/{z}/{x}/{y}.png)
+ * - VITE_TILE_MIN_ZOOM    -> minimal zoom (default: 0)
+ * - VITE_TILE_MAX_ZOOM    -> maksimal zoom (default: 19)
+ * - VITE_TILE_TMS         -> "true" bo‘lsa TMS rejimida ishlaydi (Y teskari hisoblanadi)
+ * - VITE_TILE_ATTRIBUTION -> attribution matni
+ *
+ * Misol:
+ *   VITE_TILE_URL=http://localhost:8008/{z}/{x}/{y}.jpg
+ *   VITE_TILE_TMS=true
+ */
 
-  // 2) CARTO Dark Matter (jamoada keng qo'llanadi) — API keysiz, ammo qoidalari bor.
-  if (dark) {
-    return {
-      url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-      subdomains: "abcd",
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      maxZoom: 20,
-    };
-  }
+const envBool = (v, def = false) => {
+  if (v === undefined || v === null) return def;
+  const s = String(v).trim().toLowerCase();
+  return s === "1" || s === "true" || s === "yes";
+};
 
-  // 3) Default: OpenStreetMap Standard
-  return {
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    subdomains: "abc",
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19,
-  };
-}
+const DEFAULT_URL =
+  import.meta.env.VITE_TILE_URL || "http://localhost:8008/{z}/{x}/{y}.jpg";
 
-export default function MapTiles({ dark }) {
-  const { url, attribution, subdomains, maxZoom } = pickProvider({ dark });
-  // key bilan remount: URL o'zgarsa layer qayta yuklanadi (flashsiz ishonchli switching)
+const DEFAULT_MIN_ZOOM = Number(
+  import.meta.env.VITE_TILE_MIN_ZOOM ?? /* default */ 0
+);
+
+const DEFAULT_MAX_ZOOM = Number(
+  import.meta.env.VITE_TILE_MAX_ZOOM ?? /* default */ 19
+);
+
+const DEFAULT_TMS = envBool(import.meta.env.VITE_TILE_TMS, /* default */ false);
+
+const DEFAULT_ATTR =
+  import.meta.env.VITE_TILE_ATTRIBUTION ?? "&copy; Offline Tiles";
+
+export default function MapTiles(props) {
+  const {
+    url = DEFAULT_URL,
+    minZoom = DEFAULT_MIN_ZOOM,
+    maxZoom = DEFAULT_MAX_ZOOM,
+    tms = DEFAULT_TMS, // ⚠️ env bilan boshqariladi
+    attribution = DEFAULT_ATTR,
+    // detectRetina yoki crossOrigin ni majburan qo‘ymaymiz — server tayyor bo‘lmasligi mumkin
+    ...rest
+  } = props;
+
   return (
     <TileLayer
-      key={dark ? "tiles-dark" : "tiles-light"}
       url={url}
-      attribution={attribution}
-      subdomains={subdomains}
+      minZoom={minZoom}
       maxZoom={maxZoom}
+      tms={tms}
+      attribution={attribution}
+      {...rest}
     />
   );
 }
+
+// Default konfiguratsiyalarni tashqarida ishlatish uchun eksport
+// eslint-disable-next-line react-refresh/only-export-components
+export const OFFLINE_DEFAULTS = {
+  url: DEFAULT_URL,
+  minZoom: DEFAULT_MIN_ZOOM,
+  maxZoom: DEFAULT_MAX_ZOOM,
+  tms: DEFAULT_TMS,
+  attribution: DEFAULT_ATTR,
+};

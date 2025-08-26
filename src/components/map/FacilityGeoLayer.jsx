@@ -3,6 +3,7 @@ import { useMemo, useCallback, useRef } from "react";
 import { GeoJSON, Marker, Popup } from "react-leaflet";
 import { typeColor, badgeIconFor } from "./mapIcons";
 import { centroidOfGeometry } from "../../utils/geo";
+import { areaOfGeometryM2 } from "../../utils/geo";
 import { FACILITY_TYPES } from "../../data/facilityTypes";
 
 export default function FacilityGeoLayer({
@@ -71,12 +72,25 @@ export default function FacilityGeoLayer({
       .map((f) => {
         const c = centroidOfGeometry(f.geometry); // {lat,lng} | null
         if (!c || !isValidLatLng(c)) return null;
+
+        // 🔢 Hisoblangan maydon (m²/ga)
+        let areaM2 = null,
+          areaHa = null;
+        try {
+          const a = areaOfGeometryM2(f.geometry);
+          if (Number.isFinite(a)) {
+            areaM2 = Math.round(a);
+            areaHa = a / 10000;
+          }
+        } catch {}
+
         const typeLabel = FACILITY_TYPES[f.type]?.label || f.type;
         const orgLabel =
           f.orgName ||
           f.org?.name ||
           (f.orgId != null ? `Org #${f.orgId}` : "—");
         const details = f.attributes || f.details || {};
+
         return (
           <Marker
             key={`fc-${f.id}`}
@@ -84,7 +98,7 @@ export default function FacilityGeoLayer({
             icon={badgeIconFor(f.type, 28)}
             pane="facilities-centroids"
             eventHandlers={{
-              click: () => onOpenEdit?.(f.id),
+              click: () => onOpenEdit?.(f), // ✅ to‘liq obyekt yuboramiz
               dblclick: () => onFlyTo?.([c.lat, c.lng], 17),
             }}
           >
@@ -97,6 +111,32 @@ export default function FacilityGeoLayer({
                   {typeLabel} {f.status ? `• ${f.status}` : ""} <br />
                   <span style={{ opacity: 0.9 }}>Bo‘lim:</span> {orgLabel}
                 </div>
+
+                {/* 🔢 Hisoblangan maydon badge */}
+                {areaM2 != null && (
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "4px 8px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 999,
+                      background: "#f8fafc",
+                      fontSize: 12,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <strong>Maydon:</strong>
+                    <span>
+                      {areaM2.toLocaleString()} m²{" "}
+                      <span style={{ opacity: 0.7 }}>
+                        ({Number(areaHa.toFixed(4)).toLocaleString()} ga)
+                      </span>
+                    </span>
+                  </div>
+                )}
+
                 {/* maydonlar (eski popup tarkibi bilan mos) */}
                 <div style={{ display: "grid", gap: 6 }}>
                   {(FACILITY_TYPES[f.type]?.fields || []).map((fld) => {
@@ -129,7 +169,7 @@ export default function FacilityGeoLayer({
                 <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
                   <button
                     className="pp-edit-react"
-                    onClick={() => onOpenEdit?.(f.id)}
+                    onClick={() => onOpenEdit?.(f)} // ✅ obyekt
                     style={{
                       padding: "6px 10px",
                       borderRadius: 8,
@@ -187,6 +227,22 @@ export default function FacilityGeoLayer({
         f.orgName || f.org?.name || (f.orgId != null ? `Org #${f.orgId}` : "—");
       const details = f.attributes || f.details || {};
 
+      // 🔢 Hisoblangan maydon (m²/ga)
+      let areaBlock = "";
+      try {
+        const a = areaOfGeometryM2(f.geometry);
+        if (Number.isFinite(a)) {
+          const m2 = Math.round(a).toLocaleString();
+          const ha = Number((a / 10000).toFixed(4)).toLocaleString();
+          areaBlock = `
+            <div style="display:inline-flex;align-items:center;gap:8px;padding:4px 8px;border:1px solid #e5e7eb;border-radius:999px;background:#f8fafc;font-size:12px;margin:6px 0 8px;">
+              <strong>Maydon:</strong>
+              <span>${m2} m² <span style="opacity:.7">(${ha} ga)</span></span>
+            </div>
+          `;
+        }
+      } catch {}
+
       const rows = (FACILITY_TYPES[f.type]?.fields || [])
         .map((fld) => {
           const val = details[fld.key];
@@ -213,6 +269,7 @@ export default function FacilityGeoLayer({
       }<br/>
             <span style="opacity:.9">Bo‘lim:</span> ${escapeHtml(orgLabel)}
           </div>
+          ${areaBlock}
           ${rows}
           <div style="margin-top:8px; display:flex; gap:8px;">
             <button class="pp-edit" data-id="${id}" style="padding:6px 10px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;cursor:pointer">Tahrirlash</button>
@@ -231,7 +288,7 @@ export default function FacilityGeoLayer({
         if (!el) return;
         const btnEdit = el.querySelector(".pp-edit");
         const btnZoom = el.querySelector(".pp-zoom");
-        if (btnEdit) btnEdit.addEventListener("click", () => onOpenEdit?.(id));
+        if (btnEdit) btnEdit.addEventListener("click", () => onOpenEdit?.(f)); // ✅ obyekt
         if (btnZoom) {
           const c = centroidOfGeometry(f.geometry);
           if (c && isValidLatLng(c) && onFlyTo) onFlyTo([c.lat, c.lng], 17);

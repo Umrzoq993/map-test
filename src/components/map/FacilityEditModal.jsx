@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Modal from "../ui/Modal";
 import { patchFacility } from "../../api/facilities";
 import styles from "./FacilityEditModal.module.scss";
 import { FACILITY_TYPES } from "../../data/facilityTypes";
+import { areaOfGeometryM2 } from "../../utils/geo";
 
 export default function FacilityEditModal({
   open,
@@ -17,6 +18,13 @@ export default function FacilityEditModal({
   const [attrs, setAttrs] = useState({});
   const canSave = name.trim().length > 0;
 
+  // Schema (tanlangan turga mos maydonlar)
+  const schemaFields = useMemo(
+    () => FACILITY_TYPES[type]?.fields || [],
+    [type]
+  );
+
+  // Modal ochilganda boshlang'ich qiymatlar
   useEffect(() => {
     if (!facility) return;
     setName(facility.name || "");
@@ -41,6 +49,102 @@ export default function FacilityEditModal({
     (facility?.orgId != null ? `Org #${facility.orgId}` : "—");
 
   const onChangeAttr = (k, v) => setAttrs((s) => ({ ...s, [k]: v }));
+
+  /* ---------------------------------
+   *  MAYDONNI HISOBLASH (m² / ga)
+   * ---------------------------------*/
+  const calcAreaM2 = useMemo(() => {
+    try {
+      if (!facility?.geometry) return null;
+      const a = areaOfGeometryM2(facility.geometry);
+      return Number.isFinite(a) ? a : null;
+    } catch {
+      return null;
+    }
+  }, [facility?.geometry]);
+
+  const calcAreaHa = useMemo(
+    () => (calcAreaM2 != null ? calcAreaM2 / 10000 : null),
+    [calcAreaM2]
+  );
+
+  const hasAreaM2Field = useMemo(
+    () => schemaFields.some((f) => f.key === "areaM2"),
+    [schemaFields]
+  );
+  const hasAreaHaField = useMemo(
+    () => schemaFields.some((f) => f.key === "totalAreaHa"),
+    [schemaFields]
+  );
+
+  // Modal ochilganda/form qayta tiklanganda — bo'sh bo'lsa avtomatik to'ldirish
+  useEffect(() => {
+    if (!open) return;
+    if (calcAreaM2 == null) return;
+    if (!hasAreaM2Field && !hasAreaHaField) return;
+
+    setAttrs((prev) => {
+      const next = { ...prev };
+      let changed = false;
+
+      if (hasAreaM2Field && (prev.areaM2 == null || prev.areaM2 === "")) {
+        next.areaM2 = Math.round(calcAreaM2);
+        changed = true;
+      }
+      if (
+        hasAreaHaField &&
+        (prev.totalAreaHa == null || prev.totalAreaHa === "")
+      ) {
+        next.totalAreaHa = Number((calcAreaM2 / 10000).toFixed(4));
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [open, calcAreaM2, hasAreaM2Field, hasAreaHaField]);
+
+  // Xaritada geometriya tahrirlash rejimini ishga tushirish
+  const startGeometryEdit = () => {
+    if (!facility) return;
+    try {
+      window.dispatchEvent(
+        new CustomEvent("facility:edit-geometry", {
+          detail: {
+            facilityId: facility.id,
+            geometry: facility.geometry || null,
+          },
+        })
+      );
+      onClose?.(); // modalni yopamiz
+    } catch (e) {
+      console.error(e);
+      alert("Geometriya tahrirlashni ishga tushirib bo‘lmadi.");
+    }
+  };
+
+  // “Qayta hisoblash” — geometriya yo‘q/Point bo‘lsa edit rejimiga taklif
+  const recalcArea = () => {
+    if (calcAreaM2 == null) {
+      const go = confirm(
+        "Geometriya mavjud emas yoki poligon emas. Geometriyani chizish/tahrirlash rejimiga o‘tasizmi?"
+      );
+      if (go) startGeometryEdit();
+      return;
+    }
+    // mavjud bo‘lsa — formadagi maydon qiymatlarini yangilaymiz
+    setAttrs((prev) => {
+      const next = { ...prev };
+      if (hasAreaM2Field) next.areaM2 = Math.round(calcAreaM2);
+      if (hasAreaHaField)
+        next.totalAreaHa = Number((calcAreaM2 / 10000).toFixed(4));
+      return next;
+    });
+  };
+
+  // Formatlangan preview
+  const fmtM2 =
+    calcAreaM2 != null ? Math.round(calcAreaM2).toLocaleString() : "—";
+  const fmtHa =
+    calcAreaHa != null ? Number(calcAreaHa.toFixed(4)).toLocaleString() : "—";
 
   const onSave = async () => {
     if (!canSave || !facility) return;
@@ -124,6 +228,30 @@ export default function FacilityEditModal({
         {/* Details */}
         <section className={styles.section}>
           <div className={styles.sectionTitle}>Maxsus maydonlar</div>
+
+          {/* Hisoblangan maydon preview + Recalc + Edit geom */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "center",
+              marginBottom: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <span className={styles.label}>
+              Hisoblangan maydon:&nbsp;
+              <b>{fmtM2}</b>&nbsp;m²&nbsp;(
+              <b>{fmtHa}</b>&nbsp;ga)
+            </span>
+            <button className="btn" type="button" onClick={recalcArea}>
+              Qayta hisoblash
+            </button>
+            <button className="btn" type="button" onClick={startGeometryEdit}>
+              Geometriyani tahrirlash/chizish
+            </button>
+          </div>
+
           <div className={styles.grid}>
             {(FACILITY_TYPES[type]?.fields || []).map((f) => (
               <div key={f.key} className={styles.field}>
