@@ -654,11 +654,11 @@ export default function MapView({
           <LayersControl.BaseLayer checked name="Bing Hybrid (offline, 8008)">
             <MapTiles
               key="hybrid-8008"
-              url="http://localhost:8008/{z}/{x}/{y}.jpg"
+              url={import.meta.env.VITE_TILE_HYBRID}
               minZoom={minZoom}
               maxZoom={maxZoom}
               maxNativeZoom={maxZoom}
-              tms={true}
+              tms={import.meta.env.VITE_TILE_TMS === true}
               noWrap={true}
               updateWhenIdle={true}
               keepBuffer={2}
@@ -668,11 +668,11 @@ export default function MapView({
           <LayersControl.BaseLayer name="Bing Satellite (offline, 5005)">
             <MapTiles
               key="satellite-5005"
-              url="http://localhost:5005/{z}/{x}/{y}.jpg"
+              url={import.meta.env.VITE_TILE_SATELLITE}
               minZoom={minZoom}
               maxZoom={maxZoom}
               maxNativeZoom={maxZoom}
-              tms={true}
+              tms={import.meta.env.VITE_TILE_TMS === true}
               noWrap={true}
               updateWhenIdle={true}
               keepBuffer={2}
