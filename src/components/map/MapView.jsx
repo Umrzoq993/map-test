@@ -5,6 +5,8 @@ import React, {
   useRef,
   useCallback,
   useMemo,
+  Suspense,
+  lazy,
 } from "react";
 import {
   MapContainer,
@@ -13,8 +15,12 @@ import {
   FeatureGroup,
   Pane,
   useMap,
+  LayersControl,
 } from "react-leaflet";
-import { EditControl } from "react-leaflet-draw";
+// ✨ Og‘ir paketni faqat kerak bo‘lganda yuklaymiz
+const EditControlLazy = lazy(() =>
+  import("react-leaflet-draw").then((m) => ({ default: m.EditControl }))
+);
 import L from "leaflet";
 
 import MapTiles from "./MapTiles";
@@ -116,6 +122,21 @@ function MapControls({ panelHidden, onTogglePanel }) {
   return null;
 }
 
+/* -------------------------- Kichik util funksiyalar -------------------------- */
+function parseBBox(bboxStr) {
+  const [w, s, e, n] = String(bboxStr || "")
+    .split(",")
+    .map((x) => Number(x));
+  return { w, s, e, n };
+}
+function bufferBBoxStr(bboxStr, ratio = 0.2) {
+  const { w, s, e, n } = parseBBox(bboxStr);
+  if (![w, s, e, n].every(Number.isFinite)) return bboxStr;
+  const dw = (e - w) * ratio;
+  const dh = (n - s) * ratio;
+  return [w - dw, s - dh, e + dw, n + dh].join(",");
+}
+
 export default function MapView({
   center = [41.3111, 69.2797],
   zoom = 12,
@@ -140,12 +161,10 @@ export default function MapView({
 
   // ---- Geometry edit session (facility uchun)
   const [geomEdit, setGeomEdit] = useState(null); // { facilityId, geometry }
-  // Window event orqali modal’dan keladi
   useEffect(() => {
     const handler = (e) => {
       const { facilityId, geometry } = e.detail || {};
       setGeomEdit({ facilityId, geometry: geometry || null });
-      // FG ni poligon uchun tayyorlaymiz
       const fg = featureGroupRef.current;
       if (!fg) return;
       fg.clearLayers();
@@ -185,7 +204,6 @@ export default function MapView({
       return;
     }
 
-    // Bir nechta bo‘lsa — MultiPolygon’ga birlashtiramiz
     let geometry = null;
     if (geoms.length === 1) {
       geometry = geoms[0];
@@ -207,7 +225,7 @@ export default function MapView({
       });
       alert("Geometriya saqlandi!");
       exitGeomEdit();
-      setReloadKey((k) => k + 1); // obyektlar ro‘yxatini qayta yuklaymiz
+      setReloadKey((k) => k + 1);
     } catch (e) {
       console.error(e);
       alert("Geometriyani saqlashda xatolik yuz berdi.");
@@ -219,7 +237,6 @@ export default function MapView({
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [navTarget, setNavTarget] = useState(null);
 
-  // ✅ FacilityGeoLayer -> setNavTarget formatini moslashtirish
   const flyTo = useCallback((latLng, z = 17) => {
     if (!Array.isArray(latLng) || latLng.length < 2) return;
     const [lat, lng] = latLng;
@@ -280,18 +297,34 @@ export default function MapView({
   const [reloadKey, setReloadKey] = useState(0);
   const [showPolys, setShowPolys] = useState(true);
 
-  // Oxirgi chizmani yuklash (ixtiyoriy)
+  // 🔧 Oxirgi chizmani yuklash — Point (Marker) larsiz
   useEffect(() => {
     (async () => {
       try {
         if (!getLatestDrawing) return;
         const latest = await getLatestDrawing();
-        if (!latest?.geojson) return;
+        const src = latest?.geojson;
+        if (!src) return;
+
+        // faqat Polygon/MultiPolygonlarni qoldiramiz
+        const features = Array.isArray(src.features)
+          ? src.features.filter(
+              (fe) =>
+                fe?.geometry && fe.geometry.type && fe.geometry.type !== "Point"
+            )
+          : [];
+
+        const cleaned = {
+          type: "FeatureCollection",
+          features,
+        };
+
         const fg = featureGroupRef.current;
         if (!fg) return;
         fg.clearLayers();
-        L.geoJSON(latest.geojson).eachLayer((lyr) => fg.addLayer(lyr));
-        setGeojson(latest.geojson);
+
+        L.geoJSON(cleaned).eachLayer((lyr) => fg.addLayer(lyr));
+        setGeojson(cleaned);
       } catch (e) {
         console.error("Load latest drawing failed:", e);
       }
@@ -351,40 +384,45 @@ export default function MapView({
     else setExpandedKeys(undefined);
   }, [visibleKeySet]);
 
+  // ✅ Org markerlar — faqat chek qilingan bo‘limlarda
   const visibleMarkers = useMemo(
     () => flatNodes.filter((n) => n.pos && checkedKeys.includes(String(n.key))),
     [flatNodes, checkedKeys]
   );
 
-  // SELECT (flyTo)
-  const onTreeSelect = (keys) => {
-    setSelectedKeys(keys);
-    const k = keys?.[0] ? String(keys[0]) : null;
-    if (!k) return;
-    const n = flatNodes.find((x) => String(x.key) === k);
-    if (n?.pos && Array.isArray(n.pos)) {
-      setNavTarget({
-        lat: n.pos[0],
-        lng: n.pos[1],
-        zoom: Number.isFinite(n.zoom) ? n.zoom : 13,
-        ts: Date.now(),
-      });
-    }
-  };
-  const onTreeExpand = (keys) => setExpandedKeys(keys);
-  const onTreeCheck = (keys) => setCheckedKeys(keys.map(String));
+  // FETCH facilities — 🔥 optimallashtirilgan (bbox buffer + kesh)
+  const facCacheRef = useRef(new Map()); // key -> { ts, data }
+  const FAC_TTL = 15_000; // 15s
 
-  // FETCH facilities
   useEffect(() => {
     let cancelled = false;
+
     if (!bbox || checkedOrgIds.length === 0 || enabledTypes.length === 0) {
       setFacilities([]);
       return;
     }
+
+    const buffered = bufferBBoxStr(bbox, 0.2);
+    const cacheKey = [
+      buffered,
+      checkedOrgIds
+        .slice()
+        .sort((a, b) => a - b)
+        .join(","),
+      enabledTypes.slice().sort().join(","),
+    ].join("|");
+
+    // kesh urilishi
+    const hit = facCacheRef.current.get(cacheKey);
+    if (hit && Date.now() - hit.ts < FAC_TTL) {
+      setFacilities(hit.data);
+      return;
+    }
+
     const t = setTimeout(async () => {
       try {
         const reqs = checkedOrgIds.map((orgId) =>
-          listFacilities({ orgId, types: enabledTypes, bbox })
+          listFacilities({ orgId, types: enabledTypes, bbox: buffered })
         );
         const all = (await Promise.all(reqs)).flat();
         const seen = new Set();
@@ -395,11 +433,15 @@ export default function MapView({
             uniq.push(f);
           }
         }
-        if (!cancelled) setFacilities(uniq);
+        if (!cancelled) {
+          setFacilities(uniq);
+          facCacheRef.current.set(cacheKey, { ts: Date.now(), data: uniq });
+        }
       } catch (e) {
         if (!cancelled) console.error("listFacilities failed:", e);
       }
-    }, 250);
+    }, 250); // moveend debounce
+
     return () => {
       cancelled = true;
       clearTimeout(t);
@@ -414,7 +456,6 @@ export default function MapView({
   const onCreated = useCallback(
     (e) => {
       updateGeoJSON();
-      // ✋ Edit-rejimda Create drawer ochilmasin
       if (geomEdit) return;
 
       const layer = e.layer;
@@ -437,6 +478,22 @@ export default function MapView({
   const handleOpenEdit = (f) => {
     setEditFacility(f);
     setEditOpen(true);
+  };
+
+  // SELECT (flyTo)
+  const onTreeSelect = (keys) => {
+    setSelectedKeys(keys);
+    const k = keys?.[0] ? String(keys[0]) : null;
+    if (!k) return;
+    const n = flatNodes.find((x) => String(x.key) === k);
+    if (n?.pos && Array.isArray(n.pos)) {
+      setNavTarget({
+        lat: n.pos[0],
+        lng: n.pos[1],
+        zoom: Number.isFinite(n.zoom) ? n.zoom : 13,
+        ts: Date.now(),
+      });
+    }
   };
 
   const geojsonPretty = geojson ? JSON.stringify(geojson, null, 2) : "";
@@ -509,20 +566,17 @@ export default function MapView({
 
         const idStr = String(org.id);
 
-        // Tree: check + select
         setCheckedKeys((prev) =>
           prev.includes(idStr) ? prev : [...prev, idStr]
         );
         setSelectedKeys([idStr]);
 
-        // Tree: ancestors’ni expand qilish
         const ancestors = collectAncestorsKeys(orgTree, idStr) || [];
         setExpandedKeys((prev) => {
           const prevArr = prev ? prev.map(String) : [];
           return Array.from(new Set([...prevArr, ...ancestors, idStr]));
         });
 
-        // Xarita flyTo — faqat muvaffaqiyatdan keyin
         const lat =
           typeof org.lat === "number"
             ? org.lat
@@ -558,20 +612,74 @@ export default function MapView({
     [orgTree, collectAncestorsKeys]
   );
 
+  // ✨ Banner style’larini memo qilamiz (renderlarni kamaytirish uchun)
+  const editBannerStyle = useMemo(
+    () => ({
+      position: "absolute",
+      top: 12,
+      right: 12,
+      zIndex: 550,
+      background: "#fff",
+      border: "1px solid #e5e7eb",
+      padding: "10px 12px",
+      borderRadius: 12,
+      boxShadow: "0 10px 30px rgba(0,0,0,.12)",
+      maxWidth: 360,
+    }),
+    []
+  );
+
   return (
     <div className="map-wrapper" style={{ position: "relative" }}>
       {/* 🔧 Dark-mode drawer patch CSS */}
       <style>{darkDrawerCss}</style>
 
       <CodeJumpBox orgTree={orgTree} onJump={handleCodeJump} />
+
       <MapContainer
         center={center}
         zoom={zoom}
         minZoom={minZoom}
         maxZoom={maxZoom}
+        // ✨ Canvas renderer + yumshoq zoom/pan
+        preferCanvas={true}
+        wheelDebounceTime={40}
+        wheelPxPerZoomLevel={80}
         style={{ height, width: "100%" }}
       >
-        <MapTiles dark={dark} minZoom={minZoom} maxZoom={maxZoom} />
+        {/* 🧭 Bazaviy qatlamlarni almashtirish — pastki o‘ngda
+            Hybrid — 8008 (yangi), Satellite — 5005 (eski)
+            BaseLayer + unique key => qatlam to‘liq unmount/mount bo‘ladi */}
+        <LayersControl position="bottomright">
+          <LayersControl.BaseLayer checked name="Bing Hybrid (offline, 8008)">
+            <MapTiles
+              key="hybrid-8008"
+              url="http://localhost:8008/{z}/{x}/{y}.jpg"
+              minZoom={minZoom}
+              maxZoom={maxZoom}
+              maxNativeZoom={maxZoom}
+              tms={true}
+              noWrap={true}
+              updateWhenIdle={true}
+              keepBuffer={2}
+              attribution="&copy; Hybrid (offline)"
+            />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="Bing Satellite (offline, 5005)">
+            <MapTiles
+              key="satellite-5005"
+              url="http://localhost:5005/{z}/{x}/{y}.jpg"
+              minZoom={minZoom}
+              maxZoom={maxZoom}
+              maxNativeZoom={maxZoom}
+              tms={true}
+              noWrap={true}
+              updateWhenIdle={true}
+              keepBuffer={2}
+              attribution="&copy; Satellite (offline)"
+            />
+          </LayersControl.BaseLayer>
+        </LayersControl>
 
         {/* Leaflet controls */}
         <MapControls
@@ -588,9 +696,9 @@ export default function MapView({
         <ViewportWatcher onBboxChange={setBbox} />
         <MapFlyer target={navTarget} />
 
-        {/* Org markerlar */}
+        {/* Org markerlar — faqat chek qilingan bo‘limlar */}
         {visibleMarkers.map((n) => (
-          <Marker key={n.key} position={n.pos}>
+          <Marker key={n.key} position={n.pos} pane="facilities-markers">
             <Popup>{n.title}</Popup>
           </Marker>
         ))}
@@ -609,26 +717,30 @@ export default function MapView({
           onOpenEdit={handleOpenEdit}
         />
 
-        {/* Draw controls (topright) */}
+        {/* Draw controls — faqat kerak bo‘lganda yuklaymiz */}
         <FeatureGroup ref={featureGroupRef}>
-          <EditControl
-            position="topright"
-            onCreated={onCreated}
-            onEdited={onEdited}
-            onDeleted={onDeleted}
-            draw={{
-              polyline: false,
-              polygon: true,
-              rectangle: true,
-              circle: false,
-              circlemarker: false,
-              marker: !geomEdit, // ✨ edit-rejimda marker o‘chiriladi
-            }}
-          />
+          {(geomEdit || createOpen) && (
+            <Suspense fallback={null}>
+              <EditControlLazy
+                position="topright"
+                onCreated={onCreated}
+                onEdited={onEdited}
+                onDeleted={onDeleted}
+                draw={{
+                  polyline: false,
+                  polygon: true,
+                  rectangle: true,
+                  circle: false,
+                  circlemarker: false,
+                  marker: !geomEdit, // edit rejimida marker yo‘q
+                }}
+              />
+            </Suspense>
+          )}
         </FeatureGroup>
       </MapContainer>
 
-      {/* Org tree panel (T bilan yashirish/ko‘rsatish) */}
+      {/* Org tree panel */}
       <OrgTreePanel
         rcData={rcData}
         checkedKeys={checkedKeys}
@@ -720,22 +832,9 @@ export default function MapView({
         </div>
       </div>
 
-      {/* ✨ Geometriya tahrirlash bannerri — z-index endi 550 (modal(6000) dan past) */}
+      {/* ✨ Geometriya tahrirlash bannerri */}
       {geomEdit && (
-        <div
-          style={{
-            position: "absolute",
-            top: 12,
-            right: 12,
-            zIndex: 550,
-            background: "#fff",
-            border: "1px solid #e5e7eb",
-            padding: "10px 12px",
-            borderRadius: 12,
-            boxShadow: "0 10px 30px rgba(0,0,0,.12)",
-            maxWidth: 360,
-          }}
-        >
+        <div style={editBannerStyle}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>
             Geometriya tahrirlash rejimi
           </div>
