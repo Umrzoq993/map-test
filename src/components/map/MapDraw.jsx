@@ -185,11 +185,11 @@ export default function MapDraw({
     COWSHED: true,
     STABLE: true,
     FISHFARM: true,
-    WAREHOUSE: false,
-    ORCHARD: false,
-    FIELD: false,
+    WAREHOUSE: true,
+    ORCHARD: true,
+    FIELD: true,
     POULTRY: true,
-    APIARY: false,
+    APIARY: true,
   });
   const enabledTypes = useMemo(
     () =>
