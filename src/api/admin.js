@@ -85,13 +85,14 @@ export async function revokeAllForUser(userIdParam) {
 
 /**
  * Audit log ro'yxati (paging).
- * opts: { page=0, size=20, userId, deviceId, event, from, to, sort="ts,desc" }
- * Backendda /api/admin/audit (yoki /auth/audit) bo‘lishi kutiladi.
+ * opts: { page=0, size=10, userId, deviceId, event, from, to, sort="ts,desc" }
+ * Backend: GET /api/admin/audit  → PageResponse<AuditRes>
+ * { content, page, size, totalElements, totalPages, last }
  */
 export async function listAudit(opts = {}) {
   const {
     page = 0,
-    size = 20,
+    size = 10, // UI defaultiga mos
     userId,
     deviceId,
     event,
@@ -104,26 +105,50 @@ export async function listAudit(opts = {}) {
   if (userId != null) params.userId = userId;
   if (deviceId) params.deviceId = deviceId;
   if (event) params.event = event;
-  if (from) params.from = from; // ISO/`YYYY-MM-DDTHH:mm`
+  if (from) params.from = from; // ISO
   if (to) params.to = to;
 
-  // Backend endpoint nomi loyiha bo‘yicha farq qilsa, shu yerda moslashtirasiz:
-  const res = await httpGet("/admin/audit", params);
-  // Kutiladigan format: { content, page, size, total }
-  const content = Array.isArray(res?.content) ? res.content : [];
-  return {
-    content: content.map((a) => ({
-      id: a.id,
-      event: a.event,
-      username: a.username ?? a.user?.username ?? null,
-      userId: a.userId ?? a.user?.id ?? null,
-      deviceId: a.deviceId,
-      ip: a.ip,
-      userAgent: a.userAgent,
-      ts: a.ts,
-    })),
-    page: res?.page ?? page,
-    size: res?.size ?? size,
-    total: res?.total ?? content.length,
-  };
+  // ⚠️ Backend controller yo‘li:
+  const raw = await httpGet("/admin/audit", params);
+
+  // Backend PageResponse’ni UI shape’ga map qilish
+  const contentRaw = Array.isArray(raw?.content)
+    ? raw.content
+    : Array.isArray(raw?.items)
+    ? raw.items
+    : [];
+
+  const content = contentRaw.map((a) => ({
+    id: a.id,
+    event: a.event,
+    username: a.username ?? a.user?.username ?? null,
+    userId: a.userId ?? a.user?.id ?? null,
+    deviceId: a.deviceId,
+    ip: a.ip,
+    userAgent: a.userAgent,
+    ts: a.ts,
+  }));
+
+  const pageNo = Number.isFinite(raw?.page)
+    ? raw.page
+    : Number.isFinite(raw?.number)
+    ? raw.number
+    : page;
+
+  const pageSize = Number.isFinite(raw?.size)
+    ? raw.size
+    : Number.isFinite(raw?.pageSize)
+    ? raw.pageSize
+    : size;
+
+  // ✅ MUHIM: totalElements → total
+  const totalAll = Number.isFinite(raw?.totalElements)
+    ? raw.totalElements
+    : Number.isFinite(raw?.total)
+    ? raw.total
+    : Number.isFinite(raw?.totalCount)
+    ? raw.totalCount
+    : contentRaw.length;
+
+  return { content, page: pageNo, size: pageSize, total: totalAll };
 }

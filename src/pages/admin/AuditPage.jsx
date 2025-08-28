@@ -38,9 +38,9 @@ export default function AuditPage() {
   const [to, setTo] = useState("");
   const [q, setQ] = useState("");
 
-  // Sahifalash
+  // Sahifalash (default 10)
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
+  const [size, setSize] = useState(10);
   const [sort, setSort] = useState("ts,desc");
 
   const [rows, setRows] = useState([]);
@@ -50,7 +50,12 @@ export default function AuditPage() {
   async function load(p = page) {
     setBusy(true);
     try {
-      const { content, total: t } = await listAudit({
+      const {
+        content,
+        total: t,
+        page: rp,
+        // size: rs, // server size'ni e'tiborga olmaymiz — client tanlovi ustuvor
+      } = await listAudit({
         page: p,
         size,
         sort,
@@ -62,7 +67,8 @@ export default function AuditPage() {
       });
       setRows(content);
       setTotal(t);
-      setPage(p);
+      setPage(typeof rp === "number" ? rp : p);
+      // setSize(rs) NI QILMAYMIZ
     } finally {
       setBusy(false);
     }
@@ -83,7 +89,9 @@ export default function AuditPage() {
     );
   }, [rows, q]);
 
-  const totalPages = Math.max(1, Math.ceil(total / size));
+  const totalPages = Math.max(1, Math.ceil(total / Math.max(1, size)));
+  const fromRow = total ? page * size + 1 : 0;
+  const toRow = Math.min(total, (page + 1) * size);
 
   return (
     <div className={styles.page} data-theme={isDark ? "dark" : "light"}>
@@ -241,8 +249,10 @@ export default function AuditPage() {
             value={size}
             onChange={(e) => {
               const n = Number(e.target.value);
-              setSize(n);
-              setPage(0);
+              if (n !== size) {
+                setSize(n);
+                setPage(0); // useEffect([size,sort]) o‘zi load(0) qiladi
+              }
             }}
           >
             {[10, 20, 50, 100].map((n) => (
@@ -269,7 +279,8 @@ export default function AuditPage() {
             ‹ Oldingi
           </button>
           <span className={styles.muted}>
-            Sahifa {page + 1} / {Math.max(1, Math.ceil(total / size))}
+            Sahifa {page + 1} / {totalPages} · Ko‘rsatilmoqda {fromRow}–{toRow}{" "}
+            / {total}
           </span>
           <button
             className={styles.btn}
