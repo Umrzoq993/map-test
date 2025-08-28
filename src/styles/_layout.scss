@@ -1,5 +1,7 @@
+// src/styles/_layout.scss
 @use "./variables" as *;
 @use "./mixins" as *;
+@use "./org_table";
 
 .app-layout {
   display: grid;

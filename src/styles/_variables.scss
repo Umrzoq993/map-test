@@ -1,3 +1,4 @@
+// src/styles/_variables.scss
 @use "sass:color";
 
 $font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
@@ -54,3 +55,27 @@ $sidebar-dark-indicator: $primary;
 $badge-dark-bg: rgba($primary, 0.22);
 $badge-dark-text: #dbeafe;
 $badge-dark-border: transparent;
+
+$text: #fcfcfc;
+
+/* CSS var ni SASSda ishlatish uchun helper */
+@function c($name, $fallback: null) {
+  @if $fallback == null {
+    @return var(--#{$name});
+  }
+  @return var(--#{$name}, #{$fallback});
+}
+
+/* Endi $variables faqat var(--...) ga ko'prik */
+$bg: c("bg", #f6f9fc);
+$card: c("card", #ffffff);
+$text: c("text", #0f172a);
+$muted: c("muted", #64748b);
+$border: c("border", #e5e7eb);
+
+$brand: c("brand", #22c55e);
+$brand2: c("brand-2", #16a34a);
+
+$danger-bg: c("danger-bg", #fee2e2);
+$danger-text: c("danger-text", #991b1b);
+$danger-border: c("danger-border", #fecaca);

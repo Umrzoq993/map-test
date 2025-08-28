@@ -1,0 +1,165 @@
+// FacilityEditModal.module.scss
+
+/* Modal ichida zamonaviy, dark-aware dizayn.
+   Ranglar Modal.scss dagi --md-* tokenlardan olinadi. */
+
+.wrapper {
+  display: grid;
+  gap: 14px;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  padding: 12px;
+  background: var(--md-header);
+  border: 1px solid var(--md-border);
+  border-radius: 12px;
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  border-radius: 12px;
+  background: var(--md-card);
+  border: 1px solid var(--md-border);
+}
+
+.head {
+  display: grid;
+  gap: 8px;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--md-fg);
+  opacity: 0.7;
+}
+
+.nameInput {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--md-border);
+  background: var(--md-card);
+  color: var(--md-fg);
+}
+
+.metaRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.metaItem {
+  display: grid;
+  gap: 4px;
+}
+
+.k {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.v {
+  font-weight: 600;
+}
+
+.select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--md-border);
+  background: var(--md-card);
+  color: var(--md-fg);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  background: var(--md-card);
+  border: 1px solid var(--md-border);
+}
+
+.section {
+  padding: 12px;
+  border: 1px solid var(--md-border);
+  border-radius: 12px;
+  background: var(--md-card);
+}
+
+.sectionTitle {
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--md-border);
+  background: var(--md-card);
+  color: var(--md-fg);
+}
+
+.inputWrap {
+  position: relative;
+  display: grid;
+}
+
+.unit {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  translate: 0 -50%;
+  font-size: 12px;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.hint {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--md-border);
+  padding-top: 10px;
+}
+
+.saveBtn {
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 600;
+}

@@ -1,15 +1,18 @@
+// src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
+import "./leaflet.fix.js";
 
 // Leaflet CSS
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
-// Global SCSS
+
+// ✅ Faqat umumiy SCSS kirish fayli:
 import "./styles/index.scss";
 
-// Vite’da marker ikon yo‘llarini to‘g‘rilash
+// Vite’da marker ikonlarini to‘g‘rilash (qoldiring)
 import L from "leaflet";
 import marker2x from "leaflet/dist/images/marker-icon-2x.png";
 import marker from "leaflet/dist/images/marker-icon.png";

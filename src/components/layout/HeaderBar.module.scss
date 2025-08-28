@@ -1,0 +1,120 @@
+/* Scoped HeaderBar — dark/light toggle bilan to'liq mos */
+
+.header {
+  /* LIGHT tokens */
+  --hb-bg: #ffffff;
+  --hb-fg: #0f172a;
+  --hb-border: #e5e7eb;
+
+  --btn-bg: #ffffff;
+  --btn-fg: var(--hb-fg);
+  --btn-border: var(--hb-border);
+
+  --chip-bg: #ecfdf5;
+  --chip-fg: #065f46;
+  --chip-border: #a7f3d0;
+
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--hb-border);
+  background: var(--hb-bg);
+  color: var(--hb-fg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* DARK override */
+:where(.dark, [data-theme="dark"], .theme-dark) .header,
+.header[data-theme="dark"] {
+  --hb-bg: #0f172a;
+  --hb-fg: #e6eef9;
+  --hb-border: #1f2937;
+
+  --btn-bg: #141c2b;
+  --btn-fg: var(--hb-fg);
+  --btn-border: #253045;
+
+  --chip-bg: #0b2b22;
+  --chip-fg: #a7f3d0;
+  --chip-border: #134e4a;
+}
+
+/* Controls */
+.iconBtn {
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    transform 0.03s ease-in-out;
+}
+.iconBtn:hover {
+  filter: brightness(0.98);
+}
+.iconBtn:active {
+  transform: translateY(1px);
+}
+
+/* Brand (logo + text) */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: var(--hb-fg);
+  user-select: none;
+}
+.brandLogoSm {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.45));
+}
+.header[data-theme="dark"] .brandLogoSm {
+  filter: drop-shadow(0 0 14px rgba(34, 197, 94, 0.6));
+}
+
+.grow {
+  flex: 1 1 auto;
+}
+
+.userbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.role {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  color: var(--chip-fg);
+  border: 1px solid var(--chip-border);
+}
+.username {
+  opacity: 0.8;
+}
+
+.logoutBtn {
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    transform 0.03s ease-in-out;
+}
+.logoutBtn:hover {
+  filter: brightness(0.98);
+}
+.logoutBtn:active {
+  transform: translateY(1px);
+}

@@ -1,10 +1,33 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/src/assets/zamin-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
+    <title>Zamin AAT</title>
+    <!-- Temani paintdan oldin qo‘llash (FOUC yo‘qoladi) -->
+    <script>
+      (function () {
+        var KEY = "theme";
+        var saved = null;
+        try {
+          saved = localStorage.getItem(KEY);
+        } catch (e) {}
+        if (saved !== "light" && saved !== "dark" && saved !== "system") {
+          saved = "dark"; // 🔥 DEFAULT: dark
+        }
+        var isSys = saved === "system";
+        var mq =
+          window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)");
+        var mode = isSys ? (mq && mq.matches ? "dark" : "light") : saved;
+        var root = document.documentElement;
+        root.setAttribute("data-theme", mode);
+        if (mode === "dark") root.classList.add("dark");
+        else root.classList.remove("dark");
+      })();
+    </script>
+    <meta name="color-scheme" content="dark light" />
   </head>
   <body>
     <div id="root"></div>

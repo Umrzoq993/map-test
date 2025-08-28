@@ -1,0 +1,94 @@
+/* SidebarMenu.module.scss */
+/* SCOPED sidebar tokenlari — barchasi globaldan olinadi */
+
+.wrapper {
+  --sb-bg: var(--card);
+  --sb-fg: var(--text);
+  --sb-muted: var(--muted);
+  --sb-border: var(--border);
+  --sb-hover-bg: color-mix(in srgb, var(--brand) 6%, var(--card));
+  --sb-active-bg: color-mix(in srgb, var(--brand) 12%, var(--card));
+  --sb-accent: var(--brand);
+}
+
+/* Header/brand */
+.header {
+  padding: 14px 12px 8px 12px;
+  border-bottom: 1px solid var(--sb-border);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--sb-fg);
+}
+.brandLogo {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  filter: drop-shadow(
+    0 0 12px color-mix(in srgb, var(--brand) 45%, transparent)
+  );
+}
+.wrapper[data-theme="dark"] .brandLogo {
+  filter: drop-shadow(
+    0 0 16px color-mix(in srgb, var(--brand) 60%, transparent)
+  );
+}
+.brandText {
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+/* Matn va badge */
+.text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sb-accent) 20%, transparent);
+  color: var(--sb-accent);
+  border: 1px solid color-mix(in srgb, var(--sb-accent) 35%, transparent);
+}
+
+/* pro-sidebar tweaks */
+:global(.ps-menu-button:hover) {
+  background: var(--sb-hover-bg) !important;
+}
+:global(.ps-submenu-content) {
+  padding-inline: 4px !important;
+}
+:global(.ps-sidebar-container) {
+  background-color: var(--sb-bg) !important;
+  color: var(--sb-fg);
+}
+:global(.ps-sidebar-root) {
+  border-right: 1px solid var(--sb-border);
+}
+:global(.ps-menu-button:hover) {
+  background: var(--sb-hover-bg) !important;
+}
+:global(.ps-submenu-content) {
+  background: transparent;
+}
+:global(.ps-menu-root .ps-submenu-content) {
+  background-color: var(--sb-bg) !important;
+  border: 1px solid var(--sb-border) !important;
+  border-radius: 12px !important;
+}
+:global(.ps-submenu-content .ps-menuitem-root > .ps-menu-button) {
+  background: transparent !important;
+}
+.wrapper[data-theme="dark"] :global(.ps-submenu-content) {
+  background-color: var(--sb-bg) !important;
+  border-color: var(--sb-border) !important;
+}
+:global(.ps-menuitem-root.ps-active > .ps-menu-button) {
+  background: var(--sb-active-bg) !important;
+}

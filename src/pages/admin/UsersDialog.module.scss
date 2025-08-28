@@ -1,0 +1,97 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 20, 24, 0.48);
+  display: grid;
+  place-items: center;
+  z-index: 1200; /* avval 1000 edi -> dropdown 1500 bo'ladi */
+  padding: 24px;
+}
+
+.dialog {
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden; /* yumaloq burchaklar uchun saqlaymiz, dropdown portal bo'lgani uchun kesilmaydi */
+  background: var(--card-bg, #fff);
+  color: var(--card-fg, #111);
+  border: 1px solid var(--card-border, #e5e7eb);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  animation: pop 0.16s ease-out;
+}
+
+@keyframes pop {
+  from {
+    transform: translateY(6px) scale(0.98);
+    opacity: 0.8;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.sm {
+  max-width: 420px;
+}
+.md {
+  max-width: 720px;
+}
+.lg {
+  max-width: 980px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--card-border, #e5e7eb);
+  background: var(--card-head, #fafafa);
+}
+
+.title {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.iconBtn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--card-border, #e5e7eb);
+  background: transparent;
+  cursor: pointer;
+}
+.iconBtn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.body {
+  padding: 16px;
+  overflow: auto; /* modal kontenti scroll bo'ladi */
+}
+
+.footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--card-border, #e5e7eb);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  background: var(--card-head, #fafafa);
+}
+
+/* Dark mode */
+:global([data-theme="dark"]) .dialog {
+  --card-bg: #0f172a;
+  --card-fg: #e5e7eb;
+  --card-border: #243042;
+  --card-head: #0b1220;
+}
+:global([data-theme="dark"]) .iconBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}

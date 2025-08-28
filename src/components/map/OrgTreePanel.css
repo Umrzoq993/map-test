@@ -1,0 +1,227 @@
+/* src/components/map/OrgTreePanel.css */
+
+/* Tema o'zgaruvchilari (fallback bilan) */
+.org-tree-card {
+  --otp-bg: var(--bg, #ffffff);
+  --otp-card: var(--card, #ffffff);
+  --otp-fg: var(--text, #0f172a);
+  --otp-muted: var(--muted, #6b7280);
+  --otp-border: var(--border, #e5e7eb);
+  --otp-row: color-mix(in srgb, var(--otp-card) 92%, transparent);
+
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 500;
+  width: 340px;
+  max-height: calc(100vh - 24px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  background: var(--otp-card);
+  color: var(--otp-fg);
+  border: 1px solid var(--otp-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+}
+
+.org-tree-card.is-hidden {
+  display: none;
+}
+
+.org-tree-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--otp-border);
+}
+
+.otp-title {
+  font-weight: 800;
+}
+
+.org-tree-search-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  max-width: 200px;
+}
+
+.org-tree-search {
+  width: 100%;
+  height: 34px;
+  padding: 0 30px 0 10px;
+  border: 1px solid var(--otp-border);
+  background: var(--otp-card);
+  color: var(--otp-fg);
+  border-radius: 10px;
+  outline: none;
+}
+
+.org-tree-search::placeholder {
+  color: var(--otp-muted);
+}
+
+.org-tree-search__clear {
+  position: absolute;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  line-height: 18px;
+  text-align: center;
+  border: 1px solid var(--otp-border);
+  background: var(--otp-row);
+  color: var(--otp-fg);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.org-tree-card__body {
+  padding: 10px 12px;
+  overflow: auto;
+}
+
+.org-tree-card__body--border-top {
+  border-top: 1px solid var(--otp-border);
+}
+
+.org-tree-card__hint {
+  padding: 8px 12px;
+  border-top: 1px solid var(--otp-border);
+  background: var(--otp-row);
+}
+
+.otp-muted {
+  font-size: 12.5px;
+  color: var(--otp-muted);
+}
+
+.otp-section-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.otp-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.otp-btn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--otp-border);
+  background: var(--otp-card);
+  color: var(--otp-fg);
+  cursor: pointer;
+}
+.otp-btn--soft {
+  background: var(--otp-row);
+}
+
+.otp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.otp-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--otp-border);
+  background: var(--otp-card);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.otp-check--dim {
+  opacity: 0.85;
+}
+
+.otp-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.otp-foot {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--otp-muted);
+}
+
+/* BBOX chiroyli ko'rinish */
+.otp-bbox {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  max-width: 100%;
+}
+.otp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--otp-border);
+  background: var(--otp-row);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.otp-pill strong {
+  font-weight: 600;
+}
+.otp-arrow {
+  font-size: 12px;
+  color: var(--otp-muted);
+}
+
+/* rc-tree rang mosligi (light/dark) */
+.org-tree-card .rc-tree {
+  color: var(--otp-fg);
+}
+.org-tree-card .rc-tree-treenode .rc-tree-node-content-wrapper {
+  color: var(--otp-fg);
+}
+.org-tree-card .rc-tree-treenode .rc-tree-node-content-wrapper:hover {
+  background: var(--otp-row);
+}
+.org-tree-card .rc-tree-treenode-selected .rc-tree-node-content-wrapper {
+  background: color-mix(in srgb, var(--otp-row) 70%, transparent);
+  border-radius: 8px;
+}
+.org-tree-card .rc-tree-checkbox-inner {
+  border-color: var(--otp-border);
+  background: var(--otp-card);
+}
+.org-tree-card .rc-tree-checkbox-checked .rc-tree-checkbox-inner,
+.org-tree-card .rc-tree-checkbox-indeterminate .rc-tree-checkbox-inner {
+  background: color-mix(in srgb, var(--otp-fg) 10%, var(--otp-card));
+  border-color: var(--otp-fg);
+}
+.org-tree-card .rc-tree-switcher {
+  color: var(--otp-muted);
+}
+
+/* DARK THEME OVERRIDES */
+html.dark .org-tree-card,
+[data-theme="dark"] .org-tree-card {
+  --otp-bg: var(--bg, #0b1220);
+  --otp-card: var(--card, #0f172a);
+  --otp-fg: var(--text, #e5e7eb);
+  --otp-muted: var(--muted, #94a3b8);
+  --otp-border: var(--border, #223046);
+  --otp-row: rgba(255, 255, 255, 0.05);
+}

@@ -1,0 +1,46 @@
+// src/styles/_themes.scss
+/* Light defaults */
+:root {
+  /* semantic tokens */
+  --bg: #f6f9fc;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e5e7eb;
+
+  --brand: #22c55e;
+  --brand-2: #16a34a;
+
+  /* feedback tokens */
+  --danger-bg: #fee2e2;
+  --danger-text: #991b1b;
+  --danger-border: #fecaca;
+
+  /* shadows */
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.14);
+
+  /* native widgets */
+  color-scheme: light dark;
+}
+
+/* Dark overrides (toggle: <html data-theme="dark">) */
+:root[data-theme="dark"] {
+  --bg: #0b1220;
+  --card: #0f172a;
+  --text: #e6eef9;
+  --muted: #9aa5b1;
+  --border: #1f2937;
+
+  --brand: #22c55e;
+  --brand-2: #16a34a;
+
+  --danger-bg: #3f1d1d;
+  --danger-text: #fecaca;
+  --danger-border: #7f1d1d;
+
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.4);
+}
