@@ -325,7 +325,7 @@ export default function MapView({
   }, []);
 
   // Panel ko‘rsatish/yashirish
-  const [panelHidden, setPanelHidden] = useState(!!hideTree);
+  const [panelHidden, setPanelHidden] = useState(!hideTree);
   const togglePanel = () => setPanelHidden((v) => !v);
 
   // ---- Qidiruv
