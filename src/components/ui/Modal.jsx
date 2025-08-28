@@ -1,8 +1,23 @@
-//src/components/ui/Modal.jsx
+// src/components/ui/Modal.jsx
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import styles from "./Modal.module.scss";
 
+/**
+ * Props
+ * - open: boolean
+ * - title?: string | ReactNode
+ * - onClose?: () => void
+ * - size?: "sm" | "md" | "lg" | "xl" | "full"
+ * - width?: number | string
+ * - dark?: boolean
+ * - preventCloseOnBackdrop?: boolean
+ * - disableEscapeClose?: boolean
+ * - initialFocusRef?: React.Ref
+ * - className?: string
+ * - headerRight?: ReactNode
+ * - children: ReactNode
+ */
 export default function Modal({
   open,
   title,
@@ -18,30 +33,20 @@ export default function Modal({
   children,
 }) {
   const [mounted, setMounted] = useState(false);
-  const [phase, setPhase] = useState("idle");
+  const [phase, setPhase] = useState("idle"); // 'enter' | 'entered' | 'exit'
   const cardRef = useRef(null);
 
+  // Portal root
   const portalEl = useRef(
     typeof document !== "undefined" ? document.createElement("div") : null
   );
 
+  // mount/unmount portal
   useEffect(() => {
     if (!portalEl.current || typeof document === "undefined") return;
     const host = document.body;
     portalEl.current.className = styles.portalHost;
     host.appendChild(portalEl.current);
-
-    // data-theme copy for CSS vars (light/dark)
-    const themeHost = document.querySelector("[data-theme]");
-    if (themeHost) {
-      portalEl.current.setAttribute(
-        "data-theme",
-        themeHost.getAttribute("data-theme") || "light"
-      );
-    } else {
-      portalEl.current.setAttribute("data-theme", "light");
-    } // data-theme copy
-
     setMounted(true);
     return () => {
       try {
@@ -50,6 +55,7 @@ export default function Modal({
     };
   }, []);
 
+  // open/close phases + scroll lock
   useEffect(() => {
     if (!mounted) return;
     const body = document.body;
@@ -75,6 +81,7 @@ export default function Modal({
     }
   }, [open, mounted, initialFocusRef]);
 
+  // Escape key + primitiv focus trap
   useEffect(() => {
     if (!open || disableEscapeClose) return;
     const onKey = (e) => {
@@ -134,12 +141,7 @@ export default function Modal({
   const dataTheme = dark === undefined ? undefined : dark ? "dark" : "light";
 
   const content = (
-    <div
-      className={rootClass}
-      data-theme={dataTheme}
-      role="dialog"
-      aria-modal="true"
-    >
+    <div className={rootClass} data-theme={dataTheme}>
       <div
         className={styles.backdrop}
         onClick={() => !preventCloseOnBackdrop && onClose?.()}
@@ -147,6 +149,8 @@ export default function Modal({
       <section
         className={`${styles.card} ${className ?? ""}`}
         style={cardStyle}
+        role="dialog"
+        aria-modal="true"
         aria-labelledby={title ? "modal-title" : undefined}
         ref={cardRef}
         onClick={(e) => e.stopPropagation()}
@@ -168,7 +172,10 @@ export default function Modal({
             )}
           </header>
         )}
-        <div className={styles.body}>{children}</div>
+        {/* OrgUnitSelect menyusi scroll-ni kuzatishi uchun atribut */}
+        <div className={styles.body} data-dialog-body>
+          {children}
+        </div>
       </section>
     </div>
   );

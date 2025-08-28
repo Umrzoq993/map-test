@@ -4,10 +4,7 @@ import styles from "./OrgUnitSelect.module.scss";
 import { searchOrgUnits, getOrgUnit } from "../../api/org";
 import { LuSearch, LuChevronDown, LuX } from "react-icons/lu";
 
-/**
- * Qidiruvli dropdown — OrganizationUnit tanlash uchun.
- * Menyu portal orqali body ga chiqadi: kesilish muammosi yo‘q.
- */
+/** Qidiruvli org tanlash (dropdown) */
 export default function OrgUnitSelect({
   value = null,
   onChange,
@@ -17,6 +14,7 @@ export default function OrgUnitSelect({
 }) {
   const boxRef = useRef(null);
   const inputRef = useRef(null);
+  const menuRef = useRef(null); // <— portal menyu
 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -24,38 +22,43 @@ export default function OrgUnitSelect({
   const [opts, setOpts] = useState([]);
   const [selected, setSelected] = useState(null); // {id,name,code?,parentId?}
 
-  // Menyu pozitsiyasi (viewport bo'yicha)
   const [pos, setPos] = useState({ left: 0, top: 0, width: 0, up: false });
 
-  // Boshlang'ich label
+  // value -> label
   useEffect(() => {
     let active = true;
-    async function fetchSelected() {
+    (async () => {
       if (!value) {
         setSelected(null);
         return;
       }
       try {
         const res = await getOrgUnit(value);
-        if (active) setSelected(res);
+        if (active && res) {
+          setSelected({
+            id: res.id,
+            name: res.name,
+            code: res.code,
+            parentId: res.parentId ?? null,
+          });
+        }
       } catch {
         if (active) setSelected(null);
       }
-    }
-    fetchSelected();
+    })();
     return () => {
       active = false;
     };
   }, [value]);
 
-  // Qidiruv: debounce
+  // qidiruv (debounce)
   useEffect(() => {
     if (!open) return;
     const h = setTimeout(async () => {
       setLoading(true);
       try {
         const res = await searchOrgUnits({
-          q: query,
+          q: query || undefined,
           page: 0,
           size: 10,
           sort: "name,asc",
@@ -67,6 +70,9 @@ export default function OrgUnitSelect({
           parentId: o.parentId,
         }));
         setOpts(items);
+      } catch (e) {
+        console.error("Org search error:", e);
+        setOpts([]);
       } finally {
         setLoading(false);
       }
@@ -74,22 +80,21 @@ export default function OrgUnitSelect({
     return () => clearTimeout(h);
   }, [open, query]);
 
-  // Menyu pozitsiyasini hisoblash
   const recompute = () => {
     const el = boxRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
     const gap = 6;
-    const menuH = 320; // taxminiy maksimum (SCSS bilan mos)
+    const menuH = 320;
     const toBottom = window.innerHeight - (r.bottom + gap);
-    const up = toBottom < 200 && r.top > 200; // joy yetmasa yuqoriga ochamiz
+    const up = toBottom < 220 && r.top > 220;
     const top = up
       ? Math.max(8, r.top - gap - menuH)
       : Math.min(window.innerHeight - 8, r.bottom + gap);
     setPos({
       left: Math.max(8, r.left),
       top,
-      width: Math.max(220, r.width),
+      width: Math.max(260, r.width),
       up,
     });
   };
@@ -99,8 +104,7 @@ export default function OrgUnitSelect({
     recompute();
     const onWin = () => recompute();
     window.addEventListener("resize", onWin);
-    window.addEventListener("scroll", onWin, true); // ichki skrollarda ham ishlasin
-    // Modal body’ni topib, scrollga quloq solamiz
+    window.addEventListener("scroll", onWin, true);
     const scroller = boxRef.current?.closest("[data-dialog-body]") || document;
     scroller.addEventListener("scroll", onWin, true);
     return () => {
@@ -111,16 +115,18 @@ export default function OrgUnitSelect({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // tashqi klik — yopish
+  // tashqi klik — lekin portal menyuni hisobga olamiz
   useEffect(() => {
-    function onDoc(e) {
+    const onDocDown = (e) => {
       if (!open) return;
       const root = boxRef.current;
-      if (!root) return;
-      if (!root.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+      const menu = menuRef.current;
+      if (root && root.contains(e.target)) return;
+      if (menu && menu.contains(e.target)) return; // <— menyu ichida: yopmaymiz
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocDown, true);
+    return () => document.removeEventListener("mousedown", onDocDown, true);
   }, [open]);
 
   function choose(opt) {
@@ -143,45 +149,46 @@ export default function OrgUnitSelect({
       : selected.name;
   }, [selected]);
 
-  const MenuPortal = open
-    ? createPortal(
-        <div
-          className={`${styles.menu} ${pos.up ? styles.up : ""}`}
-          style={{ left: pos.left, top: pos.top, width: pos.width }}
-          role="listbox"
-          aria-label="Tashkilotlar"
-        >
-          {loading ? (
-            <div className={styles.empty}>Yuklanmoqda...</div>
-          ) : opts.length ? (
-            opts.map((o) => (
-              <div
-                key={o.id}
-                className={styles.item}
-                onClick={() => choose(o)}
-                role="option"
-                aria-selected={selected?.id === o.id}
-              >
-                <div className={styles.itemRow}>
-                  <div className={styles.itemName}>{o.name}</div>
-                  {o.code && <div className={styles.code}>#{o.code}</div>}
-                </div>
-                <div className={styles.itemMeta}>
-                  {o.parentId ? (
-                    <span className={styles.parent}>parent: {o.parentId}</span>
-                  ) : (
-                    <span className={styles.root}>root</span>
-                  )}
-                </div>
+  const MenuPortal =
+    open &&
+    createPortal(
+      <div
+        ref={menuRef}
+        className={`${styles.menu} ${pos.up ? styles.up : ""}`}
+        style={{ left: pos.left, top: pos.top, width: pos.width }}
+        role="listbox"
+        aria-label="Tashkilotlar"
+      >
+        {loading ? (
+          <div className={styles.empty}>Yuklanmoqda...</div>
+        ) : opts.length ? (
+          opts.map((o) => (
+            <div
+              key={o.id}
+              className={styles.item}
+              onMouseDown={() => choose(o)} // <— mousedown: outside handler yopib yuborishidan oldin ishlaydi
+              role="option"
+              aria-selected={selected?.id === o.id}
+            >
+              <div className={styles.itemRow}>
+                <div className={styles.itemName}>{o.name}</div>
+                {o.code && <div className={styles.code}>#{o.code}</div>}
               </div>
-            ))
-          ) : (
-            <div className={styles.empty}>Hech narsa topilmadi</div>
-          )}
-        </div>,
-        document.body
-      )
-    : null;
+              <div className={styles.itemMeta}>
+                {o.parentId ? (
+                  <span className={styles.parent}>parent: {o.parentId}</span>
+                ) : (
+                  <span className={styles.root}>root</span>
+                )}
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className={styles.empty}>Hech narsa topilmadi</div>
+        )}
+      </div>,
+      document.body
+    );
 
   return (
     <>
@@ -189,7 +196,6 @@ export default function OrgUnitSelect({
         className={styles.wrap}
         ref={boxRef}
         data-disabled={disabled ? "" : undefined}
-        onClick={() => !disabled && setOpen((s) => !s)}
         role="combobox"
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -228,7 +234,18 @@ export default function OrgUnitSelect({
                 <LuX />
               </button>
             )}
-            <LuChevronDown className={styles.chev} />
+            <button
+              className={styles.iconBtn}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen((s) => !s);
+                if (!open) setTimeout(recompute, 0);
+              }}
+              title={open ? "Yopish" : "Ochish"}
+              type="button"
+            >
+              <LuChevronDown className={styles.chev} />
+            </button>
           </div>
         </div>
       </div>

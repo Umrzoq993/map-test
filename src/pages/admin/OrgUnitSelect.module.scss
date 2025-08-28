@@ -17,7 +17,6 @@
   padding: 6px 8px 6px 10px;
   background: var(--card-bg, #fff);
   color: inherit;
-  cursor: pointer;
 }
 
 .inputWrap {
@@ -61,7 +60,7 @@
 /* ➜ Portal menyu (body ga render qilinadi) */
 .menu {
   position: fixed;
-  z-index: 1500; /* overlay(1200) dan yuqori */
+  z-index: 20000; /* <-- modal/backdrop ustida aniq ishlashi uchun balandroq */
   border: 1px solid var(--card-border, #e5e7eb);
   background: var(--card-bg, #fff);
   color: inherit;
