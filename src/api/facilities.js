@@ -32,24 +32,38 @@ function withAttributes(obj = {}) {
   return o;
 }
 
-/* READ (page) */
+/** Server-side pagination bilan obyektlar ro'yxati */
 export async function listFacilitiesPage(opts = {}) {
-  const { orgId, q, status, type, types, bbox, page, size, sort } = opts;
-
-  const params = {
+  const {
     orgId,
     q,
     status,
+    type,
+    types,
     bbox,
-    page,
-    size,
-  };
-  if (type) params.type = type;
-  if (types)
-    params.types = Array.isArray(types) ? types.join(",") : String(types);
-  if (Array.isArray(sort)) params.sort = sort;
+    page = 0,
+    size = 10,
+    sort,
+  } = opts;
 
-  const { data } = await api.get("/facilities", { params });
+  const params = new URLSearchParams();
+
+  if (orgId != null) params.set("orgId", String(orgId));
+  if (q) params.set("q", q);
+  if (status) params.set("status", status);
+  if (type) params.set("type", type);
+  if (types)
+    params.set("types", Array.isArray(types) ? types.join(",") : String(types));
+  if (bbox) params.set("bbox", bbox);
+
+  params.set("page", String(page));
+  params.set("size", String(size));
+
+  if (Array.isArray(sort)) sort.forEach((s) => params.append("sort", s));
+  else if (sort) params.set("sort", sort);
+
+  const { data } = await api.get(`/facilities?${params.toString()}`);
+  // backend: { content, page, size, totalElements, totalPages, last }
   return data;
 }
 

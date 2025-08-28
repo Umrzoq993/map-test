@@ -4,6 +4,7 @@ import {
   createFacility,
   deleteFacility,
   listFacilities,
+  listFacilitiesPage,
   putFacility,
 } from "../../api/facilities";
 import FacilityForm from "../../components/facilities/FacilityForm";
@@ -61,6 +62,15 @@ export default function GenericFacilityPage() {
   const [editing, setEditing] = useState(null);
   const [mode, setMode] = useState("create");
 
+  // Pagination state
+  const [page, setPage] = useState(0); // zero-based
+  const [size, setSize] = useState(10);
+  const [total, setTotal] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(total / size));
+
+  const from = total ? page * size + 1 : 0;
+  const to = Math.min(total, (page + 1) * size);
+
   const lockedByRoute = !!typeSlug;
 
   const typeOptions = useMemo(() => {
@@ -77,14 +87,21 @@ export default function GenericFacilityPage() {
   const fetchData = async (over = {}) => {
     setLoading(true);
     try {
-      const res = await listFacilities({
+      const res = await listFacilitiesPage({
         q: over.q !== undefined ? over.q : q || undefined,
         type:
           over.type !== undefined ? over.type || undefined : type || undefined,
+        page: over.page ?? page,
+        size: over.size ?? size,
+        // kerak bo‘lsa boshqa sortlar ham qo‘shish mumkin:
+        sort: ["createdAt,desc"],
       });
-      setItems(res?.content ?? res ?? []);
+
+      setItems(res?.content ?? []);
+      setTotal(res?.totalElements ?? 0);
     } catch (e) {
-      alert(e.message || "Yuklashda xatolik");
+      console.error(e);
+      alert("Ma’lumot yuklashda xatolik");
     } finally {
       setLoading(false);
     }
@@ -107,9 +124,16 @@ export default function GenericFacilityPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    // type (filtr), page, size o'zgarganda ro'yxatni qayta yuklaymiz
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, page, size]);
+
   const onSearch = (e) => {
     e.preventDefault();
-    fetchData();
+    setPage(0);
+    fetchData({ page: 0 });
   };
 
   const openCreate = () => {
@@ -159,7 +183,9 @@ export default function GenericFacilityPage() {
     <div className="org-table-page">
       <div className="page-header">
         <h2>Inshootlar</h2>
-        <div className="muted">Jadval URL turiga mos ravishda: {headerLabel}</div>
+        <div className="muted">
+          Jadval URL turiga mos ravishda: {headerLabel}
+        </div>
       </div>
 
       <div className="org-table-wrap">
@@ -175,7 +201,11 @@ export default function GenericFacilityPage() {
             value={type}
             onChange={(e) => setType(e.target.value)}
             disabled={lockedByRoute}
-            title={lockedByRoute ? "URL bo‘yicha tur tanlangan" : "Tur bo‘yicha filtr"}
+            title={
+              lockedByRoute
+                ? "URL bo‘yicha tur tanlangan"
+                : "Tur bo‘yicha filtr"
+            }
           >
             {typeOptions.map((o) => (
               <option key={`${o.value}_${o.label}`} value={o.value}>
@@ -184,7 +214,9 @@ export default function GenericFacilityPage() {
             ))}
           </select>
 
-          <button type="submit" className="btn">Qidirish</button>
+          <button type="submit" className="btn">
+            Qidirish
+          </button>
           <div className="spacer" />
           <button type="button" className="btn primary" onClick={openCreate}>
             Yangi qo‘shish
@@ -207,36 +239,112 @@ export default function GenericFacilityPage() {
               {loading && (
                 <tr>
                   <td colSpan={6}>
-                    <div className="overlay"><div className="spinner" /></div>
+                    <div className="overlay">
+                      <div className="spinner" />
+                    </div>
                   </td>
                 </tr>
               )}
               {!loading && items.length === 0 && (
-                <tr><td colSpan={6} className="empty">Ma’lumot topilmadi</td></tr>
-              )}
-              {!loading && items.map((row) => (
-                <tr key={row.id}>
-                  <td className="num">{row.id}</td>
-                  <td>{row.name}</td>
-                  <td>{TYPE_LABELS[row.type] || row.type}</td>
-                  <td className="num">{row.orgId}</td>
-                  <td className="muted">
-                    {row.lat != null && row.lng != null
-                      ? `${row.lat.toFixed(4)}, ${row.lng.toFixed(4)}`
-                      : "—"}
-                  </td>
-                  <td className="actions">
-                    <button className="btn" onClick={() => openEdit(row)}>Tahrirlash</button>
-                    <button className="btn danger" onClick={() => onDelete(row)}>O‘chirish</button>
+                <tr>
+                  <td colSpan={6} className="empty">
+                    Ma’lumot topilmadi
                   </td>
                 </tr>
-              ))}
+              )}
+              {!loading &&
+                items.map((row) => (
+                  <tr key={row.id}>
+                    <td className="num">{row.id}</td>
+                    <td>{row.name}</td>
+                    <td>{TYPE_LABELS[row.type] || row.type}</td>
+                    <td className="num">{row.orgId}</td>
+                    <td className="muted">
+                      {row.lat != null && row.lng != null
+                        ? `${row.lat.toFixed(4)}, ${row.lng.toFixed(4)}`
+                        : "—"}
+                    </td>
+                    <td className="actions">
+                      <button className="btn" onClick={() => openEdit(row)}>
+                        Tahrirlash
+                      </button>
+                      <button
+                        className="btn danger"
+                        onClick={() => onDelete(row)}
+                      >
+                        O‘chirish
+                      </button>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
+          {/* Paginator */}
+          <div className="paginator">
+            <button
+              className="btn"
+              disabled={page === 0}
+              onClick={() => setPage(0)}
+              title="Birinchi sahifa"
+            >
+              «
+            </button>
+            <button
+              className="btn"
+              disabled={page === 0}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              title="Oldingi sahifa"
+            >
+              ‹
+            </button>
+
+            <span className="muted">
+              Page {page + 1} / {totalPages}
+            </span>
+
+            <button
+              className="btn"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              title="Keyingi sahifa"
+            >
+              ›
+            </button>
+            <button
+              className="btn"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage(totalPages - 1)}
+              title="Oxirgi sahifa"
+            >
+              »
+            </button>
+
+            <div className="spacer" />
+
+            <span className="muted">
+              Ko‘rsatilmoqda {from}–{to} / {total}
+            </span>
+
+            <select
+              className="select"
+              value={size}
+              onChange={(e) => {
+                setSize(Number(e.target.value));
+                setPage(0);
+              }}
+              title="Sahifadagi qatorlar"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={500}>500</option>
+            </select>
+          </div>
         </div>
 
         <div className="paginator">
-          <span className="muted">Topildi: {items.length}</span>
+          <span className="muted">Topildi: {total}</span>
         </div>
       </div>
 
@@ -247,7 +355,12 @@ export default function GenericFacilityPage() {
               <div className="modal-title">
                 {mode === "create" ? "Yangi inshoot" : "Inshootni tahrirlash"}
               </div>
-              <button className="modal-close" onClick={() => setModalOpen(false)}>&times;</button>
+              <button
+                className="modal-close"
+                onClick={() => setModalOpen(false)}
+              >
+                &times;
+              </button>
             </div>
             <div className="modal-body">
               <FacilityForm
