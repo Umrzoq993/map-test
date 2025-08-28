@@ -1,5 +1,6 @@
 // src/components/facilities/FacilityForm.jsx
 import { useEffect, useMemo, useState } from "react";
+import OrgUnitSelect from "../../pages/admin/OrgUnitSelect";
 
 const TYPE_OPTIONS = [
   { value: "GREENHOUSE", label: "Issiqxona" },
@@ -19,13 +20,7 @@ const STATUS_OPTIONS = [
   { value: "UNDER_MAINTENANCE", label: "Maintenance" },
 ];
 
-/**
- * Har bir type uchun attributes maydonlari konfiguratsiyasi:
- *  - key: attributes ichidagi field nomi
- *  - label: ko‘rinadigan nom
- *  - type: "number" | "int" | "text"
- *  - unit (ixtiyoriy)
- */
+// --- atributlar sxemasi (o‘zingizdagi kabi) ---
 const ATTR_SCHEMAS = {
   GREENHOUSE: [
     {
@@ -97,7 +92,7 @@ const ATTR_SCHEMAS = {
       label: "Olinadigan daromad miqdori",
       type: "number",
     },
-    { key: "netProfit", label: "Olinadigan sof foyda", type: "number" },
+    { key: "netProfit", label: "Olingan sof foyda", type: "number" },
     { key: "tenant", label: "Ijarachi", type: "text" },
     { key: "govDecision", label: "Hukumat qarori", type: "text" },
   ],
@@ -109,7 +104,7 @@ const ATTR_SCHEMAS = {
       label: "Olinadigan daromad miqdori",
       type: "number",
     },
-    { key: "netProfit", label: "Olinadigan sof foyda", type: "number" },
+    { key: "netProfit", label: "Olingan sof foyda", type: "number" },
     { key: "tenant", label: "Ijarachi", type: "text" },
     { key: "govDecision", label: "Hukumat qarori", type: "text" },
   ],
@@ -125,7 +120,7 @@ const ATTR_SCHEMAS = {
       label: "Olinadigan daromad miqdori",
       type: "number",
     },
-    { key: "netProfit", label: "Olinadigan sof foyda", type: "number" },
+    { key: "netProfit", label: "Olingan sof foyda", type: "number" },
     { key: "tenant", label: "Ijarachi", type: "text" },
     { key: "govDecision", label: "Hukumat qarori", type: "text" },
   ],
@@ -153,7 +148,6 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
 
   const schema = useMemo(() => ATTR_SCHEMAS[type] || [], [type]);
 
-  // type o‘zgarganda eski attributesni saqlaymiz, lekin schema-da yo‘q bo‘lganlari ham qolaveradi (PATCH uchun foydali)
   useEffect(() => {
     setAttributes((prev) => ({ ...prev }));
   }, [type]);
@@ -162,11 +156,21 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
     setAttributes((prev) => ({ ...prev, [k]: parseVal(v, t) }));
   };
 
+  const canSave = orgId != null && name.trim().length > 0;
+
   const submit = (e) => {
     e.preventDefault();
+    if (orgId == null) {
+      alert("Tashkilot bo‘limi tanlanishi shart.");
+      return;
+    }
+    if (!name.trim()) {
+      alert("Nomi bo‘sh bo‘lmasin.");
+      return;
+    }
     const payload = {
-      orgId: orgId ? Number(orgId) : null,
-      name: name?.trim(),
+      orgId: Number(orgId),
+      name: name.trim(),
       type,
       status,
       lat: lat === "" ? null : Number(lat),
@@ -182,23 +186,18 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
     <form onSubmit={submit}>
       <div className="form-grid">
         <div className="field">
-          <label>Org ID</label>
-          <input
-            type="number"
-            value={orgId ?? ""}
-            onChange={(e) =>
-              setOrgId(e.target.value === "" ? null : e.target.value)
-            }
-            placeholder="Masalan: 1"
+          <label>Tashkilot bo‘limi *</label>
+          <OrgUnitSelect
+            value={orgId}
+            onChange={(opt) => setOrgId(opt?.id ?? null)}
+            placeholder="Tashkilotni qidiring..."
+            allowClear
           />
-          <div className="hint">
-            Hozircha ID bilan. (Agar org tree select kerak bo‘lsa, keyin
-            qo‘shamiz.)
-          </div>
+          <div className="hint">Dropdown orqali qidirib tanlang.</div>
         </div>
 
         <div className="field">
-          <label>Nomi</label>
+          <label>Nomi *</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -283,7 +282,7 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
         <button type="button" className="btn" onClick={onCancel}>
           Bekor qilish
         </button>
-        <button type="submit" className="btn primary">
+        <button type="submit" className="btn primary" disabled={!canSave}>
           Saqlash
         </button>
       </div>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import Modal from "../ui/Modal";
+import Modal from "../ui/Modal"; // Agar fayl `map/modals/` ichida bo'lsa: `../../ui/Modal` qilib qo'ying.
 import { patchFacility } from "../../api/facilities";
 import styles from "./FacilityEditModal.module.scss";
 import { FACILITY_TYPES } from "../../data/facilityTypes";
