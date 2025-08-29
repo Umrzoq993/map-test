@@ -60,6 +60,12 @@ export async function searchOrgUnits({
   return httpGet(`/orgs?${params.toString()}`);
 }
 
+export async function getOrgDetails(id) {
+  try {
+    return await httpGet(`/orgs/${id}/details`);
+  } catch {}
+}
+
 // ======================== CRUD ========================
 export const createOrg = async (payload) =>
   (await api.post("/orgs", payload)).data;

@@ -1,4 +1,3 @@
-// src/components/org/OrgTable.jsx
 import { useEffect, useMemo, useState, useRef } from "react";
 import Modal from "../ui/Modal";
 import MapPickerModal from "../map/MapPickerModal.jsx";
@@ -484,7 +483,6 @@ export default function OrgTable({ isAdmin }) {
         onClose={() => setCreateOpen(false)}
         initialFocusRef={createNameRef}
         preventCloseOnBackdrop={true}
-        dark={document.body.classList.contains("theme-dark")}
       >
         <div className="org-table-modal">
           <div className="form-grid">
@@ -585,7 +583,6 @@ export default function OrgTable({ isAdmin }) {
         onClose={() => setEditOpen(false)}
         initialFocusRef={editNameRef}
         preventCloseOnBackdrop={true}
-        dark={document.body.classList.contains("theme-dark")}
       >
         <div className="org-table-modal">
           <div className="form-grid">
@@ -683,7 +680,6 @@ export default function OrgTable({ isAdmin }) {
         onClose={() => setDeleteOpen(false)}
         width={440}
         preventCloseOnBackdrop={true}
-        dark={document.body.classList.contains("theme-dark")}
       >
         <div className="org-table-modal">
           <div className="confirm">
@@ -719,7 +715,6 @@ export default function OrgTable({ isAdmin }) {
         onSave={({ lat, lng, zoom }) => {
           setDraft((d) => ({ ...d, lat, lng, zoom }));
         }}
-        dark={document.body.classList.contains("theme-dark")}
         size="xl"
       />
 

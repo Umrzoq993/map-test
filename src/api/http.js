@@ -1,34 +1,68 @@
 // src/api/http.js
 import axios from "axios";
-import {
-  getToken,
-  getRefreshToken,
-  setAccessToken,
-  setRefreshToken,
-  setAccessExpireAt,
-} from "./auth";
 
-// BASE aniqlash ("/api" yoki VITE_API_BASE)
+/* =========================
+   LOCAL KEYS (auth.js bilan mos)
+   ========================= */
+const ACCESS_KEY = "token";
+const REFRESH_KEY = "refreshToken";
+const EXP_KEY = "tokenExpAt";
+
+/* Token helpers (aylana importni oldini olish uchun shu yerda) */
+function getAccessToken() {
+  try {
+    return localStorage.getItem(ACCESS_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+function setAccessToken(t) {
+  try {
+    if (t) localStorage.setItem(ACCESS_KEY, t);
+    else localStorage.removeItem(ACCESS_KEY);
+  } catch {}
+}
+function getRefreshToken() {
+  try {
+    return localStorage.getItem(REFRESH_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+function setRefreshToken(t) {
+  try {
+    if (t) localStorage.setItem(REFRESH_KEY, t);
+    else localStorage.removeItem(REFRESH_KEY);
+  } catch {}
+}
+function setAccessExpireAt(ms) {
+  try {
+    if (ms) localStorage.setItem(EXP_KEY, String(ms));
+    else localStorage.removeItem(EXP_KEY);
+  } catch {}
+}
+
+/* =========================
+   BASE URL
+   ========================= */
 const RAW_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 const BASE = RAW_BASE.endsWith("/api") ? RAW_BASE : `${RAW_BASE}/api`;
 
-// Barqaror deviceId (duplicated small helper to avoid circular imports)
+/* =========================
+   Device ID (barqaror)
+   ========================= */
 function getDeviceId() {
   try {
     let id = localStorage.getItem("deviceId");
     if (!id) {
-      const rndBytes = (len = 16) =>
-        window.crypto?.getRandomValues
-          ? Array.from(window.crypto.getRandomValues(new Uint8Array(len)))
-          : Array.from({ length: len }, () => Math.floor(Math.random() * 256));
-      const toHex = (arr) =>
-        arr.map((b) => (b & 0xff).toString(16).padStart(2, "0")).join("");
-      const p1 = toHex(rndBytes(8)).slice(0, 8);
-      const p2 = toHex(rndBytes(4)).slice(0, 4);
-      const p3 = toHex(rndBytes(4)).slice(0, 4);
-      const p4 = toHex(rndBytes(4)).slice(0, 4);
-      const p5 = toHex(rndBytes(12)).slice(0, 12);
-      id = `${p1}-${p2}-${p3}-${p4}-${p5}`;
+      const rnd = (n) =>
+        (window.crypto?.getRandomValues
+          ? Array.from(window.crypto.getRandomValues(new Uint8Array(n)))
+          : Array.from({ length: n }, () => Math.floor(Math.random() * 256))
+        )
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+      id = `${rnd(4)}-${rnd(2)}-${rnd(2)}-${rnd(2)}-${rnd(6)}`; // 8-4-4-4-12
       localStorage.setItem("deviceId", id);
     }
     return id;
@@ -37,67 +71,87 @@ function getDeviceId() {
   }
 }
 
-// Single axios instance
-export const api = axios.create({ baseURL: BASE });
+/* =========================
+   Axios instance
+   ========================= */
+export const api = axios.create({
+  baseURL: BASE,
+  timeout: 30000,
+});
 
-// Request interceptor: X-Device-Id + Bearer + sort[]= flatten
+/* Yordamchi: URL pathni chiqarib olish */
+function getPathname(urlLike) {
+  try {
+    // absolute yoki nisbiy bo'lishi mumkin
+    return new URL(urlLike, BASE).pathname.replace(/\/+$/, "");
+  } catch {
+    return String(urlLike || "");
+  }
+}
+
+/* Auth endpointmi? (Bearer qo‘ymaymiz va refresh ham qilmaymiz) */
+function isAuthEndpoint(urlLike) {
+  const p = getPathname(urlLike);
+  return p === "/auth/login" || p === "/auth/refresh" || p === "/auth/logout";
+}
+
+/* =========================
+   REQUEST INTERCEPTOR
+   ========================= */
 api.interceptors.request.use((config) => {
   config.headers = config.headers || {};
 
-  // device header
+  // Device header
   if (!config.headers["X-Device-Id"]) {
     config.headers["X-Device-Id"] = getDeviceId();
   }
 
-  // Bearer — LOGIN/REFRESH/LOGOUT dan tashqari
-  const url = config.url || "";
-  const addBearer =
-    url !== "/auth/login" && url !== "/auth/refresh" && url !== "/auth/logout";
-  const t = typeof getToken === "function" ? getToken() : null;
-  if (t && addBearer) {
-    config.headers.Authorization = `Bearer ${t}`;
+  // Bearer faqat auth bo'lmagan endpointlar uchun
+  if (!isAuthEndpoint(config.url)) {
+    const t = getAccessToken();
+    if (t) config.headers.Authorization = `Bearer ${t}`;
+    else delete config.headers.Authorization;
   }
 
-  // sort[]= -> ?sort=a&sort=b
+  // ?sort[]=a&sort[]=b -> ?sort=a&sort=b (backend qulayligi uchun)
   if (config?.params?.sort && Array.isArray(config.params.sort)) {
-    const p = new URLSearchParams();
+    const params = new URLSearchParams();
     for (const [k, v] of Object.entries(config.params)) {
       if (k === "sort") {
-        v.filter(Boolean).forEach((s) => p.append("sort", String(s).trim()));
+        v.filter(Boolean).forEach((s) => params.append("sort", String(s).trim()));
       } else if (v !== undefined && v !== null && String(v).length) {
-        p.append(k, String(v));
+        params.append(k, String(v));
       }
     }
-    config.params = p;
+    config.params = params;
   }
+
   return config;
 });
 
-// ---- 401 -> auto refresh (single-flight) ----
-let isRefreshing = false;
-let refreshPromise = null;
+/* =========================
+   401 -> REFRESH (single-flight)
+   ========================= */
+let refreshing = null;
 
-async function doRefresh() {
+async function refreshTokens() {
   const rt = getRefreshToken();
   if (!rt) throw new Error("No refresh token");
-  const deviceId = getDeviceId();
 
-  // Interceptor loop'idan qochish uchun to'g'ridan-to'g'ri axios
+  // Interceptor loopdan qochish uchun to'g'ridan-to'g'ri axios
+  const deviceId = getDeviceId();
   const { data } = await axios.post(
     `${BASE}/auth/refresh`,
     { refreshToken: rt, deviceId },
     { headers: { "X-Device-Id": deviceId } }
   );
 
-  const {
-    accessToken: newAccess,
-    refreshToken: newRefresh,
-    accessExpiresAt,
-  } = data || {};
-  if (!newAccess || !newRefresh) throw new Error("Malformed refresh response");
+  const { accessToken, refreshToken, accessExpiresAt, token } = data || {};
+  const newAccess = accessToken || token;
+  if (!newAccess) throw new Error("Malformed refresh response");
 
   setAccessToken(newAccess);
-  setRefreshToken(newRefresh);
+  if (refreshToken) setRefreshToken(refreshToken);
   if (accessExpiresAt) {
     const ms =
       typeof accessExpiresAt === "string"
@@ -109,56 +163,59 @@ async function doRefresh() {
 }
 
 function queueRefresh() {
-  if (!isRefreshing) {
-    isRefreshing = true;
-    refreshPromise = doRefresh().finally(() => {
-      isRefreshing = false;
+  if (!refreshing) {
+    refreshing = refreshTokens().finally(() => {
+      refreshing = null;
     });
   }
-  return refreshPromise;
+  return refreshing;
 }
 
-// Response: 429 bubble, 401 auto-refresh (login/refresh/logout uchun emas)
+/* =========================
+   RESPONSE INTERCEPTOR
+   ========================= */
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const { response, config } = err || {};
     const status = response?.status;
     const original = config || {};
-    const url = original.url || "";
-    const refreshExcluded =
-      url === "/auth/login" ||
-      url === "/auth/refresh" ||
-      url === "/auth/logout";
 
+    // Tarmoq xatosi — foydali log
     if (err?.code === "ERR_NETWORK") {
-      console.warn("[API] Network error. BACKEND running? baseURL=", BASE);
+      console.warn("[API] Network error. Backend ishlyaptimi? baseURL=", BASE);
     }
 
+    // 429 — to'g'ridan-to'g'ri qaytarib yuboramiz
     if (status === 429) {
       return Promise.reject(err);
     }
 
-    if (status === 401 && !refreshExcluded) {
+    // 401 — auth endpointlaridan tashqari holatlarda refresh
+    if (status === 401 && !isAuthEndpoint(original.url) && !original.__isRetry) {
       try {
         const newAccess = await queueRefresh();
+        original.__isRetry = true;
         original.headers = original.headers || {};
         original.headers.Authorization = `Bearer ${newAccess}`;
-        return api(original);
-      } catch {
-        try {
-          // Logout helper imported where needed; here we only clear tokens
-          setAccessToken(null);
-          setRefreshToken(null);
-          setAccessExpireAt(null);
-        } catch {}
+        return api(original); // qayta so'rov
+      } catch (e) {
+        // Refresh ham ishlamadi — local tokenlarni tozalaymiz
+        setAccessToken(null);
+        setRefreshToken(null);
+        setAccessExpireAt(null);
+        return Promise.reject(err);
       }
     }
+
+    // MUHIM: 403 bo'lsa tokenlarni TOZALAMAYMIZ — haqiqiy ruxsat masalasi bo'lishi mumkin
     return Promise.reject(err);
   }
 );
 
-// Qulay helpers
+/* =========================
+   QULAY WRAPPERLAR
+   ========================= */
 export async function httpGet(url, params) {
   const res = await api.get(url, { params });
   return res.data;
@@ -169,6 +226,10 @@ export async function httpPost(url, body) {
 }
 export async function httpPatch(url, body) {
   const res = await api.patch(url, body);
+  return res.data;
+}
+export async function httpPut(url, body) {
+  const res = await api.put(url, body);
   return res.data;
 }
 export async function httpDelete(url) {
