@@ -1,17 +1,30 @@
-// LoginPage.module.scss
-/* BARCHA O'ZGARUVCHILAR FAQAT AUTH WRAPPER DOIRASIDA! */
+/* LoginPage.module.scss
+   Dark/Light theming with scoped tokens
+   ------------------------------------ */
+
+/* 1) Theme tokens (LIGHT defaults) — scoped to .auth only */
 .auth {
-  // 1. Barcha declarations birinchi o‘rinda
   --am-bg: #f6f9fc;
   --am-card: #ffffff;
   --am-text: #0f172a;
   --am-muted: #64748b;
   --am-border: #e5e7eb;
   --am-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  --am-ring: 0 0 0 4px rgba(34, 197, 94, 0.18);
+
+  --brand-1: #22c55e;
+  --brand-2: #16a34a;
+
+  --danger-1: #ef4444;
+  --danger-2: #dc2626;
 
   min-height: 100vh;
   display: grid;
   place-items: center;
+  position: relative;
+  overflow: hidden;
+
+  /* soft brandy background */
   background: radial-gradient(
       1200px 600px at 80% -10%,
       rgba(34, 197, 94, 0.12),
@@ -23,11 +36,9 @@
       transparent 60%
     ),
     var(--am-bg);
-  position: relative;
-  overflow: hidden;
 }
 
-// 2. Nested rules — tashqarida yoziladi (Sass ogohlantirish chiqmasin)
+/* 2) Auto dark (OS preference) */
 @media (prefers-color-scheme: dark) {
   .auth {
     --am-bg: #0b1220;
@@ -36,10 +47,22 @@
     --am-muted: #9aa5b1;
     --am-border: #1f2937;
     --am-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --am-ring: 0 0 0 4px rgba(34, 197, 94, 0.25);
   }
 }
 
-/* Dekor */
+/* 3) App toggle dark (takes precedence) */
+:where(.dark, [data-theme="dark"], .theme-dark) .auth {
+  --am-bg: #0b1220;
+  --am-card: #0f172a;
+  --am-text: #e6eef9;
+  --am-muted: #9aa5b1;
+  --am-border: #1f2937;
+  --am-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --am-ring: 0 0 0 4px rgba(34, 197, 94, 0.25);
+}
+
+/* 4) Decorative blurs (non-interactive) */
 .decor1,
 .decor2 {
   position: absolute;
@@ -50,7 +73,7 @@
 .decor1 {
   width: 380px;
   height: 380px;
-  background: radial-gradient(closest-side, #22c55e, transparent);
+  background: radial-gradient(closest-side, var(--brand-1), transparent);
   top: -80px;
   right: -60px;
   border-radius: 50%;
@@ -58,13 +81,13 @@
 .decor2 {
   width: 460px;
   height: 460px;
-  background: radial-gradient(closest-side, #16a34a, transparent);
+  background: radial-gradient(closest-side, var(--brand-2), transparent);
   bottom: -120px;
   left: -90px;
   border-radius: 50%;
 }
 
-/* === 2 ustunli split layout === */
+/* 5) Split layout */
 .split {
   width: min(1280px, 94vw);
   margin: 0 auto;
@@ -103,39 +126,37 @@
   }
 }
 
-/* === Chap (Hero) === */
+/* 6) Hero (left) */
 .hero {
   text-align: center;
-  max-width: 520px;
+  max-width: 560px;
   color: var(--am-text);
 }
-
 .logoWrap {
   display: grid;
   place-items: center;
   margin-bottom: 18px;
 }
 .logo {
-  /* Logoni ancha kattalashtirdik */
   width: clamp(200px, 40vw, 500px);
   height: auto;
-  filter: drop-shadow(0 0 24px rgba(34, 197, 94, 0.35));
+  filter: drop-shadow(
+    0 0 24px color-mix(in srgb, var(--brand-1) 35%, transparent)
+  );
 }
-
 .heroTitle {
   margin: 0 0 10px 0;
-  font-size: clamp(30px, 4vw, 35px);
+  font-size: clamp(30px, 4vw, 36px);
   font-weight: 800;
   letter-spacing: 0.2px;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
+  background: linear-gradient(135deg, var(--brand-1), var(--brand-2));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
-
 .tagline {
   margin: 0 auto 16px auto;
-  max-width: 520px;
+  max-width: 560px;
   font-size: clamp(16px, 1.6vw, 18px);
   line-height: 1.6;
   color: var(--am-muted);
@@ -143,7 +164,11 @@
 .tagline span {
   font-weight: 700;
   color: var(--am-text);
-  background: linear-gradient(135deg, #22c55e22, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand-1) 13%, transparent),
+    transparent
+  );
   padding: 0 4px;
   border-radius: 6px;
 }
@@ -158,12 +183,12 @@
   font-size: 12.5px;
   padding: 6px 10px;
   border-radius: 999px;
-  color: #16a34a;
-  background: color-mix(in srgb, #22c55e 18%, transparent);
-  border: 1px solid color-mix(in srgb, #22c55e 38%, transparent);
+  color: var(--brand-2);
+  background: color-mix(in srgb, var(--brand-1) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand-1) 38%, transparent);
 }
 
-/* === O‘ng (Form karta) === */
+/* 7) Card (right) */
 .card {
   width: min(92vw, 420px);
   background: var(--am-card);
@@ -174,7 +199,6 @@
   padding: 28px;
   position: relative;
 }
-
 .brandSmall {
   margin-bottom: 12px;
 }
@@ -189,7 +213,7 @@
   margin: 0;
 }
 
-/* Forma */
+/* 8) Form */
 .form {
   display: grid;
   gap: 14px;
@@ -198,10 +222,6 @@
 .field {
   display: grid;
   gap: 6px;
-}
-.field input[aria-invalid="true"] {
-  border-color: #fca5a5;
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.18);
 }
 .field label {
   font-size: 13px;
@@ -215,86 +235,112 @@
   outline: none;
   background: transparent;
   color: var(--am-text);
+  transition: box-shadow 0.15s, border-color 0.15s, background 0.15s;
 }
 .field input:focus {
-  border-color: #93c5aa;
-  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+  border-color: color-mix(in srgb, var(--brand-1) 40%, var(--am-border));
+  box-shadow: var(--am-ring);
+}
+.field input[aria-invalid="true"] {
+  border-color: color-mix(in srgb, var(--danger-1) 70%, var(--am-border));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger-1) 22%, transparent);
 }
 
+/* password visibility toggle */
 .pwd {
   position: relative;
-  input {
-    padding-right: 40px; // ⬅️ icon uchun joy qoldiramiz
-  }
+}
+.pwd input {
+  padding-right: 40px;
 }
 .toggle {
   position: absolute;
   right: 8px;
   top: 50%;
+  // transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
   font-size: 16px;
   opacity: 0.8;
+  color: var(--am-muted);
 }
 
-/* Tugmalar */
+/* 9) Buttons (unified, theme-aware) */
 .btn {
   border: 1px solid var(--am-border);
-  background: #fff;
+  background: color-mix(in srgb, var(--am-card) 96%, var(--am-text) 4%);
   color: var(--am-text);
   padding: 12px 14px;
   border-radius: 12px;
   cursor: pointer;
-  transition: transform 0.03s ease-in-out, box-shadow 0.15s;
+  transition: transform 0.03s ease-in-out, box-shadow 0.15s, background 0.15s;
+}
+.btn:hover {
+  background: color-mix(in srgb, var(--am-card) 90%, var(--am-text) 10%);
+}
+.btn:focus {
+  outline: none;
+  box-shadow: var(--am-ring);
 }
 .btn:active {
   transform: translateY(1px);
-}
-.primary {
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  border-color: transparent;
-  color: #fff;
-  font-weight: 600;
-  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.25);
-}
-.full {
-  width: 100%;
 }
 .btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
-/* Error */
+.primary {
+  background: linear-gradient(135deg, var(--brand-1), var(--brand-2));
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--brand-1) 25%, transparent);
+}
+.primary:hover {
+  filter: brightness(1.02);
+}
+
+.danger {
+  background: linear-gradient(135deg, var(--danger-1), var(--danger-2));
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--danger-1) 22%, transparent);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--am-text);
+  border: 1px solid var(--am-border);
+}
+
+.full {
+  width: 100%;
+}
+
+/* 10) Error alert (theme aware via tokens) */
 .error {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
+  background: color-mix(in srgb, var(--danger-1) 8%, transparent);
+  color: color-mix(in srgb, var(--danger-2) 85%, var(--am-text));
+  border: 1px solid color-mix(in srgb, var(--danger-1) 35%, var(--am-border));
   padding: 10px 12px;
   border-radius: 12px;
   font-size: 14px;
   margin-bottom: 10px;
 }
-@media (prefers-color-scheme: dark) {
-  .error {
-    background: #3f1d1d;
-    color: #fecaca;
-    border-color: #7f1d1d;
-  }
-}
 
+/* 11) Footer */
 .foot {
   margin-top: 16px;
   text-align: center;
 }
 
-/* App togglega mos dark (data-theme) */
-:where(.dark, [data-theme="dark"], .theme-dark) .auth {
-  --am-bg: #0b1220;
-  --am-card: #0f172a;
-  --am-text: #e6eef9;
-  --am-muted: #9aa5b1;
-  --am-border: #1f2937;
-  --am-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+/* 12) Small polish for reduced motion users */
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .field input {
+    transition: none;
+  }
 }

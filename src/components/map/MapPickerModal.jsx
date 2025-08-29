@@ -35,6 +35,7 @@ export default function MapPickerModal({
   title = "Joylashuvni tanlang",
   dark = false,
   size = "xl",
+  tms = true,
 }) {
   const [map, setMap] = useState(null);
   const [pos, setPos] = useState(null);
@@ -93,6 +94,7 @@ export default function MapPickerModal({
       // Modal o'zi ham dark-aware, lekin xohlasangiz local majburlash:
       dark={dark}
       initialFocusRef={saveBtnRef}
+      zIndex={5000}
     >
       <div className="map-picker">
         <div className="controls">
@@ -106,17 +108,20 @@ export default function MapPickerModal({
           </button>
         </div>
 
-        <div className="map-holder">
+        <div
+          className="map-holder"
+          style={{ height: "60vh", borderRadius: 12, overflow: "hidden" }}
+        >
           {/* MapContainer'ni modal ochilganda render qilamiz */}
           {open && (
             <MapContainer
-              key={dark ? "picker-dark" : "picker-light"} // tile almashganda remount bo‘lsin
+              key={`${dark ? "dark" : "light"}-${tms ? "tms" : "xyz"}`} // tile almashganda remount bo‘lsin
               center={center}
               zoom={initialZoom}
               whenCreated={setMap}
               style={{ height: "100%", width: "100%" }}
             >
-              <MapTiles dark={dark} />
+              <MapTiles dark={dark} tms={true} />
               <ClickCapture onPick={setPos} />
               {pos && <Marker position={pos} />}
             </MapContainer>

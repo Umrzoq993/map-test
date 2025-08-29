@@ -79,11 +79,11 @@ export function AddRootModal({ open, onClose, onDone }) {
         {err && <div className={css.error}>{err}</div>}
 
         <div className={css.actions}>
-          <button className={css.btn} onClick={onClose}>
+          <button className={`btn ${css.btn}`} onClick={onClose}>
             Bekor qilish
           </button>
           <button
-            className={`${css.btn} ${css.btnPrimary}`}
+            className={`btn primary ${css.btn}`}
             onClick={submit}
             disabled={loading}
           >
@@ -165,11 +165,11 @@ export function AddChildModal({ open, onClose, onDone, parent }) {
         {err && <div className={css.error}>{err}</div>}
 
         <div className={css.actions}>
-          <button className={css.btn} onClick={onClose}>
+          <button className={`btn ${css.btn}`} onClick={onClose}>
             Bekor qilish
           </button>
           <button
-            className={`${css.btn} ${css.btnPrimary}`}
+            className={`btn primary ${css.btn}`}
             onClick={submit}
             disabled={loading}
           >
@@ -246,11 +246,11 @@ export function EditOrgModal({ open, onClose, onDone, org }) {
         {err && <div className={css.error}>{err}</div>}
 
         <div className={css.actions}>
-          <button className={css.btn} onClick={onClose}>
+          <button className={`btn ${css.btn}`} onClick={onClose}>
             Bekor qilish
           </button>
           <button
-            className={`${css.btn} ${css.btnPrimary}`}
+            className={`btn primary ${css.btn}`}
             onClick={submit}
             disabled={loading}
           >
@@ -300,11 +300,11 @@ export function DeleteOrgModal({ open, onClose, onDone, org, cascadeInfo }) {
         )}
         {err && <div className={css.error}>{err}</div>}
         <div className={css.actions}>
-          <button className={css.btn} onClick={onClose}>
+          <button className={`btn ${css.btn}`} onClick={onClose}>
             Bekor qilish
           </button>
           <button
-            className={`${css.btn} ${css.btnDanger}`}
+            className={`btn danger ${css.btn}`}
             onClick={submit}
             disabled={loading}
           >

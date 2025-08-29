@@ -1,7 +1,25 @@
-// src/components/ui/Modal.jsx
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import styles from "./Modal.module.scss";
+
+/* Global dark’ni aniqlash */
+function detectGlobalDark() {
+  if (typeof document === "undefined") return false;
+  const html = document.documentElement;
+  const body = document.body;
+  const hasDark = (el) =>
+    !!el &&
+    (el.classList.contains("dark") ||
+      el.classList.contains("theme-dark") ||
+      el.getAttribute("data-theme") === "dark");
+  if (hasDark(html) || hasDark(body)) return true;
+  // OS dark
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+}
 
 /**
  * Props
@@ -10,7 +28,7 @@ import styles from "./Modal.module.scss";
  * - onClose?: () => void
  * - size?: "sm" | "md" | "lg" | "xl" | "full"
  * - width?: number | string
- * - dark?: boolean
+ * - dark?: boolean | "auto"   // "auto" (default) — globaldan aniqlaydi
  * - preventCloseOnBackdrop?: boolean
  * - disableEscapeClose?: boolean
  * - initialFocusRef?: React.Ref
@@ -24,7 +42,7 @@ export default function Modal({
   onClose,
   size = "md",
   width,
-  dark,
+  dark = "auto",
   preventCloseOnBackdrop = false,
   disableEscapeClose = false,
   initialFocusRef,
@@ -34,9 +52,10 @@ export default function Modal({
 }) {
   const [mounted, setMounted] = useState(false);
   const [phase, setPhase] = useState("idle"); // 'enter' | 'entered' | 'exit'
+  const [theme, setTheme] = useState("light");
   const cardRef = useRef(null);
 
-  // Portal root
+  // Portal host
   const portalEl = useRef(
     typeof document !== "undefined" ? document.createElement("div") : null
   );
@@ -55,7 +74,37 @@ export default function Modal({
     };
   }, []);
 
-  // open/close phases + scroll lock
+  // Theme resolution (auto + live update)
+  useEffect(() => {
+    if (dark === true) return setTheme("dark");
+    if (dark === false) return setTheme("light");
+
+    const compute = () => setTheme(detectGlobalDark() ? "dark" : "light");
+    compute();
+
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const onMq = () => compute();
+    mq?.addEventListener?.("change", onMq);
+
+    const obs = new MutationObserver(compute);
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class", "data-theme"],
+    });
+    obs.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class", "data-theme"],
+    });
+
+    return () => {
+      try {
+        mq?.removeEventListener?.("change", onMq);
+      } catch {}
+      obs.disconnect();
+    };
+  }, [dark]);
+
+  // open/close + scroll lock + focus
   useEffect(() => {
     if (!mounted) return;
     const body = document.body;
@@ -70,7 +119,7 @@ export default function Modal({
         cardRef.current?.querySelector(
           "[autofocus], button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])"
         );
-      if (focusEl && focusEl.focus) focusEl.focus();
+      focusEl?.focus?.();
 
       return () => {
         clearTimeout(t);
@@ -81,7 +130,7 @@ export default function Modal({
     }
   }, [open, mounted, initialFocusRef]);
 
-  // Escape key + primitiv focus trap
+  // Escape + oddiy focus trap
   useEffect(() => {
     if (!open || disableEscapeClose) return;
     const onKey = (e) => {
@@ -115,6 +164,7 @@ export default function Modal({
 
   if (!mounted || !open) return null;
 
+  // classes
   const rootClass = [
     styles.modalRoot,
     phase === "enter" && styles.enter,
@@ -124,6 +174,7 @@ export default function Modal({
     .filter(Boolean)
     .join(" ");
 
+  // width presets
   const cardStyle = {};
   if (width)
     cardStyle["--card-w"] = typeof width === "number" ? `${width}px` : width;
@@ -138,10 +189,8 @@ export default function Modal({
     cardStyle["--card-w"] = map[size] || map.md;
   }
 
-  const dataTheme = dark === undefined ? undefined : dark ? "dark" : "light";
-
   const content = (
-    <div className={rootClass} data-theme={dataTheme}>
+    <div className={rootClass} data-theme={theme}>
       <div
         className={styles.backdrop}
         onClick={() => !preventCloseOnBackdrop && onClose?.()}
@@ -163,7 +212,7 @@ export default function Modal({
             <div className={styles.headerRight}>{headerRight}</div>
             {onClose && (
               <button
-                className={styles.close}
+                className={`${styles.btn} ${styles.icon}`}
                 onClick={onClose}
                 aria-label="Yopish"
               >
@@ -172,7 +221,7 @@ export default function Modal({
             )}
           </header>
         )}
-        {/* OrgUnitSelect menyusi scroll-ni kuzatishi uchun atribut */}
+        {/* body */}
         <div className={styles.body} data-dialog-body>
           {children}
         </div>

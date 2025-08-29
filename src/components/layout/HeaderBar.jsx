@@ -1,65 +1,45 @@
+// src/components/shell/HeaderBar.jsx
 import { LuMoon, LuSun, LuMenu } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
-import { clearToken } from "../../utils/auth";
 import { useAuth } from "../../hooks/useAuth";
 import styles from "./HeaderBar.module.scss";
-
-// App logosi
 import appLogo from "../../assets/zamin-logo.png";
 
-/**
- * Props:
- *  - dark: boolean
- *  - onToggleTheme: () => void
- *  - onHamburger: () => void
- */
 export default function HeaderBar({ dark, onToggleTheme, onHamburger }) {
   const nav = useNavigate();
   const { username, role } = useAuth();
 
+  // E'TIBOR: bu yerda tokenni O'CHIRMAYMIZ
   const onLogout = () => {
-    clearToken();
-    nav("/login", { replace: true });
+    nav("/login", { replace: true }); // “Hisob boshqaruvi” ekraniga
   };
 
   return (
     <header className={styles.header} data-theme={dark ? "dark" : "light"}>
-      <button
-        className={styles.iconBtn}
-        onClick={onHamburger}
-        aria-label="Toggle sidebar"
-        title="Menyuni ochish/yopish"
-      >
+      <button className={styles.iconBtn} onClick={onHamburger}>
         <LuMenu size={18} />
       </button>
 
       <div
         className={styles.brand}
         onClick={() => nav("/dashboard")}
-        title="Zamin"
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => e.key === "Enter" && nav("/dashboard")}
       >
-        <img className={styles.brandLogoSm} src={appLogo} alt="Zamin logo" />
+        <img className={styles.brandLogoSm} src={appLogo} alt="Zamin" />
         <span>Zamin</span>
       </div>
 
       <div className={styles.grow} />
 
-      <button
-        className={styles.iconBtn}
-        onClick={onToggleTheme}
-        aria-label="Toggle theme"
-        title={dark ? "Light mode" : "Dark mode"}
-      >
+      <button className={styles.iconBtn} onClick={onToggleTheme}>
         {dark ? <LuSun size={18} /> : <LuMoon size={18} />}
       </button>
 
       <div className={styles.userbox}>
         <span className={styles.role}>{role || "USER"}</span>
         <span className={styles.username}>{username}</span>
-        <button className={styles.logoutBtn} onClick={onLogout} title="Chiqish">
+        <button className={styles.logoutBtn} onClick={onLogout}>
           Logout
         </button>
       </div>

@@ -1,4 +1,3 @@
-// src/components/org/OrgTreeEditor.jsx
 import { useEffect, useMemo, useState } from "react";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
@@ -274,7 +273,6 @@ export default function OrgTreeEditor() {
         open={createOpen}
         title="Bo‘lim qo‘shish"
         onClose={() => setCreateOpen(false)}
-        dark={document.body.classList.contains("theme-dark")}
       >
         <div className="org-tree-modal">
           <div className="form-grid">
@@ -349,7 +347,6 @@ export default function OrgTreeEditor() {
         open={editOpen}
         title="Bo‘limni tahrirlash"
         onClose={() => setEditOpen(false)}
-        dark={document.body.classList.contains("theme-dark")}
       >
         <div className="org-tree-modal">
           <div className="form-grid">
@@ -419,7 +416,6 @@ export default function OrgTreeEditor() {
         title="Bo‘limni o‘chirish"
         onClose={() => setDeleteOpen(false)}
         width={440}
-        dark={document.body.classList.contains("theme-dark")}
       >
         <div className="org-tree-modal">
           <div className="confirm">
@@ -453,7 +449,6 @@ export default function OrgTreeEditor() {
         onSave={({ lat, lng, zoom }) => {
           setDraft((d) => ({ ...d, lat, lng, zoom }));
         }}
-        dark={document.body.classList.contains("theme-dark")}
         size="xl"
       />
 
