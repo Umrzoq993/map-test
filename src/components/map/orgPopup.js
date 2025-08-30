@@ -1,6 +1,7 @@
 // src/map/orgPopup.js
 import L from "leaflet";
-import { getOrgDetails } from "../api/org";
+import { getOrgDetails } from "../../api/org";
+import "../../styles/_org_popup.scss";
 
 /**
  * Markerga boy popup bog'laydi.
