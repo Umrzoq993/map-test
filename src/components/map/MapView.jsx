@@ -19,7 +19,6 @@ import {
   LayerGroup,
   GeoJSON,
 } from "react-leaflet";
-// ✨ Og‘ir paketni faqat kerak bo‘lganda yuklaymiz
 const EditControlLazy = lazy(() =>
   import("react-leaflet-draw").then((m) => ({ default: m.EditControl }))
 );
@@ -28,8 +27,8 @@ import L from "leaflet";
 import MapTiles from "./MapTiles";
 import "../../styles/leaflet-theme.css";
 
+import OrgMarker from "./OrgMarker";
 import { locateOrg } from "../../api/org";
-// ❗ Namespace import — deleteDrawing eksport qilinmagan bo‘lsa ham xato bermaydi
 import * as drawingsApi from "../../api/drawings";
 import { listFacilities, patchFacility } from "../../api/facilities";
 import { centroidOfGeometry } from "../../utils/geo";
@@ -44,7 +43,7 @@ import FacilityEditModal from "./FacilityEditModal";
 import CodeJumpBox from "./CodeJumpBox";
 import ZoomIndicator from "./ZoomIndicator";
 
-/* 🔧 DARK MODE PATCH — drawer/slide-over’lar portaldan render bo‘lsa ham ishlaydi */
+/* 🔧 DARK MODE PATCH */
 const darkDrawerCss = `
 html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .sheet, .slide-over) {
   color: #e6eef9 !important;
@@ -84,10 +83,9 @@ html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .s
 }
 `;
 
-/** Leaflet control: faqat Tashkilot panelini ko‘rsatish/yashirish (T) */
+/** Leaflet control: T panel toggle */
 function MapControls({ panelHidden, onTogglePanel }) {
   const map = useMap();
-
   useEffect(() => {
     const PanelCtrl = L.Control.extend({
       options: { position: "topright" },
@@ -121,11 +119,10 @@ function MapControls({ panelHidden, onTogglePanel }) {
     map.addControl(panelCtrl);
     return () => map.removeControl(panelCtrl);
   }, [map, panelHidden, onTogglePanel]);
-
   return null;
 }
 
-/* -------------------------- Kichik util funksiyalar -------------------------- */
+/* -------- util -------- */
 function parseBBox(bboxStr) {
   const [w, s, e, n] = String(bboxStr || "")
     .split(",")
@@ -135,8 +132,8 @@ function parseBBox(bboxStr) {
 function bufferBBoxStr(bboxStr, ratio = 0.2) {
   const { w, s, e, n } = parseBBox(bboxStr);
   if (![w, s, e, n].every(Number.isFinite)) return bboxStr;
-  const dw = (e - w) * ratio;
-  const dh = (n - s) * ratio;
+  const dw = (e - w) * ratio,
+    dh = (n - s) * ratio;
   return [w - dw, s - dh, e + dw, n + dh].join(",");
 }
 function envBool(v, def = false) {
@@ -145,7 +142,7 @@ function envBool(v, def = false) {
   return s === "1" || s === "true" || s === "yes";
 }
 
-/** Overlay orqali yoqish/o‘chirishni haqiqiy Layer add/remove eventlari bilan ushlaymiz */
+/** Overlay yoqish/o‘chirish hodisasi */
 function LayersToggle({ onEnable, onDisable }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -163,25 +160,18 @@ function LayersToggle({ onEnable, onDisable }) {
   return <LayerGroup ref={ref} />;
 }
 
-/** ✨ IntroFlight — Google Earth uslubidagi kirish animatsiyasi (patched) */
+/** Intro flight */
 function IntroFlight({ enabled, delayMs, target }) {
   const map = useMap();
   const didRunRef = useRef(false);
-
-  // target validligini tekshiruvchi helper
   const isValid = (t) =>
     t &&
     Number.isFinite(t.lat) &&
     Number.isFinite(t.lng) &&
     Number.isFinite(t.zoom);
-
   useEffect(() => {
-    // Intro o‘chirilgan yoki allaqachon bajargan bo‘lsa — chiqib ketamiz
     if (!enabled || didRunRef.current) return;
-
-    // target hali tayyor emas — flag qo‘ymaymiz, keyingi update’ni kutamiz
     if (!isValid(target)) return;
-
     const tid = setTimeout(() => {
       map.whenReady(() => {
         try {
@@ -192,18 +182,14 @@ function IntroFlight({ enabled, delayMs, target }) {
             noMoveStart: false,
           });
         } catch {
-          // xavfsiz fallback
           map.setView([target.lat, target.lng], target.zoom);
         } finally {
-          didRunRef.current = true; // ✅ faqat muvaffaqiyatli ishga tushirgandan keyin belgilaymiz
+          didRunRef.current = true;
         }
       });
     }, Math.max(0, Number(delayMs) || 0));
-
     return () => clearTimeout(tid);
-    // target koordinatalari tayyor bo‘lganda effect qayta ishlashi uchun granular deps
   }, [enabled, delayMs, target?.lat, target?.lng, target?.zoom, map]);
-
   return null;
 }
 
@@ -216,17 +202,15 @@ export default function MapView({
   dark = false,
   orgTree = [],
   hideTree = false,
-
-  /* 🔽 Intro parametrlari */
   introEnabled = true,
   introDelayMs = 700,
-  userRole = "user", // "admin" bo‘lsa — butun O‘zbekiston
-  homeTarget = null, // {lat, lng, zoom} bo‘lsa to‘g‘ridan-to‘g‘ri shunga uchadi
+  userRole = "user",
+  homeTarget = null,
 }) {
   const featureGroupRef = useRef(null);
-  const lastDrawnLayerRef = useRef(null); // ⬅️ so‘nggi chizilgan layer (tasdiqlanmasa o‘chirish uchun)
+  const lastDrawnLayerRef = useRef(null);
 
-  // ---- Draw state
+  // Draw state
   const [geojson, setGeojson] = useState(null);
   const updateGeoJSON = useCallback(() => {
     const fg = featureGroupRef.current;
@@ -235,12 +219,10 @@ export default function MapView({
   }, []);
   const onEdited = useCallback(updateGeoJSON, [updateGeoJSON]);
   const onDeleted = useCallback(updateGeoJSON, [updateGeoJSON]);
-
-  // ✨ Draw toolbar’ni overlay bilan boshqarish
   const [drawEnabled, setDrawEnabled] = useState(false);
 
-  // ---- Geometry edit session (facility uchun)
-  const [geomEdit, setGeomEdit] = useState(null); // { facilityId, geometry }
+  // Geometry edit (facility)
+  const [geomEdit, setGeomEdit] = useState(null);
   useEffect(() => {
     const handler = (e) => {
       const { facilityId, geometry } = e.detail || {};
@@ -261,13 +243,11 @@ export default function MapView({
     window.addEventListener("facility:edit-geometry", handler);
     return () => window.removeEventListener("facility:edit-geometry", handler);
   }, []);
-
   const exitGeomEdit = useCallback(() => {
     const fg = featureGroupRef.current;
     if (fg) fg.clearLayers();
     setGeomEdit(null);
   }, []);
-
   const saveGeomEdit = useCallback(async () => {
     const fg = featureGroupRef.current;
     const gj = fg?.toGeoJSON();
@@ -276,18 +256,15 @@ export default function MapView({
       .map((f) => f?.geometry)
       .filter(Boolean)
       .filter((g) => g.type !== "Point");
-
     if (geoms.length === 0) {
       alert(
         "Poligon chizmadingiz. Iltimos, polygon/rectangle chizing yoki mavjudini tahrirlang."
       );
       return;
     }
-
     let geometry = null;
-    if (geoms.length === 1) {
-      geometry = geoms[0];
-    } else {
+    if (geoms.length === 1) geometry = geoms[0];
+    else {
       const polys = [];
       for (const g of geoms) {
         if (g.type === "Polygon") polys.push(g.coordinates);
@@ -295,7 +272,6 @@ export default function MapView({
       }
       geometry = { type: "MultiPolygon", coordinates: polys };
     }
-
     const c = centroidOfGeometry(geometry);
     try {
       await patchFacility(geomEdit.facilityId, {
@@ -312,10 +288,11 @@ export default function MapView({
     }
   }, [geomEdit?.facilityId, exitGeomEdit]);
 
-  // ---- Tree & nav
+  // Tree & nav
   const [checkedKeys, setCheckedKeys] = useState([]);
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [navTarget, setNavTarget] = useState(null);
+  const [orgForPopup, setOrgForPopup] = useState(null);
 
   const flyTo = useCallback((latLng, z = 17) => {
     if (!Array.isArray(latLng) || latLng.length < 2) return;
@@ -324,11 +301,10 @@ export default function MapView({
     setNavTarget({ lat, lng, zoom: z, ts: Date.now() });
   }, []);
 
-  // Panel ko‘rsatish/yashirish
   const [panelHidden, setPanelHidden] = useState(!hideTree);
   const togglePanel = () => setPanelHidden((v) => !v);
 
-  // ---- Qidiruv
+  // Search
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   useEffect(() => {
@@ -338,10 +314,10 @@ export default function MapView({
   const onEnterSearch = () => setQuery(searchInput.trim());
   const onClearSearch = () => setSearchInput("");
 
-  // ---- Viewport (BBOX)
+  // Viewport
   const [bbox, setBbox] = useState(null);
 
-  // ---- Facilities
+  // Facilities
   const [facilities, setFacilities] = useState([]);
   const [typeFilter, setTypeFilter] = useState({
     GREENHOUSE: true,
@@ -363,45 +339,38 @@ export default function MapView({
         .map(([k]) => k),
     [typeFilter]
   );
-
   const checkedOrgIds = useMemo(
     () => checkedKeys.map((k) => Number(k)).filter((n) => Number.isFinite(n)),
     [checkedKeys]
   );
-
   const visibleFacilities = useMemo(
     () => facilities.filter((f) => enabledTypes.includes(f.type)),
     [facilities, enabledTypes]
   );
-
   const [reloadKey, setReloadKey] = useState(0);
   const [showPolys, setShowPolys] = useState(true);
 
-  // -------- Draft (latest drawing) holati --------
-  const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 soat
-  const [draftVisible, setDraftVisible] = useState(false); // overlay holati
+  // Draft overlay
+  const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+  const [draftVisible, setDraftVisible] = useState(false);
   const [draftGeoJSON, setDraftGeoJSON] = useState(null);
   const draftLayerRef = useRef(null);
-
   const loadDraftIfFresh = useCallback(async () => {
     try {
       if (!drawingsApi.getLatestDrawing) return;
-      const latest = await drawingsApi.getLatestDrawing(); // { geojson, createdAt? }
+      const latest = await drawingsApi.getLatestDrawing();
       const src = latest?.geojson || latest;
       if (!src) {
         setDraftGeoJSON(null);
         return;
       }
-
       const ts =
         Number(src?.properties?.__ts) ||
         (latest?.createdAt ? Date.parse(latest.createdAt) : 0);
-
       if (!ts || Date.now() - ts > DRAFT_TTL_MS) {
         setDraftGeoJSON(null);
         return;
       }
-
       const features = Array.isArray(src.features)
         ? src.features.filter(
             (fe) => fe?.geometry && fe.geometry.type !== "Point"
@@ -411,17 +380,14 @@ export default function MapView({
         setDraftGeoJSON(null);
         return;
       }
-
       setDraftGeoJSON({ ...src, features });
     } catch (e) {
       console.error("Draftni yuklashda xatolik:", e);
     }
   }, [DRAFT_TTL_MS]);
-
   const maybeSaveDraft = useCallback(async (geometry) => {
     const consent = window.confirm("Qoralama sifatida 24 soatga saqlaymizmi?");
     if (!consent) return;
-
     const fc = {
       type: "FeatureCollection",
       properties: { __kind: "latest-draft", __ts: Date.now() },
@@ -434,12 +400,11 @@ export default function MapView({
       console.error("Draftni saqlashda xatolik:", e);
     }
   }, []);
-
   const clearDraft = useCallback(async () => {
     try {
-      if (typeof drawingsApi.deleteDrawing === "function") {
+      if (typeof drawingsApi.deleteDrawing === "function")
         await drawingsApi.deleteDrawing("latest-draft");
-      } else if (typeof drawingsApi.saveDrawing === "function") {
+      else if (typeof drawingsApi.saveDrawing === "function")
         await drawingsApi.saveDrawing(
           {
             type: "FeatureCollection",
@@ -448,7 +413,6 @@ export default function MapView({
           },
           "latest-draft:clear"
         );
-      }
     } catch (e) {
       console.error("Draftni o‘chirib bo‘lmadi:", e);
     } finally {
@@ -459,18 +423,15 @@ export default function MapView({
     }
   }, []);
 
-  // -------- Facilities fetch (bbox buffer + cache) --------
-  const facCacheRef = useRef(new Map()); // key -> { ts, data }
-  const FAC_TTL = 15_000; // 15s
-
+  // Facilities fetch (bbox+cache)
+  const facCacheRef = useRef(new Map());
+  const FAC_TTL = 15_000;
   useEffect(() => {
     let cancelled = false;
-
     if (!bbox || checkedOrgIds.length === 0 || enabledTypes.length === 0) {
       setFacilities([]);
       return;
     }
-
     const buffered = bufferBBoxStr(bbox, 0.2);
     const cacheKey = [
       buffered,
@@ -480,13 +441,11 @@ export default function MapView({
         .join(","),
       enabledTypes.slice().sort().join(","),
     ].join("|");
-
     const hit = facCacheRef.current.get(cacheKey);
     if (hit && Date.now() - hit.ts < FAC_TTL) {
       setFacilities(hit.data);
       return;
     }
-
     const t = setTimeout(async () => {
       try {
         const reqs = checkedOrgIds.map((orgId) =>
@@ -509,58 +468,48 @@ export default function MapView({
         if (!cancelled) console.error("listFacilities failed:", e);
       }
     }, 250);
-
     return () => {
       cancelled = true;
       clearTimeout(t);
     };
   }, [bbox, JSON.stringify(checkedOrgIds), enabledTypes.join(","), reloadKey]);
 
-  // CREATE drawer
+  // Create drawer
   const [createOpen, setCreateOpen] = useState(false);
   const [draftGeom, setDraftGeom] = useState(null);
   const [draftCenter, setDraftCenter] = useState(null);
-
   const onCreated = useCallback(
     (e) => {
       updateGeoJSON();
-
-      const layer = e.layer;
-      const type = e.layerType;
-
+      const layer = e.layer,
+        type = e.layerType;
       if (geomEdit) return;
       if (!["marker", "polygon", "rectangle"].includes(type)) return;
-
       const fg = featureGroupRef.current;
       const gj = layer.toGeoJSON();
       const geometry = gj.geometry;
       const c =
         type === "marker" ? layer.getLatLng() : layer.getBounds().getCenter();
-
       lastDrawnLayerRef.current = layer;
-
       const ok = window.confirm("Chizilgan obyektni saqlashni xohlaysizmi?");
       if (!ok) {
         if (fg && layer) fg.removeLayer(layer);
         updateGeoJSON();
         return;
       }
-
       setDraftGeom(geometry);
       setDraftCenter({ lat: c.lat, lng: c.lng });
       setCreateOpen(true);
-
       if (fg && layer) {
         fg.removeLayer(layer);
         updateGeoJSON();
       }
-
       void maybeSaveDraft(geometry);
     },
     [updateGeoJSON, geomEdit, maybeSaveDraft]
   );
 
-  // EDIT modal
+  // Edit modal
   const [editOpen, setEditOpen] = useState(false);
   const [editFacility, setEditFacility] = useState(null);
   const handleOpenEdit = (f) => {
@@ -568,7 +517,7 @@ export default function MapView({
     setEditOpen(true);
   };
 
-  // SELECT (flyTo)
+  // Select (flyTo)
   const onTreeSelect = (keys) => {
     setSelectedKeys(keys);
     const k = keys?.[0] ? String(keys[0]) : null;
@@ -600,7 +549,7 @@ export default function MapView({
     }
   };
 
-  // Klaviatura: faqat T (panel)
+  // Keyboard T
   useEffect(() => {
     const onKey = (e) => {
       const tag = (e.target?.tagName || "").toLowerCase();
@@ -611,15 +560,13 @@ export default function MapView({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  /** 👇 Helper: orgTree dan targetKey’ning barcha ota-onalari (ancestor) key’larini topish */
+  /** Ancestors keys */
   const collectAncestorsKeys = useCallback(
     (nodes, targetKey, trail = []) => {
       for (const n of nodes || []) {
         const key = String(n.key);
         const nextTrail = [...trail, key];
-        if (key === String(targetKey)) {
-          return trail.map(String);
-        }
+        if (key === String(targetKey)) return trail.map(String);
         if (n.children && n.children.length) {
           const res = collectAncestorsKeys(n.children, targetKey, nextTrail);
           if (res) return res;
@@ -630,10 +577,7 @@ export default function MapView({
     [orgTree]
   );
 
-  /**
-   * ✅ KOD BO‘YICHA SAKRASH:
-   * - Faqat `locateOrg(code)` muvaffaqiyatli bo‘lsa `flyTo` qilinadi.
-   */
+  /** Code jump -> locate */
   const handleCodeJump = useCallback(
     async (...args) => {
       let code = "";
@@ -651,7 +595,6 @@ export default function MapView({
         const resp = await locateOrg(code); // { org, facilities }
         const org = resp?.org || resp;
         if (!org) throw new Error("Javobda org topilmadi");
-
         const idStr = String(org.id);
 
         setCheckedKeys((prev) =>
@@ -665,30 +608,27 @@ export default function MapView({
           return Array.from(new Set([...prevArr, ...ancestors, idStr]));
         });
 
-        const lat =
-          typeof org.lat === "number"
-            ? org.lat
-            : Array.isArray(org.pos)
-            ? org.pos[0]
-            : undefined;
-        const lng =
-          typeof org.lng === "number"
-            ? org.lng
-            : Array.isArray(org.pos)
-            ? org.pos[1]
-            : undefined;
+        const z = Number.isFinite(org.zoom)
+          ? org.zoom
+          : org.level === 0
+          ? 6
+          : org.level === 1
+          ? 12
+          : 15;
 
-        const z =
-          typeof org.zoom === "number"
-            ? org.zoom
-            : org.level === 0
-            ? 6
-            : org.level === 1
-            ? 12
-            : 15;
-
-        if (Number.isFinite(lat) && Number.isFinite(lng)) {
-          setNavTarget({ lat, lng, zoom: z, ts: Date.now() });
+        if (Number.isFinite(org?.lat) && Number.isFinite(org?.lng)) {
+          setNavTarget({ lat: org.lat, lng: org.lng, zoom: z, ts: Date.now() });
+          setOrgForPopup({
+            id: org.id,
+            name: org.name,
+            lat: org.lat,
+            lng: org.lng,
+            zoom: z,
+            level: org.level,
+            type: org.type || org.orgType,
+          });
+        } else {
+          setOrgForPopup(null);
         }
       } catch (e) {
         console.error(e);
@@ -700,7 +640,7 @@ export default function MapView({
     [orgTree, collectAncestorsKeys]
   );
 
-  // ✨ Banner style’larini memo qilamiz
+  // Banner style
   const editBannerStyle = useMemo(
     () => ({
       position: "absolute",
@@ -717,28 +657,28 @@ export default function MapView({
     []
   );
 
-  // ENV dan offline tile URL & TMS
+  // Tiles env
   const HYBRID_URL =
     import.meta.env.VITE_TILE_HYBRID || "http://localhost:8008/{z}/{x}/{y}.jpg";
   const SATELLITE_URL =
     import.meta.env.VITE_TILE_SATELLITE ||
     "http://localhost:5005/{z}/{x}/{y}.jpg";
-  const TMS = envBool(import.meta.env.VITE_TILE_TMS, true); // TMS bo‘lsa true
+  const TMS = envBool(import.meta.env.VITE_TILE_TMS, true);
 
-  // Org-tree flatten
+  // Org-tree flatten + depth
   const flatNodes = useMemo(() => {
     const out = [];
-    const walk = (arr) => {
-      arr.forEach((n) => {
-        out.push({ ...n, key: String(n.key) });
-        if (n.children) walk(n.children);
+    const walk = (arr, depth = 0) => {
+      (arr || []).forEach((n) => {
+        out.push({ ...n, key: String(n.key), depth });
+        if (n.children) walk(n.children, depth + 1);
       });
     };
-    walk(orgTree);
+    walk(orgTree, 0);
     return out;
   }, [orgTree]);
 
-  // Org-tree qidiruv bo‘yicha filtrlash
+  // Filtered tree for panel
   const [expandedKeys, setExpandedKeys] = useState(undefined);
   const { rcData, visibleKeySet } = useMemo(() => {
     const q = query.toLowerCase();
@@ -778,43 +718,33 @@ export default function MapView({
     else setExpandedKeys(undefined);
   }, [visibleKeySet]);
 
-  /* ---------- Intro targetni hisoblash ---------- */
-  const UZ_CENTER = { lat: 41.3775, lng: 64.5853 }; // taxminiy markaz
+  // Intro target
+  const UZ_CENTER = { lat: 41.3775, lng: 64.5853 };
   const UZ_ZOOM = 6;
-
   const computedHome = useMemo(() => {
-    // 1) Prop orqali berilsa — o‘sha
     if (
       homeTarget &&
       Number.isFinite(homeTarget.lat) &&
       Number.isFinite(homeTarget.lng) &&
       Number.isFinite(homeTarget.zoom)
-    ) {
+    )
       return homeTarget;
-    }
-    // 2) Admin => O‘zbekiston
-    if (String(userRole).toLowerCase() === "admin") {
+    if (String(userRole).toLowerCase() === "admin")
       return { ...UZ_CENTER, zoom: UZ_ZOOM };
-    }
-    // 3) orgTree dagi birinchi pos’li tugun (masalan foydalanuvchi hududi)
     const firstWithPos = flatNodes.find((n) => Array.isArray(n.pos));
     if (firstWithPos) {
       const [lat, lng] = firstWithPos.pos;
       const z = Number.isFinite(firstWithPos.zoom) ? firstWithPos.zoom : 12;
-      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      if (Number.isFinite(lat) && Number.isFinite(lng))
         return { lat, lng, zoom: z };
-      }
     }
-    // 4) fallback — kirishdagi center/zoom
     return { lat: center[0], lng: center[1], zoom };
   }, [homeTarget, userRole, flatNodes, center, zoom]);
 
-  // MapContainer’ni 3-zoom bilan ochamiz (intro bo‘lsa), aks holda odatdagi zoom
   const initialZoom = introEnabled ? 3 : zoom;
 
   return (
     <div className="map-wrapper" style={{ position: "relative" }}>
-      {/* 🔧 Dark-mode drawer patch CSS */}
       <style>{darkDrawerCss}</style>
 
       <CodeJumpBox orgTree={orgTree} onJump={handleCodeJump} />
@@ -829,14 +759,12 @@ export default function MapView({
         wheelPxPerZoomLevel={80}
         style={{ height, width: "100%" }}
       >
-        {/* ✨ Intro flight */}
         <IntroFlight
           enabled={!!introEnabled}
           delayMs={introDelayMs}
           target={computedHome}
         />
 
-        {/* 🧭 Bazaviy qatlamlar — pastki o‘ngda */}
         <LayersControl position="bottomright">
           <LayersControl.BaseLayer checked name="Bing Hybrid (offline, 8008)">
             <MapTiles
@@ -867,7 +795,6 @@ export default function MapView({
             />
           </LayersControl.BaseLayer>
 
-          {/* ✅ Chizish rejimi — faqat checked bo‘lganda toolbar ko‘rinadi */}
           <LayersControl.Overlay name="Chizish rejimi (toolbar)">
             <LayersToggle
               onEnable={() => setDrawEnabled(true)}
@@ -875,7 +802,6 @@ export default function MapView({
             />
           </LayersControl.Overlay>
 
-          {/* ✅ Draftni ko‘rsatish — default OFF */}
           <LayersControl.Overlay name="Oxirgi chizma (draft)">
             <>
               <LayersToggle
@@ -904,14 +830,12 @@ export default function MapView({
           </LayersControl.Overlay>
         </LayersControl>
 
-        {/* Leaflet controls */}
         <MapControls
           panelHidden={panelHidden}
           onTogglePanel={() => setPanelHidden((v) => !v)}
         />
         <ZoomIndicator position="bottomright" />
 
-        {/* Panes */}
         <Pane name="facilities-polys" style={{ zIndex: 410 }} />
         <Pane name="facilities-centroids" style={{ zIndex: 420 }} />
         <Pane name="facilities-markers" style={{ zIndex: 430 }} />
@@ -919,16 +843,35 @@ export default function MapView({
         <ViewportWatcher onBboxChange={setBbox} />
         <MapFlyer target={navTarget} />
 
-        {/* Org markerlar — faqat chek qilingan bo‘limlar */}
+        {/* Org markerlar — ierarxiyaga mos ikon */}
         {flatNodes
           .filter((n) => n.pos && checkedKeys.includes(String(n.key)))
           .map((n) => (
-            <Marker key={n.key} position={n.pos} pane="facilities-markers">
-              <Popup>{n.title}</Popup>
-            </Marker>
+            <OrgMarker
+              key={n.key}
+              org={{
+                id: Number(n.key),
+                name: n.title,
+                lat: n.pos[0],
+                lng: n.pos[1],
+                zoom: Number.isFinite(n.zoom) ? n.zoom : 13,
+                level: Number.isFinite(n.level) ? Number(n.level) : n.depth, // 🔑
+                type: n.type || n.kind || n.orgType,
+              }}
+              open={false}
+              onEdit={(id) =>
+                window.dispatchEvent(
+                  new CustomEvent("org:edit", { detail: { id } })
+                )
+              }
+              onOpenTable={(id) =>
+                window.dispatchEvent(
+                  new CustomEvent("org:open-table", { detail: { id } })
+                )
+              }
+            />
           ))}
 
-        {/* Poligonlar + centroids */}
         <FacilityGeoLayer
           facilities={visibleFacilities}
           showPolys={showPolys}
@@ -936,11 +879,12 @@ export default function MapView({
           onOpenEdit={handleOpenEdit}
         />
 
-        {/* Geometry yo‘q obyektlar */}
         <FacilityMarkers
           facilities={visibleFacilities}
           onOpenEdit={handleOpenEdit}
         />
+
+        {orgForPopup && <OrgMarker org={orgForPopup} open />}
 
         <FeatureGroup ref={featureGroupRef}>
           {(drawEnabled || geomEdit) && (
@@ -956,7 +900,7 @@ export default function MapView({
                   rectangle: true,
                   circle: false,
                   circlemarker: false,
-                  marker: !geomEdit, // edit rejimida marker o‘chirilgan
+                  marker: !geomEdit,
                 }}
               />
             </Suspense>
@@ -964,7 +908,6 @@ export default function MapView({
         </FeatureGroup>
       </MapContainer>
 
-      {/* Draft boshqaruvi (faqat overlay yoqilganda va draft mavjud bo‘lsa) */}
       {draftVisible && draftGeoJSON && (
         <div
           style={{
@@ -989,7 +932,6 @@ export default function MapView({
         </div>
       )}
 
-      {/* Org tree panel */}
       <OrgTreePanel
         rcData={rcData}
         checkedKeys={checkedKeys}
@@ -1013,7 +955,6 @@ export default function MapView({
         onRequestHide={() => setPanelHidden(true)}
       />
 
-      {/* Create Drawer — tasdiqdan keyin ochiladi; saqlanganda draft avtomatik o‘chadi */}
       <CreateFacilityDrawer
         open={createOpen}
         geometry={draftGeom}
@@ -1028,7 +969,6 @@ export default function MapView({
         }}
       />
 
-      {/* Edit Modal */}
       <FacilityEditModal
         open={editOpen}
         facility={editFacility}
@@ -1037,7 +977,6 @@ export default function MapView({
         dark={dark}
       />
 
-      {/* Pastki panel: GeoJSON import/export (dev) */}
       <div className="panel">
         <div className="panel-col">
           <h4>GeoJSON (faqat o‘qish)</h4>
@@ -1082,7 +1021,6 @@ export default function MapView({
         </div>
       </div>
 
-      {/* ✨ Geometriya tahrirlash bannerri */}
       {geomEdit && (
         <div style={editBannerStyle}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>

@@ -37,3 +37,52 @@
   color: #e6eef9;
   opacity: 0.9;
 }
+
+/* Org icon (divIcon) — yirik ko'rinish, haloli, oq ring */
+.org-icon__dot {
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  background: var(--bg, #0ea5e9);
+  /* oq ring + rangli halo + soyalar */
+  box-shadow: 0 0 0 2px var(--stroke, #fff),
+    0 0 0 8px var(--halo, rgba(14, 165, 233, 0.32)),
+    0 4px 14px rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+}
+.org-icon__emoji {
+  font-size: calc(var(--s) * 0.55);
+  line-height: 1;
+  transform: translateY(-1px);
+  user-select: none;
+}
+
+/* ===== Org (organizational) marker — ROMB dizayn ===== */
+.orgk {
+  position: relative;
+  width: var(--s);
+  height: var(--s);
+}
+
+.orgk__diamond {
+  position: absolute;
+  inset: 0;
+  background: var(--bg, #0ea5e9);
+  transform: rotate(45deg);
+  border-radius: 14%; /* yumshoq burchak */
+  /* oq kontur + rangli halo + soyalar */
+  box-shadow: 0 0 0 3px #ffffff,
+    0 0 0 10px var(--halo, rgba(14, 165, 233, 0.28)),
+    0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+.orgk__emoji {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%); /* romb ichida to‘g‘ri turadi */
+  font-size: calc(var(--s) * 0.52);
+  line-height: 1;
+  user-select: none;
+}
