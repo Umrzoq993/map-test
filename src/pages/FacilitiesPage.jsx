@@ -8,6 +8,9 @@ import {
   putFacility,
 } from "../api/facilities";
 import FacilityForm from "../components/facilities/FacilityForm";
+import { toast } from "react-toastify";
+import Modal from "../components/ui/Modal";
+import "../styles/_facility_modal.scss"; // styling for facility modal
 
 const TYPE_LABELS = {
   GREENHOUSE: "Issiqxona",
@@ -31,6 +34,8 @@ export default function FacilitiesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null); // FacilityRes yoki null
   const [mode, setMode] = useState("create"); // "create" | "edit"
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const typeOptions = useMemo(
     () => [
@@ -49,7 +54,7 @@ export default function FacilitiesPage() {
       });
       setItems(res);
     } catch (e) {
-      alert(e.message || "Yuklashda xatolik");
+      toast.error(e.message || "Yuklashda xatolik");
     } finally {
       setLoading(false);
     }
@@ -77,13 +82,21 @@ export default function FacilitiesPage() {
     setModalOpen(true);
   };
 
-  const onDelete = async (row) => {
-    if (!confirm(`O'chirishga ishonchingiz komilmi? "${row.name}"`)) return;
+  const requestDelete = (row) => setDeleteTarget(row);
+  const cancelDelete = () => {
+    if (!deleting) setDeleteTarget(null);
+  };
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await deleteFacility(row.id);
+      await deleteFacility(deleteTarget.id);
+      setDeleteTarget(null);
       await fetchData();
     } catch (e) {
-      alert(e.message || "O'chirishda xatolik");
+      toast.error(e.message || "O‘chirishda xatolik");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -94,7 +107,7 @@ export default function FacilitiesPage() {
       setModalOpen(false);
       await fetchData();
     } catch (e) {
-      alert(e.message || "Saqlashda xatolik");
+      toast.error(e.message || "Saqlashda xatolik");
     }
   };
 
@@ -108,7 +121,7 @@ export default function FacilitiesPage() {
       setModalOpen(false);
       await fetchData();
     } catch (e) {
-      alert(e.message || "Yangilashda xatolik");
+      toast.error(e.message || "Yangilashda xatolik");
     }
   };
 
@@ -197,7 +210,7 @@ export default function FacilitiesPage() {
                       </button>
                       <button
                         className="btn danger"
-                        onClick={() => onDelete(row)}
+                        onClick={() => requestDelete(row)}
                       >
                         O‘chirish
                       </button>
@@ -214,30 +227,93 @@ export default function FacilitiesPage() {
       </div>
 
       {/* Modal */}
-      {modalOpen && (
-        <div className="modal-backdrop" onClick={() => setModalOpen(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">
-                {mode === "create" ? "Yangi inshoot" : "Inshootni tahrirlash"}
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={mode === "create" ? "Yangi inshoot" : "Inshootni tahrirlash"}
+        size="lg"
+        className="facility-create-modal"
+      >
+        <div className="facility-form">
+          <FacilityForm
+            initial={editing}
+            onCancel={() => setModalOpen(false)}
+            onSubmit={mode === "create" ? submitCreate : submitEdit}
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={cancelDelete}
+        title="O‘chirishni tasdiqlang"
+        size="sm"
+        className="facility-delete-modal"
+        preventCloseOnBackdrop={deleting}
+        disableEscapeClose={deleting}
+      >
+        {deleteTarget && (
+          <div className="confirm-body">
+            <div style={{ display: "flex", gap: 16 }}>
+              <div className="danger-icon">⚠️</div>
+              <div style={{ display: "grid", gap: 8 }}>
+                <h3 className="headline">{deleteTarget.name}</h3>
+                <p className="desc">
+                  Ushbu inshootni o‘chirmoqchisiz. Bu amal{" "}
+                  <b>bekor qilinmaydi</b>.
+                </p>
               </div>
+            </div>
+            <div className="meta-box">
+              <div className="row">
+                <span className="k">ID:</span>
+                <span>{deleteTarget.id}</span>
+              </div>
+              <div className="row">
+                <span className="k">Tur:</span>
+                <span>
+                  {TYPE_LABELS[deleteTarget.type] || deleteTarget.type}
+                </span>
+              </div>
+              <div className="row">
+                <span className="k">Org:</span>
+                <span>{deleteTarget.orgId}</span>
+              </div>
+              {deleteTarget.lat != null && deleteTarget.lng != null && (
+                <div className="row">
+                  <span className="k">Loc:</span>
+                  <span>
+                    {deleteTarget.lat.toFixed(4)}, {deleteTarget.lng.toFixed(4)}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="warn-box">
+              <span>⚠️</span>
+              <span>
+                Agar obyekt xaritada qatlamlarga bog‘langan bo‘lsa, vizual
+                komponentlar ham yo‘qoladi.
+              </span>
+            </div>
+            <div className="modal-actions">
               <button
-                className="modal-close"
-                onClick={() => setModalOpen(false)}
+                className="btn"
+                disabled={deleting}
+                onClick={cancelDelete}
               >
-                &times;
+                Bekor
+              </button>
+              <button
+                className="btn danger"
+                disabled={deleting}
+                onClick={confirmDelete}
+              >
+                {deleting ? "O‘chirilmoqda…" : "Ha, o‘chirish"}
               </button>
             </div>
-            <div className="modal-body">
-              <FacilityForm
-                initial={editing}
-                onCancel={() => setModalOpen(false)}
-                onSubmit={mode === "create" ? submitCreate : submitEdit}
-              />
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

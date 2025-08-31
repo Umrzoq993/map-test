@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
+import { toast } from "react-toastify";
 import Modal from "../ui/Modal";
 import MapPickerModal from "../map/MapPickerModal.jsx";
 import {
@@ -159,7 +160,7 @@ export default function OrgTable({ isAdmin, focusId }) {
       }
     } catch (e) {
       console.error(e);
-      alert("Ma'lumot yuklashda xatolik");
+      toast.error("Ma'lumot yuklashda xatolik");
     } finally {
       setLoading(false);
     }
@@ -264,7 +265,7 @@ export default function OrgTable({ isAdmin, focusId }) {
   };
 
   const handleCreate = async () => {
-    if (!String(draft.name || "").trim()) return alert("Nom majburiy");
+    if (!String(draft.name || "").trim()) return toast.warn("Nom majburiy");
     setLoading(true);
     try {
       await createOrg({
@@ -280,7 +281,7 @@ export default function OrgTable({ isAdmin, focusId }) {
       await loadTree();
     } catch (e) {
       console.error(e);
-      alert("Yaratishda xatolik");
+      toast.error("Yaratishda xatolik");
     } finally {
       setLoading(false);
     }
@@ -328,7 +329,7 @@ export default function OrgTable({ isAdmin, focusId }) {
 
   const handleEdit = async () => {
     if (!draft.id) return;
-    if (!String(draft.name || "").trim()) return alert("Nom majburiy");
+    if (!String(draft.name || "").trim()) return toast.warn("Nom majburiy");
     setLoading(true);
     try {
       const originalParentId = contextRow?.parentId ?? null;
@@ -348,7 +349,7 @@ export default function OrgTable({ isAdmin, focusId }) {
       await loadTree();
     } catch (e) {
       console.error(e);
-      alert("Saqlashda xatolik");
+      toast.error("Saqlashda xatolik");
     } finally {
       setLoading(false);
     }
@@ -369,7 +370,7 @@ export default function OrgTable({ isAdmin, focusId }) {
       await loadTree();
     } catch (e) {
       console.error(e);
-      alert("O‘chirishda xatolik (ehtimol bolalari mavjud?)");
+      toast.error("O‘chirishda xatolik (ehtimol bolalari mavjud?)");
     } finally {
       setLoading(false);
     }

@@ -13,6 +13,7 @@
     "apexcharts": "^5.3.3",
     "axios": "^1.11.0",
     "leaflet": "^1.9.4",
+    "react-toastify": "^9.1.3",
     "leaflet-draw": "^1.0.4",
     "rc-tree": "^5.13.1",
     "react": "^18.3.1",

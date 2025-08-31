@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 import {
   searchUsers,
   createUser,
@@ -74,11 +75,7 @@ export default function UsersPage() {
     message: "",
     onApprove: null,
   });
-  const [alert, setAlert] = useState({
-    open: false,
-    title: "Ma’lumot",
-    message: "",
-  });
+  // legacy alert dialog replaced by toast notifications
 
   async function load(p = page) {
     setBusy(true);
@@ -139,11 +136,7 @@ export default function UsersPage() {
         await updateUser(editId, payload);
       } else {
         if (!payload.username || !payload.password) {
-          setAlert({
-            open: true,
-            title: "Xatolik",
-            message: "Login va parol majburiy.",
-          });
+          toast.warn("Login va parol majburiy.");
           return;
         }
         await createUser(payload);
@@ -206,13 +199,8 @@ export default function UsersPage() {
       onApprove: async () => {
         setConfirm({ open: false, title: "", message: "", onApprove: null });
         const res = await resetUserPassword(u.id);
-        setAlert({
-          open: true,
-          title: "Yangi vaqtinchalik parol",
-          message: `Foydalanuvchi: ${u.username}\nParol: ${
-            res?.tempPassword || "(kelmadi)"
-          }`,
-        });
+        const pwd = res?.tempPassword || "(kelmadi)";
+        toast.info(`Yangi vaqtinchalik parol: ${pwd}`, { autoClose: 8000 });
       },
     });
   }
@@ -687,27 +675,7 @@ export default function UsersPage() {
         <pre className={styles.pre}>{confirm.message}</pre>
       </UsersDialog>
 
-      {/* Xabar */}
-      <UsersDialog
-        open={alert.open}
-        onClose={() =>
-          setAlert({ open: false, title: "Ma’lumot", message: "" })
-        }
-        title={alert.title}
-        size="sm"
-        footer={
-          <button
-            className={styles.btnPrimary}
-            onClick={() =>
-              setAlert({ open: false, title: "Ma’lumot", message: "" })
-            }
-          >
-            Yopish
-          </button>
-        }
-      >
-        <pre className={styles.pre}>{alert.message}</pre>
-      </UsersDialog>
+      {/* Former alert dialog removed (toast-based now) */}
     </div>
   );
 }

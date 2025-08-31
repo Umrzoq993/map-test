@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import OrgUnitSelect from "../../pages/admin/OrgUnitSelect";
 import MapPickerModal from "../map/MapPickerModal";
 import { getOrgUnit, locateOrg } from "../../api/org";
+import { toast } from "react-toastify";
 
 const TYPE_OPTIONS = [
   { value: "GREENHOUSE", label: "Issiqxona" },
@@ -169,7 +170,7 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
 
   async function openPicker() {
     if (!orgId) {
-      alert("Avval tashkilotni tanlang.");
+      toast.info("Avval tashkilotni tanlang.");
       return;
     }
     // 1) Agar formaning o‘zida lat/lng bor bo‘lsa — shu markazdan ochamiz
@@ -218,7 +219,7 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
   const submit = (e) => {
     e.preventDefault();
     if (!canSave) {
-      alert("Tashkilot bo‘limi va koordinata (lat/lng) majburiy.");
+      toast.warn("Tashkilot bo‘limi va koordinata (lat/lng) majburiy.");
       return;
     }
     const payload = {
@@ -237,7 +238,7 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
 
   return (
     <>
-      <form onSubmit={submit}>
+      <form onSubmit={submit} className="facility-form-inner">
         <div className="form-grid">
           {/* Org tanlash */}
           <div className="field">

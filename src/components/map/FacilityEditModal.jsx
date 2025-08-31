@@ -3,6 +3,7 @@ import Modal from "../ui/Modal"; // Agar fayl `map/modals/` ichida bo'lsa: `../.
 import { patchFacility } from "../../api/facilities";
 import styles from "./FacilityEditModal.module.scss";
 import { FACILITY_TYPES } from "../../data/facilityTypes";
+import { toast } from "react-toastify";
 import { areaOfGeometryM2 } from "../../utils/geo";
 
 export default function FacilityEditModal({
@@ -117,14 +118,14 @@ export default function FacilityEditModal({
       onClose?.(); // modalni yopamiz
     } catch (e) {
       console.error(e);
-      alert("Geometriya tahrirlashni ishga tushirib bo‘lmadi.");
+      toast.error("Geometriya tahrirlashni ishga tushirib bo‘lmadi.");
     }
   };
 
   // “Qayta hisoblash” — geometriya yo‘q/Point bo‘lsa edit rejimiga taklif
   const recalcArea = () => {
     if (calcAreaM2 == null) {
-      const go = confirm(
+      const go = window.confirm(
         "Geometriya mavjud emas yoki poligon emas. Geometriyani chizish/tahrirlash rejimiga o‘tasizmi?"
       );
       if (go) startGeometryEdit();
@@ -158,7 +159,7 @@ export default function FacilityEditModal({
       onSaved?.();
     } catch (e) {
       console.error(e);
-      alert(e?.data?.message || "Saqlashda xatolik");
+      toast.error(e?.data?.message || "Saqlashda xatolik");
     }
   };
 

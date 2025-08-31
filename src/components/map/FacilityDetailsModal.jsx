@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { FACILITY_TYPES } from "./CreateFacilityDrawer";
 import { patchFacility, deleteFacility } from "../../api/facilities";
 import Modal from "../ui/Modal"; // Portal orqali
+import { toast } from "react-toastify";
 
 export default function FacilityDetailsModal({
   open,
@@ -49,19 +50,20 @@ export default function FacilityDetailsModal({
       onSaved?.();
     } catch (e) {
       console.error(e);
-      alert(e?.data?.message || "Saqlashda xatolik");
+      toast.error(e?.data?.message || "Saqlashda xatolik");
     }
   };
 
   const doDelete = async () => {
-    if (!confirm(`O‘chirishni tasdiqlaysizmi?\n${facility.name}`)) return;
+    if (!window.confirm(`O‘chirishni tasdiqlaysizmi?\n${facility.name}`))
+      return; // TODO: custom modal later
     try {
       await deleteFacility(facility.id);
       onClose?.();
       onSaved?.();
     } catch (e) {
       console.error(e);
-      alert(e?.data?.message || "O‘chirishda xatolik");
+      toast.error(e?.data?.message || "O‘chirishda xatolik");
     }
   };
 

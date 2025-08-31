@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
 import Modal from "../ui/Modal";
@@ -114,7 +115,7 @@ export default function OrgTreeEditor() {
     setCreateOpen(true);
   };
   const openCreateChild = () => {
-    if (!selected) return alert("Avval bo‘lim tanlang");
+    if (!selected) return toast.warn("Avval bo‘lim tanlang");
     setDraft({
       id: null,
       name: "",
@@ -126,7 +127,7 @@ export default function OrgTreeEditor() {
     setCreateOpen(true);
   };
   const openEdit = () => {
-    if (!selected) return alert("Tanlov yo‘q");
+    if (!selected) return toast.warn("Tanlov yo‘q");
     setDraft({
       id: selected.id,
       name: selected.name ?? "",
@@ -138,13 +139,13 @@ export default function OrgTreeEditor() {
     setEditOpen(true);
   };
   const openDelete = () => {
-    if (!selected) return alert("Tanlov yo‘q");
+    if (!selected) return toast.warn("Tanlov yo‘q");
     setDeleteOpen(true);
   };
 
   /* ---------- CRUD submitlar ---------- */
   const handleCreate = async () => {
-    if (!draft.name.trim()) return alert("Nom majburiy");
+    if (!draft.name.trim()) return toast.warn("Nom majburiy");
     setLoading(true);
     try {
       await createOrg({
@@ -158,7 +159,7 @@ export default function OrgTreeEditor() {
       await load();
     } catch (e) {
       console.error(e);
-      alert("Yaratishda xatolik");
+      toast.error("Yaratishda xatolik");
     } finally {
       setLoading(false);
     }
@@ -166,7 +167,7 @@ export default function OrgTreeEditor() {
 
   const handleEdit = async () => {
     if (!draft.id) return;
-    if (!draft.name.trim()) return alert("Nom majburiy");
+    if (!draft.name.trim()) return toast.warn("Nom majburiy");
     setLoading(true);
     try {
       await updateOrg(draft.id, {
@@ -180,7 +181,7 @@ export default function OrgTreeEditor() {
       await load();
     } catch (e) {
       console.error(e);
-      alert("Saqlashda xatolik");
+      toast.error("Saqlashda xatolik");
     } finally {
       setLoading(false);
     }
@@ -196,7 +197,7 @@ export default function OrgTreeEditor() {
       await load();
     } catch (e) {
       console.error(e);
-      alert("O‘chirishda xatolik (bolalari bo‘lishi mumkin)");
+      toast.error("O‘chirishda xatolik (bolalari bo‘lishi mumkin)");
     } finally {
       setLoading(false);
     }
@@ -221,7 +222,7 @@ export default function OrgTreeEditor() {
       await load();
     } catch (e) {
       console.error(e);
-      alert("Ko‘chirishda xatolik");
+      toast.error("Ko‘chirishda xatolik");
     }
   };
 

@@ -4,6 +4,7 @@ import Modal from "../ui/Modal";
 import { createFacility } from "../../api/facilities";
 import { centroidOfGeometry, areaOfGeometryM2 } from "../../utils/geo";
 import { listOrgsPage } from "../../api/org";
+import { toast } from "react-toastify";
 import * as FT from "../../data/facilityTypes";
 const FACILITY_TYPES = FT.FACILITY_TYPES;
 
@@ -245,7 +246,7 @@ export default function CreateFacilityDrawer({
       onClose?.();
     } catch (err) {
       console.error(err);
-      alert("Saqlashda xatolik yuz berdi");
+      toast.error("Saqlashda xatolik yuz berdi");
     } finally {
       setSaving(false);
     }

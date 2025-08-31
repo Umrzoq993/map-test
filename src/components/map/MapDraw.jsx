@@ -1,5 +1,6 @@
 // src/components/map/MapDraw.jsx
 import { useRef, useState, useCallback, useMemo, useEffect } from "react";
+import { toast } from "react-toastify";
 import {
   MapContainer,
   TileLayer,
@@ -504,7 +505,7 @@ export default function MapDraw({
       L.geoJSON(parsed).eachLayer((lyr) => fg.addLayer(lyr));
       setGeojson(parsed);
     } catch {
-      alert("Noto‘g‘ri JSON!");
+      toast.error("Noto‘g‘ri JSON!");
     }
   };
 
@@ -601,7 +602,7 @@ export default function MapDraw({
                           await patchFacility(f.id, { name, status });
                           setReloadKey((k) => k + 1);
                         } catch (e) {
-                          alert("Yangilashda xatolik");
+                          toast.error("Yangilashda xatolik");
                           console.error(e);
                         }
                       }}
@@ -622,7 +623,7 @@ export default function MapDraw({
                           await deleteFacility(f.id);
                           setReloadKey((k) => k + 1);
                         } catch (e) {
-                          alert("O'chirishda xatolik");
+                          toast.error("O'chirishda xatolik");
                           console.error(e);
                         }
                       }}
@@ -916,15 +917,15 @@ export default function MapDraw({
               onClick={async () => {
                 try {
                   if (!form.orgId) {
-                    alert("Org ID tanlang yoki kiriting.");
+                    toast.warn("Org ID tanlang yoki kiriting.");
                     return;
                   }
                   if (!form.name.trim()) {
-                    alert("Nomi kerak.");
+                    toast.warn("Nomi kerak.");
                     return;
                   }
                   if (!draftGeom) {
-                    alert("Geometriya yo‘q (polygon/marker chizing).");
+                    toast.warn("Geometriya yo‘q (polygon/marker chizing).");
                     return;
                   }
 
@@ -953,10 +954,10 @@ export default function MapDraw({
                   const fg = featureGroupRef.current;
                   if (fg) fg.clearLayers();
                   setReloadKey((k) => k + 1);
-                  alert("Obyekt saqlandi!");
+                  toast.success("Obyekt saqlandi!");
                 } catch (e) {
                   console.error(e);
-                  alert("Saqlashda xatolik.");
+                  toast.error("Saqlashda xatolik.");
                 }
               }}
             >
@@ -993,13 +994,13 @@ export default function MapDraw({
               onClick={async () => {
                 try {
                   if (!saveDrawing)
-                    return alert("Backend API ulanishi topilmadi.");
+                    return toast.error("Backend API ulanishi topilmadi.");
                   const data = geojson || {};
                   await saveDrawing(data, "map-drawings");
-                  alert("Saqlash muvaffaqiyatli!");
+                  toast.success("Saqlash muvaffaqiyatli!");
                 } catch (e) {
                   console.error(e);
-                  alert("Saqlashda xatolik");
+                  toast.error("Saqlashda xatolik");
                 }
               }}
               disabled={!geojson}

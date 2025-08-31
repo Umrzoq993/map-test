@@ -8,6 +8,7 @@ import React, {
   Suspense,
   lazy,
 } from "react";
+import { toast } from "react-toastify";
 import {
   MapContainer,
   Marker,
@@ -257,7 +258,7 @@ export default function MapView({
       .filter(Boolean)
       .filter((g) => g.type !== "Point");
     if (geoms.length === 0) {
-      alert(
+      toast.warn(
         "Poligon chizmadingiz. Iltimos, polygon/rectangle chizing yoki mavjudini tahrirlang."
       );
       return;
@@ -279,12 +280,12 @@ export default function MapView({
         lat: Number.isFinite(c?.lat) ? c.lat : null,
         lng: Number.isFinite(c?.lng) ? c.lng : null,
       });
-      alert("Geometriya saqlandi!");
+      toast.success("Geometriya saqlandi!");
       exitGeomEdit();
       setReloadKey((k) => k + 1);
     } catch (e) {
       console.error(e);
-      alert("Geometriyani saqlashda xatolik yuz berdi.");
+      toast.error("Geometriyani saqlashda xatolik yuz berdi.");
     }
   }, [geomEdit?.facilityId, exitGeomEdit]);
 
@@ -545,7 +546,7 @@ export default function MapView({
       L.geoJSON(parsed).eachLayer((lyr) => fg.addLayer(lyr));
       setGeojson(parsed);
     } catch {
-      alert("Noto‘g‘ri JSON!");
+      toast.error("Noto‘g‘ri JSON!");
     }
   };
 
@@ -634,7 +635,7 @@ export default function MapView({
         console.error(e);
         const msg =
           e?.response?.status === 403 ? "Sizga ruxsat yo‘q." : "Kod topilmadi.";
-        alert(msg);
+        toast.error(msg);
       }
     },
     [orgTree, collectAncestorsKeys]
@@ -1003,14 +1004,14 @@ export default function MapView({
               onClick={async () => {
                 try {
                   if (!drawingsApi.saveDrawing) {
-                    alert("API topilmadi.");
+                    toast.error("API topilmadi.");
                     return;
                   }
                   await drawingsApi.saveDrawing(geojson || {}, "map-drawings");
-                  alert("Saqlash muvaffaqiyatli!");
+                  toast.success("Saqlash muvaffaqiyatli!");
                 } catch (e) {
                   console.error(e);
-                  alert("Saqlashda xatolik");
+                  toast.error("Saqlashda xatolik");
                 }
               }}
               disabled={!geojson}

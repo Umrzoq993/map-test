@@ -332,6 +332,9 @@
   /* Map picker (when rendered inside page, not portal) */
   .map-picker {
     display: grid;
+    /* Moved layout declarations above nested rules to avoid Sass mixed-decls deprecation warning */
+    grid-template-rows: auto 60vh auto;
+    gap: 10px;
 
     .org-table-modal {
       --field-bg-light: color-mix(
@@ -455,9 +458,6 @@
         grid-column: 1/-1;
       }
     }
-
-    grid-template-rows: auto 60vh auto;
-    gap: 10px;
 
     .controls {
       display: flex;
