@@ -1,45 +1,26 @@
 // src/api/http.js
 import axios from "axios";
+import {
+  getAccessToken as memGetToken,
+  setAccessToken as memSetToken,
+  setAccessExpireAt as memSetExp,
+  clearAccessToken as memClearToken,
+  clearAccessExpireAt as memClearExp,
+} from "./tokenStore";
 
 /* =========================
    LOCAL KEYS (auth.js bilan mos)
    ========================= */
 const ACCESS_KEY = "token";
-const REFRESH_KEY = "refreshToken";
-const EXP_KEY = "tokenExpAt";
-
-/* Token helpers (aylana importni oldini olish uchun shu yerda) */
+/* Token helpers (in-memory) */
 function getAccessToken() {
-  try {
-    return localStorage.getItem(ACCESS_KEY) || null;
-  } catch {
-    return null;
-  }
+  return memGetToken();
 }
 function setAccessToken(t) {
-  try {
-    if (t) localStorage.setItem(ACCESS_KEY, t);
-    else localStorage.removeItem(ACCESS_KEY);
-  } catch {}
-}
-function getRefreshToken() {
-  try {
-    return localStorage.getItem(REFRESH_KEY) || null;
-  } catch {
-    return null;
-  }
-}
-function setRefreshToken(t) {
-  try {
-    if (t) localStorage.setItem(REFRESH_KEY, t);
-    else localStorage.removeItem(REFRESH_KEY);
-  } catch {}
+  memSetToken(t);
 }
 function setAccessExpireAt(ms) {
-  try {
-    if (ms) localStorage.setItem(EXP_KEY, String(ms));
-    else localStorage.removeItem(EXP_KEY);
-  } catch {}
+  memSetExp(ms);
 }
 
 /* =========================
@@ -100,6 +81,10 @@ function isAuthEndpoint(urlLike) {
    ========================= */
 api.interceptors.request.use((config) => {
   config.headers = config.headers || {};
+  // Cookie yuborish: faqat auth endpointlarida kerak
+  if (isAuthEndpoint(config.url)) {
+    config.withCredentials = true;
+  }
 
   // Device header
   if (!config.headers["X-Device-Id"]) {
@@ -118,7 +103,9 @@ api.interceptors.request.use((config) => {
     const params = new URLSearchParams();
     for (const [k, v] of Object.entries(config.params)) {
       if (k === "sort") {
-        v.filter(Boolean).forEach((s) => params.append("sort", String(s).trim()));
+        v.filter(Boolean).forEach((s) =>
+          params.append("sort", String(s).trim())
+        );
       } else if (v !== undefined && v !== null && String(v).length) {
         params.append(k, String(v));
       }
@@ -135,15 +122,15 @@ api.interceptors.request.use((config) => {
 let refreshing = null;
 
 async function refreshTokens() {
-  const rt = getRefreshToken();
-  if (!rt) throw new Error("No refresh token");
-
   // Interceptor loopdan qochish uchun to'g'ridan-to'g'ri axios
   const deviceId = getDeviceId();
   const { data } = await axios.post(
     `${BASE}/auth/refresh`,
-    { refreshToken: rt, deviceId },
-    { headers: { "X-Device-Id": deviceId } }
+    { deviceId },
+    {
+      headers: { "X-Device-Id": deviceId },
+      withCredentials: true,
+    }
   );
 
   const { accessToken, refreshToken, accessExpiresAt, token } = data || {};
@@ -151,7 +138,6 @@ async function refreshTokens() {
   if (!newAccess) throw new Error("Malformed refresh response");
 
   setAccessToken(newAccess);
-  if (refreshToken) setRefreshToken(refreshToken);
   if (accessExpiresAt) {
     const ms =
       typeof accessExpiresAt === "string"
@@ -192,7 +178,11 @@ api.interceptors.response.use(
     }
 
     // 401 — auth endpointlaridan tashqari holatlarda refresh
-    if (status === 401 && !isAuthEndpoint(original.url) && !original.__isRetry) {
+    if (
+      status === 401 &&
+      !isAuthEndpoint(original.url) &&
+      !original.__isRetry
+    ) {
       try {
         const newAccess = await queueRefresh();
         original.__isRetry = true;
@@ -201,9 +191,8 @@ api.interceptors.response.use(
         return api(original); // qayta so'rov
       } catch (e) {
         // Refresh ham ishlamadi — local tokenlarni tozalaymiz
-        setAccessToken(null);
-        setRefreshToken(null);
-        setAccessExpireAt(null);
+        memClearToken();
+        memClearExp();
         return Promise.reject(err);
       }
     }

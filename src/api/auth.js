@@ -1,10 +1,15 @@
 // src/api/auth.js
 import { httpGet, httpPost } from "./http";
 import axios from "axios"; // proactive refresh uchun bevosita chaqiramiz
+import {
+  setAccessToken as memSetToken,
+  getAccessToken as memGetToken,
+  setAccessExpireAt as memSetExp,
+  getAccessExpireAt as memGetExp,
+} from "./tokenStore";
 
 /** LocalStorage keys */
 const ACCESS_KEY = "token"; // access token (JWT)
-const REFRESH_KEY = "refreshToken"; // refresh token (rotation)
 const ACCESS_EXP_KEY = "tokenExpAt"; // access expire time (ms since epoch)
 
 // --- Device ID (barqaror) ---
@@ -34,54 +39,25 @@ export function getDeviceId() {
 
 // --- Token helpers ---
 export function setAccessToken(t) {
-  try {
-    if (t) localStorage.setItem(ACCESS_KEY, t);
-    else localStorage.removeItem(ACCESS_KEY);
-  } catch {}
-}
-export function setRefreshToken(t) {
-  try {
-    if (t) localStorage.setItem(REFRESH_KEY, t);
-    else localStorage.removeItem(REFRESH_KEY);
-  } catch {}
+  memSetToken(t || null);
 }
 export function getToken() {
-  try {
-    return localStorage.getItem(ACCESS_KEY) || null;
-  } catch {
-    return null;
-  }
+  return memGetToken();
 }
-export function getRefreshToken() {
-  try {
-    return localStorage.getItem(REFRESH_KEY) || null;
-  } catch {
-    return null;
-  }
-}
+// refresh token endi HttpOnly cookie’da, front o‘qimaydi
 
 /** Access token expire timestamp (ms) */
 export function setAccessExpireAt(ms) {
-  try {
-    if (ms) localStorage.setItem(ACCESS_EXP_KEY, String(ms));
-    else localStorage.removeItem(ACCESS_EXP_KEY);
-  } catch {}
+  memSetExp(ms ?? null);
 }
 export function getAccessExpireAt() {
-  try {
-    const v = localStorage.getItem(ACCESS_EXP_KEY);
-    return v ? Number(v) : null;
-  } catch {
-    return null;
-  }
+  return memGetExp();
 }
 
 /** Access tokenni refresh qilish (proaktiv yoki qo'lda).  */
 let _manualRefreshing = null;
 export async function refreshAccessToken() {
   if (_manualRefreshing) return _manualRefreshing; // single-flight
-  const rt = getRefreshToken();
-  if (!rt) throw new Error("No refresh token");
 
   const RAW_BASE = import.meta.env.VITE_API_BASE ?? "/api";
   const BASE = RAW_BASE.endsWith("/api") ? RAW_BASE : `${RAW_BASE}/api`;
@@ -90,15 +66,14 @@ export async function refreshAccessToken() {
   _manualRefreshing = axios
     .post(
       `${BASE}/auth/refresh`,
-      { refreshToken: rt, deviceId },
-      { headers: { "X-Device-Id": deviceId } }
+      { deviceId },
+      { headers: { "X-Device-Id": deviceId }, withCredentials: true }
     )
     .then(({ data }) => {
-      const { accessToken, refreshToken, accessExpiresAt, token } = data || {};
+      const { accessToken, accessExpiresAt, token } = data || {};
       const newAccess = accessToken || token;
       if (!newAccess) throw new Error("Malformed refresh response");
       setAccessToken(newAccess);
-      if (refreshToken) setRefreshToken(refreshToken);
       if (accessExpiresAt) {
         const ms =
           typeof accessExpiresAt === "string"
@@ -120,13 +95,18 @@ export async function refreshAccessToken() {
 /** Login – backend TokenPair (accessToken, refreshToken, accessExpiresAt) */
 export async function login(username, password) {
   const deviceId = getDeviceId();
-  const data = await httpPost("/auth/login", { username, password, deviceId });
+  const RAW_BASE = import.meta.env.VITE_API_BASE ?? "/api";
+  const BASE = RAW_BASE.endsWith("/api") ? RAW_BASE : `${RAW_BASE}/api`;
+  const { data } = await axios.post(
+    `${BASE}/auth/login`,
+    { username, password, deviceId },
+    { withCredentials: true, headers: { "X-Device-Id": deviceId } }
+  );
 
-  const { accessToken, refreshToken, accessExpiresAt, token } = data || {};
+  const { accessToken, accessExpiresAt, token } = data || {};
   const access = accessToken || token;
 
   if (access) setAccessToken(access);
-  if (refreshToken) setRefreshToken(refreshToken);
   if (accessExpiresAt) {
     const ms =
       typeof accessExpiresAt === "string"
@@ -144,13 +124,16 @@ export async function login(username, password) {
 /** Logout – server revoke + local storage clear */
 export async function logout() {
   try {
-    const rt = getRefreshToken();
-    if (rt) {
-      await httpPost("/auth/logout", { refreshToken: rt });
-    }
+    const RAW_BASE = import.meta.env.VITE_API_BASE ?? "/api";
+    const BASE = RAW_BASE.endsWith("/api") ? RAW_BASE : `${RAW_BASE}/api`;
+    const deviceId = getDeviceId();
+    await axios.post(
+      `${BASE}/auth/logout`,
+      { deviceId },
+      { withCredentials: true, headers: { "X-Device-Id": deviceId } }
+    );
   } finally {
     setAccessToken(null);
-    setRefreshToken(null);
     setAccessExpireAt(null);
   }
 }
@@ -158,9 +141,7 @@ export async function logout() {
 /** JWT mavjudligini tekshirish (access yaroqli yoki refresh bor) */
 export function isAuthenticated() {
   const access = getToken();
-  const refresh = getRefreshToken();
   if (access && !isExpired(access)) return true;
-  if (refresh) return true;
   return false;
 }
 

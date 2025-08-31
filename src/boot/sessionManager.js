@@ -5,7 +5,6 @@
 
 import {
   getAccessExpireAt,
-  getRefreshToken,
   isAuthenticated,
   logout,
   refreshAccessToken,
@@ -41,7 +40,6 @@ function scheduleProactiveRefresh() {
   if (delay < 5000) delay = 5000; // kamida 5s
   refreshTimer = setTimeout(async () => {
     // Hali ham yaqinlashgan bo'lsa va refresh token mavjud bo'lsa
-    if (!getRefreshToken()) return;
     try {
       const beforeExp = getAccessExpireAt() - Date.now();
       if (beforeExp < leewayMs + 30000) {
