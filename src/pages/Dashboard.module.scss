@@ -92,6 +92,12 @@
   background: color-mix(in srgb, var(--db-accent) 12%, transparent);
   border-color: color-mix(in srgb, var(--db-accent) 35%, transparent);
 }
+.chipDisabled {
+  opacity: 0.45;
+  filter: grayscale(0.15);
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
 
 .error {
   background: #fee2e2;

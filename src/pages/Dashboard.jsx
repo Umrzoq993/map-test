@@ -134,6 +134,20 @@ export default function Dashboard({ dark = false }) {
   const distinctTypes = typeAgg.length;
 
   const rawTypes = typeAgg.map((t) => t.type);
+  // Barcha turlar ro'yxati (doimiy ko'rinsin). Agar backend yangi qo'shsa, shu yerga qo'shish kifoya.
+  const ALL_TYPES = [
+    "GREENHOUSE",
+    "POULTRY_MEAT",
+    "POULTRY_EGG",
+    "TURKEY",
+    "COWSHED",
+    "SHEEPFOLD",
+    "WORKSHOP_SAUSAGE",
+    "WORKSHOP_COOKIE",
+    "AUX_LAND",
+    "BORDER_LAND",
+    "FISHPOND",
+  ];
   const donutSeries = typeAgg.map((t) => t.count);
   const donutLabelsLocalized = rawTypes.map(mapType);
 
@@ -320,15 +334,19 @@ export default function Dashboard({ dark = false }) {
           )}
 
           <div className={s.chips}>
-            {rawTypes.map((enumVal) => {
+            {ALL_TYPES.map((enumVal) => {
               const on = selectedTypes.has(enumVal);
+              const present = rawTypes.includes(enumVal);
               return (
                 <button
                   key={enumVal}
-                  onClick={() => toggleType(enumVal)}
-                  className={`${s.chip} ${on ? s.chipActive : ""}`}
+                  onClick={() => (present ? toggleType(enumVal) : null)}
+                  className={`${s.chip} ${on ? s.chipActive : ""} ${
+                    !present ? s.chipDisabled : ""
+                  }`}
                   aria-pressed={on}
                   title={mapType(enumVal)}
+                  disabled={!present}
                 >
                   {mapType(enumVal)}
                 </button>
