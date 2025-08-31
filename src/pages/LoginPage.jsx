@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   useLocation,
   useNavigate,
@@ -6,6 +6,8 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { isAuthenticated, login, logout, decodeJWT } from "../api/auth";
+import { verifyCaptcha } from "../api/captcha";
+import CaptchaBox from "../components/common/CaptchaBox.jsx";
 import { toast } from "react-toastify";
 import styles from "./LoginPage.module.scss";
 
@@ -50,13 +52,66 @@ export default function LoginPage() {
   const [showPwd, setShowPwd] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // CAPTCHA state
+  const [captchaId, setCaptchaId] = useState("");
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
+  const [captchaNearExpiry, setCaptchaNearExpiry] = useState(false);
+
+  const onCaptchaChange = useCallback(({ id, answer }) => {
+    setCaptchaId(id || "");
+    setCaptchaAnswer(answer || "");
+  }, []);
+
+  const onCaptchaExpired = useCallback(() => {
+    setCaptchaNearExpiry(true);
+  }, []);
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setBusy(true);
     setError("");
     try {
-      const ok = await login(username.trim(), password);
+      // 1) Verify CAPTCHA first (today's flow)
+      if (!captchaId || !captchaAnswer) {
+        setBusy(false);
+        setError("Iltimos, CAPTCHA javobini kiriting");
+        return;
+      }
+
+      let verified = false;
+      try {
+        const v = await verifyCaptcha({ id: captchaId, answer: captchaAnswer });
+        verified = !!v?.ok;
+      } catch (err) {
+        // Rate limit handling (429)
+        if (err?.response?.status === 429) {
+          await new Promise((r) => setTimeout(r, 1200));
+          try {
+            const v2 = await verifyCaptcha({
+              id: captchaId,
+              answer: captchaAnswer,
+            });
+            verified = !!v2?.ok;
+          } catch (e2) {
+            throw e2;
+          }
+        } else {
+          throw err;
+        }
+      }
+
+      if (!verified) {
+        setError("CAPTCHA noto‘g‘ri yoki muddati tugagan");
+        toast.error("CAPTCHA xato. Qaytadan urinib ko‘ring.");
+        // CaptchaBox will refresh on demand via its button; we keep answer cleared via onChange on refresh
+        return;
+      }
+
+      // 2) Proceed with existing login call
+      const ok = await login(username.trim(), password, {
+        captchaId,
+        captchaAnswer,
+      });
       if (ok) {
         toast.success("Muvaffaqiyatli kirildi");
         navigate(from, { replace: true });
@@ -148,6 +203,12 @@ export default function LoginPage() {
                   </button>
                 </div>
 
+                {/* CAPTCHA */}
+                <CaptchaBox
+                  onChange={onCaptchaChange}
+                  onExpired={onCaptchaExpired}
+                />
+
                 <button
                   type="submit"
                   className={`${styles.btn} ${styles.primary} ${styles.full}`}
@@ -236,6 +297,12 @@ export default function LoginPage() {
                     {showPwd ? "🙈" : "👁️"}
                   </button>
                 </div>
+
+                {/* CAPTCHA */}
+                <CaptchaBox
+                  onChange={onCaptchaChange}
+                  onExpired={onCaptchaExpired}
+                />
 
                 <div style={{ display: "flex", gap: 8 }}>
                   <button

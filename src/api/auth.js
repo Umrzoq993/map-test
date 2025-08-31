@@ -93,13 +93,13 @@ export async function refreshAccessToken() {
 }
 
 /** Login – backend TokenPair (accessToken, refreshToken, accessExpiresAt) */
-export async function login(username, password) {
+export async function login(username, password, extra = {}) {
   const deviceId = getDeviceId();
   const RAW_BASE = import.meta.env.VITE_API_BASE ?? "/api";
   const BASE = RAW_BASE.endsWith("/api") ? RAW_BASE : `${RAW_BASE}/api`;
   const { data } = await axios.post(
     `${BASE}/auth/login`,
-    { username, password, deviceId },
+    { username, password, deviceId, ...pickCaptcha(extra) },
     { withCredentials: true, headers: { "X-Device-Id": deviceId } }
   );
 
@@ -119,6 +119,14 @@ export async function login(username, password) {
     if (payload?.exp) setAccessExpireAt(payload.exp * 1000);
   }
   return !!access;
+}
+
+function pickCaptcha(obj) {
+  if (!obj) return {};
+  const out = {};
+  if (obj.captchaId) out.captchaId = obj.captchaId;
+  if (obj.captchaAnswer) out.captchaAnswer = obj.captchaAnswer;
+  return out;
 }
 
 /** Logout – server revoke + local storage clear */
