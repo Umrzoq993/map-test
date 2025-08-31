@@ -1,5 +1,5 @@
 /* ===========================
-   Modal.module.scss (optimized)
+   Modal.module.scss (optimized, portal-safe)
    =========================== */
 
 /* 0) Portal har doim eng tepada turishi uchun */
@@ -9,8 +9,9 @@
 }
 
 /* 1) THEME TOKENS (scoped to modal root) */
-.modalRoot {
-  /* Light */
+/* Light theme (default) */
+.modalRoot,
+.modalRoot[data-theme="light"] {
   --overlay: rgba(2, 6, 23, 0.45);
   --card-bg: #ffffff;
   --card-fg: #0f172a;
@@ -25,14 +26,33 @@
 
   --danger: #ef4444;
   --danger-2: #dc2626;
+
+  /* 🔗 Aliases — org_table.scss tokenlari portaldagi modaldan ham olinsin */
+  --card: var(--card-bg);
+  --text: var(--card-fg);
+  --muted: color-mix(in srgb, var(--card-fg) 55%, transparent);
 }
 
+/* Dark theme */
 .modalRoot[data-theme="dark"] {
   --overlay: rgba(3, 7, 18, 0.65);
   --card-bg: #0f172a;
   --card-fg: #e6eef9;
   --border: #233246;
   --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+
+  /* 🔗 Aliases */
+  --card: var(--card-bg);
+  --text: var(--card-fg);
+  --muted: color-mix(in srgb, var(--card-fg) 45%, transparent);
+}
+
+/* 1.1) Org Table modallaridagi "field" fonini token bilan ta’minlab qo‘yamiz */
+.modalRoot [data-dialog-body] .org-table-modal {
+  --field-bg: color-mix(in srgb, var(--card) 92%, #ffffff 8%);
+}
+.modalRoot[data-theme="dark"] [data-dialog-body] .org-table-modal {
+  --field-bg: color-mix(in srgb, var(--card) 70%, #ffffff 4%);
 }
 
 /* 2) LAYOUT & ANIMATION */
@@ -118,7 +138,6 @@
   font-weight: 700;
   font-size: 16px;
 }
-
 .headerRight {
   justify-self: end;
 }
@@ -155,7 +174,6 @@
 }
 
 /* 5) BUTTONS (scoped, override globals) */
-/* Header dagi va body ichidagi barcha .btn lar bir xil ko‘rinishda bo‘ladi */
 .modalRoot .header :global(.btn),
 .modalRoot [data-dialog-body] :global(.btn) {
   appearance: none;
@@ -212,6 +230,63 @@
 .modalRoot [data-dialog-body] :global(.btn.ghost) {
   background: transparent;
   border-color: var(--border);
+}
+
+/* 5.1) FORM FIELDS */
+.modalRoot .header :global(input),
+.modalRoot .header :global(textarea),
+.modalRoot .header :global(select),
+.modalRoot [data-dialog-body] :global(input),
+.modalRoot [data-dialog-body] :global(textarea),
+.modalRoot [data-dialog-body] :global(select) {
+  font: inherit;
+  color: var(--card-fg);
+  background: color-mix(in srgb, var(--card-bg) 96%, var(--card-fg) 4%);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  outline: none;
+  min-height: 36px;
+  box-sizing: border-box;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.modalRoot .header :global(input:hover),
+.modalRoot .header :global(textarea:hover),
+.modalRoot .header :global(select:hover),
+.modalRoot [data-dialog-body] :global(input:hover),
+.modalRoot [data-dialog-body] :global(textarea:hover),
+.modalRoot [data-dialog-body] :global(select:hover) {
+  background: color-mix(in srgb, var(--card-bg) 90%, var(--card-fg) 10%);
+}
+.modalRoot .header :global(input:focus),
+.modalRoot .header :global(textarea:focus),
+.modalRoot .header :global(select:focus),
+.modalRoot [data-dialog-body] :global(input:focus),
+.modalRoot [data-dialog-body] :global(textarea:focus),
+.modalRoot [data-dialog-body] :global(select:focus) {
+  box-shadow: var(--ring);
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--card-bg) 88%, var(--card-fg) 12%);
+}
+.modalRoot .header :global(input:disabled),
+.modalRoot .header :global(textarea:disabled),
+.modalRoot .header :global(select:disabled),
+.modalRoot [data-dialog-body] :global(input:disabled),
+.modalRoot [data-dialog-body] :global(textarea:disabled),
+.modalRoot [data-dialog-body] :global(select:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.modalRoot [data-dialog-body] :global(textarea) {
+  resize: vertical;
+  min-height: 90px;
+}
+.modalRoot .header :global(input::placeholder),
+.modalRoot .header :global(textarea::placeholder),
+.modalRoot [data-dialog-body] :global(input::placeholder),
+.modalRoot [data-dialog-body] :global(textarea::placeholder) {
+  color: color-mix(in srgb, var(--card-fg) 55%, transparent);
 }
 
 /* 6) RESPONSIVE */

@@ -3,7 +3,7 @@
 /*   Scoped, dark-aware, clean    */
 /* ============================== */
 
-/* 1) LIGHT THEME TOKENS (scoped) */
+/* 1) LIGHT THEME TOKENS (scoped to page) */
 .org-table-page {
   --bg: #f6f9fc;
   --card: #ffffff;
@@ -27,7 +27,6 @@
 
   --thead-hover: #f5f7fb;
 
-  /* Page header */
   .page-header {
     margin: 8px 0 12px;
     h2 {
@@ -67,6 +66,7 @@
       padding: 8px 10px;
       outline: none;
     }
+
     .search {
       min-width: 240px;
     }
@@ -90,6 +90,7 @@
       &:active {
         transform: translateY(1px);
       }
+
       &.primary {
         background: linear-gradient(135deg, var(--primary-1), var(--primary-2));
         border-color: transparent;
@@ -179,7 +180,7 @@
 
     .num {
       font-variant-numeric: tabular-nums;
-      text-align: right;
+      text-align: center;
     }
     .muted {
       color: var(--muted);
@@ -249,7 +250,7 @@
     }
   }
 
-  /* Modal (scoped) */
+  /* Legacy in-page "modal" container (if any) */
   .modal-backdrop {
     position: fixed;
     inset: 0;
@@ -293,7 +294,7 @@
 
   .form-grid {
     display: grid;
-    gap: 12px;
+    gap: 16px;
     .field {
       display: grid;
       gap: 6px;
@@ -328,11 +329,136 @@
     }
   }
 
-  /* Map picker (scoped) */
+  /* Map picker (when rendered inside page, not portal) */
   .map-picker {
     display: grid;
+
+    .org-table-modal {
+      --field-bg-light: color-mix(
+        in srgb,
+        var(--card, #ffffff) 92%,
+        #ffffff 8%
+      );
+      --field-bg-dark: color-mix(
+        in srgb,
+        var(--card, #0f172a) 88%,
+        #ffffff 12%
+      );
+      --field-bg: var(--field-bg-light);
+    }
+    :where(.dark, [data-theme="dark"], .theme-dark) .org-table-modal {
+      --field-bg: color-mix(in srgb, var(--card, #0f172a) 70%, #ffffff 4%);
+    }
+
+    .org-table-modal .form-grid {
+      gap: 20px;
+    }
+    .org-table-modal .form-grid .field {
+      background: var(--field-bg);
+      padding: 10px 12px 14px;
+      border: 1px solid var(--border, #334155);
+      border-radius: 14px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
+    }
+    .org-table-modal .form-grid .field:focus-within {
+      border-color: var(--primary-1, #22c55e);
+      box-shadow: 0 0 0 3px var(--ring, rgba(34, 197, 94, 0.25));
+    }
+    .org-table-modal .form-grid .field label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+    .org-table-modal .form-grid .field input,
+    .org-table-modal .form-grid .field select {
+      margin-top: 4px;
+      background: transparent;
+    }
+
+    .org-table-modal .form-grid .parent-field select {
+      background: linear-gradient(
+        135deg,
+        var(--field-bg) 60%,
+        color-mix(in srgb, var(--field-bg) 92%, #22c55e 8%)
+      );
+      font-weight: 500;
+      border: 1px solid
+        color-mix(in srgb, var(--border, #334155) 80%, transparent);
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+    .org-table-modal .form-grid .parent-field select:focus {
+      border-color: var(--primary-1, #22c55e);
+      box-shadow: 0 0 0 2px var(--ring, rgba(34, 197, 94, 0.25));
+    }
+
+    .org-table-modal .form-grid .grid3 {
+      gap: 14px;
+    }
+    .org-table-modal .form-grid .grid3 .field {
+      padding: 8px 10px 12px;
+    }
+
+    .org-table-modal .modal-actions {
+      gap: 14px;
+      padding-top: 16px;
+    }
+    .org-table-modal .modal-actions .btn {
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      min-width: 90px;
+    }
+    .org-table-modal .modal-actions .btn.primary {
+      font-weight: 600;
+      box-shadow: 0 6px 16px rgba(34, 197, 94, 0.25);
+    }
+    .org-table-modal .modal-actions .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .org-table-modal .map-hint-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: -4px;
+      background: var(--field-bg);
+      padding: 10px 14px;
+      border: 1px dashed var(--border, #334155);
+      border-radius: 12px;
+    }
+    .org-table-modal .map-hint-row .map-btn {
+      background: linear-gradient(
+        135deg,
+        var(--primary-1, #22c55e),
+        var(--primary-2, #16a34a)
+      );
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(34, 197, 94, 0.25);
+    }
+    .org-table-modal .map-hint-row .map-btn:hover {
+      filter: brightness(1.05);
+    }
+
+    @media (min-width: 820px) {
+      .org-table-modal .form-grid {
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        align-items: start;
+      }
+      .org-table-modal .form-grid .grid3,
+      .org-table-modal .form-grid .modal-actions {
+        grid-column: 1/-1;
+      }
+    }
+
     grid-template-rows: auto 60vh auto;
     gap: 10px;
+
     .controls {
       display: flex;
       align-items: center;
@@ -357,7 +483,7 @@
   }
 }
 
-/* 3) DARK OVERRIDE (bir marta) */
+/* 3) DARK OVERRIDE for page */
 :where(.dark, [data-theme="dark"], .theme-dark) .org-table-page {
   --bg: #0b1220;
   --card: #0f172a;
@@ -376,7 +502,7 @@
   --thead-hover: color-mix(in srgb, var(--thead-bg) 86%, #ffffff 14%);
 }
 
-/* 4) (Ixtiyoriy) jadvalga kuchliroq scope */
+/* 4) Jadvalga kuchliroq scope (ixtiyoriy) */
 .org-table-page .table-card .org-table.org-table--scoped thead tr th,
 .org-table-page .table-card .org-table.org-table--scoped thead tr td {
   background-color: var(--thead-bg);
@@ -389,9 +515,8 @@
   display: none;
 }
 
-/* --- Org Table: modal & form polishing (scoped) --- */
+/* 6) Modal & form polishing (scoped to page) */
 .org-table-page {
-  /* Modal ichidagi kontent */
   .org-table-modal .form-grid .field input,
   .org-table-modal .form-grid .field select {
     border: 1px solid var(--border);
@@ -404,7 +529,7 @@
 
   .org-table-modal .form-grid .field input:focus,
   .org-table-modal .form-grid .field select:focus {
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 28%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-1) 28%, transparent);
     border-color: var(--border);
   }
 
@@ -420,22 +545,31 @@
   }
 
   .org-table-modal .modal-actions {
-    margin-top: 8px;
+    margin-top: 14px;
+    padding-top: 10px;
     display: flex;
-    gap: 8px;
+    flex-wrap: wrap;
+    gap: 12px;
     justify-content: flex-end;
+    border-top: 1px solid var(--border);
   }
   .org-table-modal .modal-actions .btn {
     height: 38px;
     border-radius: 12px;
-    padding: 0 14px;
+    padding: 0 18px;
     border: 1px solid var(--border);
     background: var(--card);
     color: var(--text);
     cursor: pointer;
+    line-height: 1;
   }
   .org-table-modal .modal-actions .btn.primary {
-    background: linear-gradient(135deg, var(--brand), var(--brand-2));
+    /* uses Modal.module.scss --brand tokens when inside portal */
+    background: linear-gradient(
+      135deg,
+      var(--primary-1, #22c55e),
+      var(--primary-2, #16a34a)
+    );
     border: none;
     color: #fff;
   }
@@ -453,12 +587,223 @@
   }
 }
 
-/* Dark’da ham mos ishlasin (agar dark mavjud bo‘lsa) */
-:where(.dark, [data-theme="dark"], .theme-dark) .org-table-page {
-  /* rang tokenlari allaqachon styles’da bor bo‘lsa, bu blokni qoldiring;
-     bo‘lmasa quyidagilar bilan yangilang */
-  --card: #0f172a;
-  --text: #e6eef9;
-  --muted: #9aa5b1;
-  --border: #253045;
+/* 7) Extra modal aesthetic enhancements (page scope) */
+.org-table-page .org-table-modal {
+  --field-bg-light: color-mix(in srgb, var(--card) 92%, #ffffff 8%);
+  --field-bg-dark: color-mix(in srgb, var(--card) 88%, #ffffff 12%);
+  --field-bg: var(--field-bg-light);
+}
+:where(.dark, [data-theme="dark"], .theme-dark)
+  .org-table-page
+  .org-table-modal {
+  --field-bg: color-mix(in srgb, var(--card) 70%, #ffffff 4%);
+}
+
+.org-table-page .org-table-modal .form-grid {
+  gap: 20px;
+}
+.org-table-page .org-table-modal .form-grid .field {
+  background: var(--field-bg);
+  padding: 10px 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
+  position: relative;
+}
+.org-table-page .org-table-modal .form-grid .field:focus-within {
+  border-color: var(--primary-1, #22c55e);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.org-table-page .org-table-modal .form-grid .field label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+.org-table-page .org-table-modal .form-grid .field input,
+.org-table-page .org-table-modal .form-grid .field select {
+  margin-top: 4px;
+  background: transparent;
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+}
+.org-table-page .org-table-modal .form-grid .field input:focus,
+.org-table-page .org-table-modal .form-grid .field select:focus {
+  border-color: var(--primary-1, #22c55e);
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+/* Specific tweaks for edit modal inside page */
+.org-edit-modal .org-table-modal--edit .geo-fields .field {
+  background: linear-gradient(
+    135deg,
+    var(--field-bg) 70%,
+    color-mix(in srgb, var(--field-bg) 80%, #22c55e 6%)
+  );
+}
+.org-edit-modal .org-table-modal--edit .map-hint-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: -4px;
+  background: var(--field-bg);
+  padding: 10px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+.org-edit-modal .org-table-modal--edit .map-hint-row .map-btn {
+  background: linear-gradient(
+    135deg,
+    var(--primary-1, #22c55e),
+    var(--primary-2, #16a34a)
+  );
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.25);
+}
+.org-edit-modal .org-table-modal--edit .map-hint-row .map-btn:hover {
+  filter: brightness(1.05);
+}
+
+.org-table-page .org-table-modal .form-grid .grid3 {
+  gap: 14px;
+}
+.org-table-page .org-table-modal .form-grid .grid3 .field {
+  padding: 8px 10px 12px;
+}
+
+.org-table-page .org-table-modal .modal-actions {
+  gap: 14px !important;
+  padding-top: 16px !important;
+}
+.org-table-page .org-table-modal .modal-actions .btn {
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  min-width: 90px;
+}
+.org-table-page .org-table-modal .modal-actions .btn.primary {
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.25);
+}
+.org-table-page .org-table-modal .modal-actions .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.org-table-page .org-table-modal .muted {
+  font-size: 12px;
+}
+
+@media (min-width: 820px) {
+  .org-table-page .org-table-modal .form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    align-items: start;
+  }
+  .org-table-page .org-table-modal .form-grid .grid3,
+  .org-table-page .org-table-modal .form-grid .modal-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ===================================================== */
+/*  8) PORTAL-SAFE STYLES (Modal rendered outside page)  */
+/*      ✅ This fixes “light modal stuck in dark” issue   */
+/* ===================================================== */
+
+/* Base (inherits tokens from Modal.module.scss via CSS variables) */
+.org-table-modal {
+  /* use modal tokens if present; fall back to sensible defaults */
+  --field-bg: color-mix(
+    in srgb,
+    var(--card-bg, #ffffff) 96%,
+    var(--card-fg, #0f172a) 4%
+  );
+  --field-border: var(--border, #e5e7eb);
+  --field-text: var(--card-fg, #0f172a);
+  --field-muted: color-mix(in srgb, var(--card-fg, #0f172a) 55%, transparent);
+
+  .form-grid {
+    display: grid;
+    gap: 20px;
+  }
+
+  .field {
+    display: grid;
+    gap: 6px;
+    background: var(--field-bg);
+    padding: 10px 12px 14px;
+    border: 1px solid var(--field-border);
+    border-radius: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
+  }
+  .field:focus-within {
+    border-color: var(--brand, #22c55e);
+    box-shadow: 0 0 0 3px var(--ring, rgba(34, 197, 94, 0.25));
+  }
+  .field label {
+    color: var(--field-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    opacity: 0.9;
+  }
+  .field input,
+  .field select {
+    width: 100%;
+    margin-top: 4px;
+    color: var(--field-text);
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--field-border) 85%, transparent);
+    border-radius: 10px;
+    padding: 10px 12px;
+    outline: none;
+  }
+  .field input::placeholder {
+    color: var(--field-muted);
+  }
+  .field input:focus,
+  .field select:focus {
+    border-color: var(--brand, #22c55e);
+    box-shadow: 0 0 0 2px var(--ring, rgba(34, 197, 94, 0.25));
+  }
+
+  .grid3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 720px) {
+    .grid3 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .modal-actions {
+    margin-top: 14px;
+    padding-top: 12px;
+    display: flex;
+    gap: 14px;
+    justify-content: flex-end;
+    border-top: 1px solid var(--field-border);
+  }
+  .modal-actions .btn {
+    min-width: 90px;
+    height: 38px;
+    border-radius: 12px;
+  }
+}
+
+/* Dark override when modal's root (or any ancestor) has data-theme="dark" */
+:where([data-theme="dark"], .dark, .theme-dark) .org-table-modal {
+  --field-bg: color-mix(in srgb, var(--card-bg, #0f172a) 85%, #ffffff 6%);
+  --field-border: var(--border, #233246);
+  --field-text: var(--card-fg, #e6eef9);
+  --field-muted: color-mix(in srgb, var(--card-fg, #e6eef9) 55%, transparent);
 }

@@ -1,11 +1,9 @@
-// src/components/map/MapPickerModal.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, useMapEvents } from "react-leaflet";
 import Modal from "../ui/Modal";
 import MapTiles from "./MapTiles";
 
-// (Vite-da default Leaflet marker ikonlarini tuzatish uchun main.jsx da fix qo'ygan bo'lsangiz a'lo)
-const DEFAULT_CENTER = [41.311081, 69.240562]; // Toshkent
+const DEFAULT_CENTER = [41.311081, 69.240562];
 const DEFAULT_ZOOM = 12;
 
 function ClickCapture({ onPick }) {
@@ -19,13 +17,7 @@ function ClickCapture({ onPick }) {
 
 /**
  * Props:
- *  open: boolean
- *  onClose: () => void
- *  onSave: ({lat,lng,zoom}) => void
- *  value?: { lat?: number, lng?: number, zoom?: number }
- *  title?: string
- *  dark?: boolean // App'dan uzating (body/theme holatiga mos)
- *  size?: "sm" | "md" | "lg" | "xl" | "full"  // ixtiyoriy, default "xl"
+ *  open, onClose, onSave, value?, title?, dark? = "auto", size? = "xl", tms? = true
  */
 export default function MapPickerModal({
   open,
@@ -33,7 +25,7 @@ export default function MapPickerModal({
   onSave,
   value,
   title = "Joylashuvni tanlang",
-  dark = false,
+  dark = "auto", // ⬅️ default: auto
   size = "xl",
   tms = true,
 }) {
@@ -91,8 +83,7 @@ export default function MapPickerModal({
       title={title}
       size={size}
       width={size === "full" ? "min(96vw,1200px)" : undefined}
-      // Modal o'zi ham dark-aware, lekin xohlasangiz local majburlash:
-      dark={dark}
+      dark={dark} // ⬅️ modal ham auto’ga bo‘ysunadi
       initialFocusRef={saveBtnRef}
       zIndex={5000}
     >
@@ -112,16 +103,15 @@ export default function MapPickerModal({
           className="map-holder"
           style={{ height: "60vh", borderRadius: 12, overflow: "hidden" }}
         >
-          {/* MapContainer'ni modal ochilganda render qilamiz */}
           {open && (
             <MapContainer
-              key={`${dark ? "dark" : "light"}-${tms ? "tms" : "xyz"}`} // tile almashganda remount bo‘lsin
+              key={`${String(dark)}-${tms ? "tms" : "xyz"}`}
               center={center}
               zoom={initialZoom}
               whenCreated={setMap}
               style={{ height: "100%", width: "100%" }}
             >
-              <MapTiles dark={dark} tms={true} />
+              <MapTiles tms={tms} />
               <ClickCapture onPick={setPos} />
               {pos && <Marker position={pos} />}
             </MapContainer>

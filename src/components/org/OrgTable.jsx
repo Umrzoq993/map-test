@@ -8,7 +8,9 @@ import {
   updateOrg,
   moveOrg,
   deleteOrg,
+  getOrg,
 } from "../../api/org";
+import "../../styles/_org_table.scss";
 
 /* ---------- Helpers ---------- */
 
@@ -25,6 +27,22 @@ function toNumberOrNull(v) {
   if (v === "" || v === null || v === undefined) return null;
   const num = Number(v);
   return Number.isFinite(num) ? num : null;
+}
+
+// Backend turli DTO nomlari uchun normalization
+function normalizeOrg(o = {}) {
+  // Agar javob ichida nested org bo'lsa, shundan maydonlarni olamiz
+  const src = o && o.org && typeof o.org === "object" ? { ...o, ...o.org } : o;
+  return {
+    id: src.id ?? src.orgId ?? src.key ?? null,
+    name: src.name ?? src.title ?? src.orgName ?? "",
+    code: src.code ?? src.orgCode ?? "",
+    parentId: src.parentId ?? src.parent_id ?? src.parent ?? null,
+    lat: src.lat ?? src.latitude ?? "",
+    lng: src.lng ?? src.longitude ?? "",
+    zoom: src.zoom ?? src.mapZoom ?? "",
+    sortOrder: src.sortOrder ?? src.orderIndex ?? src.order ?? null,
+  };
 }
 
 // draft.id tugunning barcha avlodlarini topish (parent selectda o'ziga yoki avlodiga ko'chirishni bloklash)
@@ -90,11 +108,14 @@ export default function OrgTable({ isAdmin, focusId }) {
   const [draft, setDraft] = useState({
     id: null,
     name: "",
+    code: "",
     parentId: null,
     lat: "",
     lng: "",
     zoom: "",
   });
+  const [originalDraft, setOriginalDraft] = useState(null); // fetchdan keyingi asl qiymatlar
+  const [editFetching, setEditFetching] = useState(false); // modal ichidagi yuklanish
 
   // Map picker modal
   const [pickOpen, setPickOpen] = useState(false);
@@ -120,9 +141,12 @@ export default function OrgTable({ isAdmin, focusId }) {
       if (String(parentId).length) params.parentId = Number(parentId);
 
       const res = await listOrgsPage(params);
-      setRows(res?.content || []);
+      const list = (res?.content || []).map((r) => ({
+        ...r,
+        ...normalizeOrg(r),
+      }));
+      setRows(list);
       setTotal(res?.totalElements || 0);
-      // Fokus row scroll
       if (focusId) {
         setTimeout(() => {
           const el = document.querySelector(`[data-org-row='${focusId}']`);
@@ -216,6 +240,7 @@ export default function OrgTable({ isAdmin, focusId }) {
     setDraft({
       id: null,
       name: "",
+      code: "",
       parentId: null,
       lat: "",
       lng: "",
@@ -229,6 +254,7 @@ export default function OrgTable({ isAdmin, focusId }) {
     setDraft({
       id: null,
       name: "",
+      code: "",
       parentId: row?.id ?? null,
       lat: "",
       lng: "",
@@ -243,6 +269,7 @@ export default function OrgTable({ isAdmin, focusId }) {
     try {
       await createOrg({
         name: draft.name.trim(),
+        code: draft.code?.trim() || undefined,
         parentId: toNumberOrNull(draft.parentId),
         lat: toNumberOrNull(draft.lat),
         lng: toNumberOrNull(draft.lng),
@@ -260,16 +287,43 @@ export default function OrgTable({ isAdmin, focusId }) {
   };
 
   const openEdit = (row) => {
-    setContextRow(row);
-    setDraft({
-      id: row.id,
-      name: row.name || "",
-      parentId: row.parentId ?? null,
-      lat: row.lat ?? "",
-      lng: row.lng ?? "",
-      zoom: row.zoom ?? "",
-    });
+    // 1) Jadvaldagi mavjud qisqa ma'lumot bilan darhol ochamiz
+    const base = normalizeOrg(row);
+    setContextRow(base);
+    const pre = {
+      id: base.id,
+      name: base.name ?? "",
+      code: base.code ?? "",
+      parentId: base.parentId ?? null,
+      lat: base.lat != null && base.lat !== "" ? String(base.lat) : "",
+      lng: base.lng != null && base.lng !== "" ? String(base.lng) : "",
+      zoom: base.zoom != null && base.zoom !== "" ? String(base.zoom) : "",
+    };
+    setDraft(pre);
+    setOriginalDraft(pre); // vaqtincha
     setEditOpen(true);
+    // 2) To'liq ma'lumotni fon rejimida olib kelamiz
+    setEditFetching(true);
+    getOrg(base.id)
+      .then((full) => {
+        if (full && typeof full === "object") {
+          const nf = normalizeOrg(full);
+          const fullDraft = {
+            id: nf.id,
+            name: nf.name ?? "",
+            code: nf.code ?? "",
+            parentId: nf.parentId ?? null,
+            lat: nf.lat != null && nf.lat !== "" ? String(nf.lat) : "",
+            lng: nf.lng != null && nf.lng !== "" ? String(nf.lng) : "",
+            zoom: nf.zoom != null && nf.zoom !== "" ? String(nf.zoom) : "",
+          };
+          setDraft(fullDraft);
+          setOriginalDraft(fullDraft);
+          setContextRow(nf);
+        }
+      })
+      .catch((e) => console.warn("openEdit fetch fail", e?.message))
+      .finally(() => setEditFetching(false));
   };
 
   const handleEdit = async () => {
@@ -279,20 +333,16 @@ export default function OrgTable({ isAdmin, focusId }) {
     try {
       const originalParentId = contextRow?.parentId ?? null;
       const newParentId = toNumberOrNull(draft.parentId);
-
-      // 1) update basic fields
       await updateOrg(draft.id, {
         name: draft.name.trim(),
+        code: draft.code?.trim() || undefined,
         lat: toNumberOrNull(draft.lat),
         lng: toNumberOrNull(draft.lng),
         zoom: toNumberOrNull(draft.zoom),
       });
-
-      // 2) parent o'zgargan bo'lsa — reparent (oxiriga)
       if (originalParentId !== newParentId) {
         await moveOrg(draft.id, { newParentId, orderIndex: 999999 });
       }
-
       setEditOpen(false);
       await loadPage();
       await loadTree();
@@ -331,409 +381,498 @@ export default function OrgTable({ isAdmin, focusId }) {
   };
 
   const nameMissing = !String(draft.name || "").trim();
+  const draftComparable = (d) => ({
+    name: (d.name || "").trim(),
+    code: (d.code || "").trim(),
+    parentId: d.parentId ? Number(d.parentId) : null,
+    lat: d.lat === "" ? null : Number(d.lat),
+    lng: d.lng === "" ? null : Number(d.lng),
+    zoom: d.zoom === "" ? null : Number(d.zoom),
+  });
+  const dirty = originalDraft
+    ? JSON.stringify(draftComparable(draft)) !==
+      JSON.stringify(draftComparable(originalDraft))
+    : true;
 
   /* ---------- Render ---------- */
 
   return (
-    <div className="org-table-wrap">
-      <div className="toolbar">
-        <input
-          className="search"
-          placeholder="Qidiruv..."
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && onSearch()}
-        />
-        <select
-          className="parent-filter"
-          value={parentId}
-          onChange={onChangeParentFilter}
-        >
-          {filterOptions.map((o) => (
-            <option key={o.value ?? "all"} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <div className="spacer" />
-        <select
-          className="size"
-          value={size}
-          onChange={(e) => {
-            setSize(Number(e.target.value));
-            setPage(0);
-          }}
-        >
-          {[10, 20, 30, 50, 100].map((s) => (
-            <option key={s} value={s}>
-              {s} qator
-            </option>
-          ))}
-        </select>
-        <button className="btn" onClick={onSearch}>
-          Qidir
-        </button>
-        {isAdmin && (
-          <button className="btn primary" onClick={openCreateRoot}>
-            + Root qo‘shish
+    <div className="org-table-page">
+      <div className="org-table-wrap">
+        <div className="toolbar">
+          <input
+            className="search"
+            placeholder="Qidiruv..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onSearch()}
+          />
+          <select
+            className="parent-filter"
+            value={parentId}
+            onChange={onChangeParentFilter}
+          >
+            {filterOptions.map((o) => (
+              <option key={o.value ?? "all"} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <div className="spacer" />
+          <select
+            className="size"
+            value={size}
+            onChange={(e) => {
+              setSize(Number(e.target.value));
+              setPage(0);
+            }}
+          >
+            {[10, 20, 30, 50, 100].map((s) => (
+              <option key={s} value={s}>
+                {s} qator
+              </option>
+            ))}
+          </select>
+          <button className="btn" onClick={onSearch}>
+            Qidir
           </button>
+          {isAdmin && (
+            <button className="btn primary" onClick={openCreateRoot}>
+              + Root qo‘shish
+            </button>
+          )}
+        </div>
+
+        <div className="table-card">
+          <table className="org-table">
+            <thead>
+              <tr>
+                <th style={{ width: 56 }}>ID</th>
+                <th
+                  className="sortable"
+                  onClick={() => toggleSort("code")}
+                  style={{ width: 90 }}
+                >
+                  Code <span className="sort">{sortIcon("code")}</span>
+                </th>
+                <th className="sortable" onClick={() => toggleSort("name")}>
+                  Nomi <span className="sort">{sortIcon("name")}</span>
+                </th>
+                <th
+                  className="sortable"
+                  onClick={() => toggleSort("sortOrder")}
+                >
+                  Tartib <span className="sort">{sortIcon("sortOrder")}</span>
+                </th>
+                <th>Parent</th>
+                <th className="sortable" onClick={() => toggleSort("lat")}>
+                  Lat <span className="sort">{sortIcon("lat")}</span>
+                </th>
+                <th className="sortable" onClick={() => toggleSort("lng")}>
+                  Lng <span className="sort">{sortIcon("lng")}</span>
+                </th>
+                <th className="sortable" onClick={() => toggleSort("zoom")}>
+                  Zoom <span className="sort">{sortIcon("zoom")}</span>
+                </th>
+                <th style={{ width: 220 }}>Amallar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td className="num">{r.id}</td>
+                  <td className="code">{r.code || "—"}</td>
+                  <td>
+                    <span
+                      className="indent"
+                      style={{ paddingLeft: (r.depth || 0) * 16 }}
+                    />
+                    {r.name}
+                  </td>
+                  <td className="num">{r.sortOrder ?? "—"}</td>
+                  <td className="muted">
+                    {r.parentName ?? (r.parentId ? r.parentId : "— Root —")}
+                  </td>
+                  <td className="num">{r.lat ?? "—"}</td>
+                  <td className="num">{r.lng ?? "—"}</td>
+                  <td className="num">{r.zoom ?? "—"}</td>
+                  <td>
+                    <div className="actions">
+                      <button
+                        className="btn"
+                        onClick={() => openCreateChild(r)}
+                      >
+                        + Child
+                      </button>
+                      <button className="btn" onClick={() => openEdit(r)}>
+                        Edit
+                      </button>
+                      <button
+                        className="btn danger"
+                        onClick={() => openDelete(r)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="empty">
+                    Hech narsa topilmadi
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Paginator */}
+        <div className="paginator">
+          <button
+            className="btn"
+            disabled={page === 0}
+            onClick={() => setPage(0)}
+          >
+            «
+          </button>
+          <button
+            className="btn"
+            disabled={page === 0}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+          >
+            ‹
+          </button>
+          <span className="muted">
+            Page {page + 1} / {totalPages}
+          </span>
+          <button
+            className="btn"
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+          >
+            ›
+          </button>
+          <button
+            className="btn"
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage(totalPages - 1)}
+          >
+            »
+          </button>
+          <span className="muted">Total: {total}</span>
+        </div>
+
+        {/* CREATE MODAL */}
+        <Modal
+          open={createOpen}
+          title="Bo‘lim qo‘shish"
+          onClose={() => setCreateOpen(false)}
+          initialFocusRef={createNameRef}
+          preventCloseOnBackdrop={true}
+          className="org-edit-modal"
+          size="lg"
+        >
+          <div className="org-table-modal">
+            <div className="form-grid">
+              <div className="field">
+                <label>Nom *</label>
+                <input
+                  ref={createNameRef}
+                  value={draft.name}
+                  onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                  placeholder="Masalan: Issiqxona bo‘limi"
+                  autoFocus
+                />
+              </div>
+              <div className="field">
+                <label>Code</label>
+                <input
+                  value={draft.code}
+                  onChange={(e) =>
+                    setDraft({ ...draft, code: e.target.value.slice(0, 32) })
+                  }
+                  placeholder="Qisqa kod (ixtiyoriy)"
+                />
+              </div>
+              <div className="field parent-field">
+                <label>Parent</label>
+                <select
+                  value={draft.parentId ?? ""}
+                  onChange={(e) =>
+                    setDraft({ ...draft, parentId: e.target.value || "" })
+                  }
+                >
+                  {modalParentOptions.map((o) => (
+                    <option key={o.value ?? "root"} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid3">
+                <div className="field">
+                  <label>Lat</label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    inputMode="decimal"
+                    value={draft.lat}
+                    onChange={(e) =>
+                      setDraft({ ...draft, lat: e.target.value })
+                    }
+                    placeholder="41.311081"
+                  />
+                </div>
+                <div className="field">
+                  <label>Lng</label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    inputMode="decimal"
+                    value={draft.lng}
+                    onChange={(e) =>
+                      setDraft({ ...draft, lng: e.target.value })
+                    }
+                    placeholder="69.240562"
+                  />
+                </div>
+                <div className="field">
+                  <label>Zoom</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="21"
+                    inputMode="numeric"
+                    value={draft.zoom}
+                    onChange={(e) =>
+                      setDraft({ ...draft, zoom: e.target.value })
+                    }
+                    placeholder="12"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <button className="btn" onClick={() => setPickOpen(true)}>
+                  Mapdan tanlash
+                </button>
+                <span className="muted" style={{ marginLeft: 8 }}>
+                  * Xarita oynasini ochib, nuqtani bosing.
+                </span>
+              </div>
+
+              <div className="modal-actions">
+                <button className="btn" onClick={() => setCreateOpen(false)}>
+                  Bekor
+                </button>
+                <button
+                  className="btn primary"
+                  onClick={handleCreate}
+                  disabled={loading || nameMissing}
+                  title={nameMissing ? "Nom majburiy" : "Saqlash"}
+                >
+                  {loading ? "Saqlanmoqda…" : "Saqlash"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+
+        {/* EDIT MODAL */}
+        <Modal
+          open={editOpen}
+          title="Bo‘limni tahrirlash"
+          onClose={() => setEditOpen(false)}
+          initialFocusRef={editNameRef}
+          preventCloseOnBackdrop={true}
+          className="org-edit-modal"
+        >
+          <div className="org-table-modal org-table-modal--edit">
+            <div className="form-grid">
+              {editFetching && (
+                <div className="muted" style={{ fontSize: 12 }}>
+                  Yuklanmoqda…
+                </div>
+              )}
+              <div className="field">
+                <label>Nom *</label>
+                <input
+                  ref={editNameRef}
+                  value={draft.name}
+                  onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                  placeholder="Nomi"
+                  autoFocus
+                />
+              </div>
+              <div className="field">
+                <label>Code</label>
+                <input
+                  value={draft.code}
+                  onChange={(e) =>
+                    setDraft({ ...draft, code: e.target.value.slice(0, 32) })
+                  }
+                  placeholder="Qisqa kod (ixtiyoriy)"
+                />
+              </div>
+              <div className="field parent-field">
+                <label>Parent</label>
+                <select
+                  value={draft.parentId ?? ""}
+                  onChange={(e) =>
+                    setDraft({ ...draft, parentId: e.target.value || "" })
+                  }
+                >
+                  {modalParentOptions.map((o) => (
+                    <option key={o.value ?? "root"} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid3 geo-fields">
+                <div className="field">
+                  <label>Lat</label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    inputMode="decimal"
+                    value={draft.lat}
+                    onChange={(e) =>
+                      setDraft({ ...draft, lat: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>Lng</label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    inputMode="decimal"
+                    value={draft.lng}
+                    onChange={(e) =>
+                      setDraft({ ...draft, lng: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>Zoom</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="21"
+                    inputMode="numeric"
+                    value={draft.zoom}
+                    onChange={(e) =>
+                      setDraft({ ...draft, zoom: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="map-hint-row">
+                <button
+                  className="btn map-btn"
+                  onClick={() => setPickOpen(true)}
+                >
+                  Mapdan tanlash
+                </button>
+                <span className="muted">
+                  * Tanlang va “Tanlash” tugmasini bosing.
+                </span>
+              </div>
+
+              <div className="modal-actions">
+                <button className="btn" onClick={() => setEditOpen(false)}>
+                  Bekor
+                </button>
+                <button
+                  className="btn"
+                  disabled={!dirty}
+                  title={dirty ? "Asliga qaytarish" : "O'zgarish yo'q"}
+                  onClick={() => originalDraft && setDraft(originalDraft)}
+                >
+                  Qaytar
+                </button>
+                <button
+                  className="btn primary"
+                  onClick={handleEdit}
+                  disabled={loading || editFetching || nameMissing || !dirty}
+                  title={
+                    nameMissing
+                      ? "Nom majburiy"
+                      : !dirty
+                      ? "O'zgarish yo'q"
+                      : "Saqlash"
+                  }
+                >
+                  {loading
+                    ? "Saqlanmoqda…"
+                    : editFetching
+                    ? "Kutib turing"
+                    : "Saqlash"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+
+        {/* DELETE CONFIRM */}
+        <Modal
+          open={deleteOpen}
+          title="Bo‘limni o‘chirish"
+          onClose={() => setDeleteOpen(false)}
+          width={440}
+          preventCloseOnBackdrop={true}
+          className="org-edit-modal"
+        >
+          <div className="org-table-modal">
+            <div className="confirm">
+              <p>
+                <b>{contextRow?.name}</b> bo‘limini o‘chirishni tasdiqlaysizmi?
+              </p>
+              <p className="muted">* Bolalari bo‘lsa, backend 409 qaytaradi.</p>
+            </div>
+            <div className="modal-actions">
+              <button className="btn" onClick={() => setDeleteOpen(false)}>
+                Bekor
+              </button>
+              <button
+                className="btn danger"
+                onClick={handleDelete}
+                disabled={loading}
+              >
+                {loading ? "O‘chirilmoqda…" : "Ha, o‘chirish"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* MAP PICKER MODAL */}
+        <MapPickerModal
+          open={pickOpen}
+          onClose={() => setPickOpen(false)}
+          value={{
+            lat: toNumberOrNull(draft.lat),
+            lng: toNumberOrNull(draft.lng),
+            zoom: toNumberOrNull(draft.zoom),
+          }}
+          onSave={({ lat, lng, zoom }) => {
+            setDraft((d) => ({ ...d, lat, lng, zoom }));
+          }}
+          size="xl"
+        />
+
+        {loading && (
+          <div className="overlay">
+            <div className="spinner" />
+          </div>
         )}
       </div>
-
-      <div className="table-card">
-        <table className="org-table">
-          <thead>
-            <tr>
-              <th style={{ width: 56 }}>ID</th>
-              <th className="sortable" onClick={() => toggleSort("name")}>
-                Nomi <span className="sort">{sortIcon("name")}</span>
-              </th>
-              <th className="sortable" onClick={() => toggleSort("sortOrder")}>
-                Tartib <span className="sort">{sortIcon("sortOrder")}</span>
-              </th>
-              <th>Parent</th>
-              <th className="sortable" onClick={() => toggleSort("lat")}>
-                Lat <span className="sort">{sortIcon("lat")}</span>
-              </th>
-              <th className="sortable" onClick={() => toggleSort("lng")}>
-                Lng <span className="sort">{sortIcon("lng")}</span>
-              </th>
-              <th className="sortable" onClick={() => toggleSort("zoom")}>
-                Zoom <span className="sort">{sortIcon("zoom")}</span>
-              </th>
-              <th style={{ width: 220 }}>Amallar</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td className="num">{r.id}</td>
-                <td>
-                  <span
-                    className="indent"
-                    style={{ paddingLeft: (r.depth || 0) * 16 }}
-                  />
-                  {r.name}
-                </td>
-                <td className="num">{r.sortOrder ?? "—"}</td>
-                <td className="muted">
-                  {r.parentName ?? (r.parentId ? r.parentId : "— Root —")}
-                </td>
-                <td className="num">{r.lat ?? "—"}</td>
-                <td className="num">{r.lng ?? "—"}</td>
-                <td className="num">{r.zoom ?? "—"}</td>
-                <td>
-                  <div className="actions">
-                    <button className="btn" onClick={() => openCreateChild(r)}>
-                      + Child
-                    </button>
-                    <button className="btn" onClick={() => openEdit(r)}>
-                      Edit
-                    </button>
-                    <button
-                      className="btn danger"
-                      onClick={() => openDelete(r)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={8} className="empty">
-                  Hech narsa topilmadi
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Paginator */}
-      <div className="paginator">
-        <button
-          className="btn"
-          disabled={page === 0}
-          onClick={() => setPage(0)}
-        >
-          «
-        </button>
-        <button
-          className="btn"
-          disabled={page === 0}
-          onClick={() => setPage((p) => Math.max(0, p - 1))}
-        >
-          ‹
-        </button>
-        <span className="muted">
-          Page {page + 1} / {totalPages}
-        </span>
-        <button
-          className="btn"
-          disabled={page >= totalPages - 1}
-          onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-        >
-          ›
-        </button>
-        <button
-          className="btn"
-          disabled={page >= totalPages - 1}
-          onClick={() => setPage(totalPages - 1)}
-        >
-          »
-        </button>
-        <span className="muted">Total: {total}</span>
-      </div>
-
-      {/* CREATE MODAL */}
-      <Modal
-        open={createOpen}
-        title="Bo‘lim qo‘shish"
-        onClose={() => setCreateOpen(false)}
-        initialFocusRef={createNameRef}
-        preventCloseOnBackdrop={true}
-      >
-        <div className="org-table-modal">
-          <div className="form-grid">
-            <div className="field">
-              <label>Nom *</label>
-              <input
-                ref={createNameRef}
-                value={draft.name}
-                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                placeholder="Masalan: Issiqxona bo‘limi"
-                autoFocus
-              />
-            </div>
-            <div className="field">
-              <label>Parent</label>
-              <select
-                value={draft.parentId ?? ""}
-                onChange={(e) =>
-                  setDraft({ ...draft, parentId: e.target.value || "" })
-                }
-              >
-                {modalParentOptions.map((o) => (
-                  <option key={o.value ?? "root"} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid3">
-              <div className="field">
-                <label>Lat</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  inputMode="decimal"
-                  value={draft.lat}
-                  onChange={(e) => setDraft({ ...draft, lat: e.target.value })}
-                  placeholder="41.311081"
-                />
-              </div>
-              <div className="field">
-                <label>Lng</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  inputMode="decimal"
-                  value={draft.lng}
-                  onChange={(e) => setDraft({ ...draft, lng: e.target.value })}
-                  placeholder="69.240562"
-                />
-              </div>
-              <div className="field">
-                <label>Zoom</label>
-                <input
-                  type="number"
-                  step="1"
-                  min="0"
-                  max="21"
-                  inputMode="numeric"
-                  value={draft.zoom}
-                  onChange={(e) => setDraft({ ...draft, zoom: e.target.value })}
-                  placeholder="12"
-                />
-              </div>
-            </div>
-
-            <div>
-              <button className="btn" onClick={() => setPickOpen(true)}>
-                Mapdan tanlash
-              </button>
-              <span className="muted" style={{ marginLeft: 8 }}>
-                * Xarita oynasini ochib, nuqtani bosing.
-              </span>
-            </div>
-
-            <div className="modal-actions">
-              <button className="btn" onClick={() => setCreateOpen(false)}>
-                Bekor
-              </button>
-              <button
-                className="btn primary"
-                onClick={handleCreate}
-                disabled={loading || nameMissing}
-                title={nameMissing ? "Nom majburiy" : "Saqlash"}
-              >
-                {loading ? "Saqlanmoqda…" : "Saqlash"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </Modal>
-
-      {/* EDIT MODAL */}
-      <Modal
-        open={editOpen}
-        title="Bo‘limni tahrirlash"
-        onClose={() => setEditOpen(false)}
-        initialFocusRef={editNameRef}
-        preventCloseOnBackdrop={true}
-      >
-        <div className="org-table-modal">
-          <div className="form-grid">
-            <div className="field">
-              <label>Nom *</label>
-              <input
-                ref={editNameRef}
-                value={draft.name}
-                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                placeholder="Nomi"
-                autoFocus
-              />
-            </div>
-            <div className="field">
-              <label>Parent</label>
-              <select
-                value={draft.parentId ?? ""}
-                onChange={(e) =>
-                  setDraft({ ...draft, parentId: e.target.value || "" })
-                }
-              >
-                {modalParentOptions.map((o) => (
-                  <option key={o.value ?? "root"} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid3">
-              <div className="field">
-                <label>Lat</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  inputMode="decimal"
-                  value={draft.lat}
-                  onChange={(e) => setDraft({ ...draft, lat: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>Lng</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  inputMode="decimal"
-                  value={draft.lng}
-                  onChange={(e) => setDraft({ ...draft, lng: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>Zoom</label>
-                <input
-                  type="number"
-                  step="1"
-                  min="0"
-                  max="21"
-                  inputMode="numeric"
-                  value={draft.zoom}
-                  onChange={(e) => setDraft({ ...draft, zoom: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <button className="btn" onClick={() => setPickOpen(true)}>
-                Mapdan tanlash
-              </button>
-              <span className="muted" style={{ marginLeft: 8 }}>
-                * Tanlang va “Tanlash” tugmasini bosing.
-              </span>
-            </div>
-
-            <div className="modal-actions">
-              <button className="btn" onClick={() => setEditOpen(false)}>
-                Bekor
-              </button>
-              <button
-                className="btn primary"
-                onClick={handleEdit}
-                disabled={loading || nameMissing}
-                title={nameMissing ? "Nom majburiy" : "Saqlash"}
-              >
-                {loading ? "Saqlanmoqda…" : "Saqlash"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </Modal>
-
-      {/* DELETE CONFIRM */}
-      <Modal
-        open={deleteOpen}
-        title="Bo‘limni o‘chirish"
-        onClose={() => setDeleteOpen(false)}
-        width={440}
-        preventCloseOnBackdrop={true}
-      >
-        <div className="org-table-modal">
-          <div className="confirm">
-            <p>
-              <b>{contextRow?.name}</b> bo‘limini o‘chirishni tasdiqlaysizmi?
-            </p>
-            <p className="muted">* Bolalari bo‘lsa, backend 409 qaytaradi.</p>
-          </div>
-          <div className="modal-actions">
-            <button className="btn" onClick={() => setDeleteOpen(false)}>
-              Bekor
-            </button>
-            <button
-              className="btn danger"
-              onClick={handleDelete}
-              disabled={loading}
-            >
-              {loading ? "O‘chirilmoqda…" : "Ha, o‘chirish"}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* MAP PICKER MODAL */}
-      <MapPickerModal
-        open={pickOpen}
-        onClose={() => setPickOpen(false)}
-        value={{
-          lat: toNumberOrNull(draft.lat),
-          lng: toNumberOrNull(draft.lng),
-          zoom: toNumberOrNull(draft.zoom),
-        }}
-        onSave={({ lat, lng, zoom }) => {
-          setDraft((d) => ({ ...d, lat, lng, zoom }));
-        }}
-        size="xl"
-      />
-
-      {loading && (
-        <div className="overlay">
-          <div className="spinner" />
-        </div>
-      )}
     </div>
   );
 }

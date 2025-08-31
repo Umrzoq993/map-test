@@ -2,22 +2,35 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import styles from "./Modal.module.scss";
 
-/* Global dark’ni aniqlash */
+/* --- Global dark holatini ishonchli va cheklangan tarzda aniqlash --- */
 function detectGlobalDark() {
   if (typeof document === "undefined") return false;
-  const html = document.documentElement;
-  const body = document.body;
-  const hasDark = (el) =>
+
+  const hasTheme = (el, theme) =>
     !!el &&
-    (el.classList.contains("dark") ||
-      el.classList.contains("theme-dark") ||
-      el.getAttribute("data-theme") === "dark");
-  if (hasDark(html) || hasDark(body)) return true;
-  // OS dark
+    (el.classList?.contains(theme) ||
+      el.classList?.contains(`theme-${theme}`) ||
+      el.getAttribute?.("data-theme") === theme);
+
+  // Faqat root darajasidagi elementlar (app’lar ko‘p bo‘lsa ham qamrab olamiz)
+  const roots = [
+    document.documentElement,
+    document.body,
+    document.getElementById("root"),
+    document.getElementById("app"),
+    document.querySelector(".appshell"),
+    document.querySelector(".app-shell"),
+    document.querySelector("[data-appshell]"),
+  ].filter(Boolean);
+
+  // Explicit light ustun
+  if (roots.some((el) => hasTheme(el, "light"))) return false;
+  if (roots.some((el) => hasTheme(el, "dark"))) return true;
+
+  // OS pref (fallback)
   return (
     typeof window !== "undefined" &&
-    window.matchMedia &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
+    window.matchMedia?.("(prefers-color-scheme: dark)")?.matches
   );
 }
 
@@ -28,7 +41,7 @@ function detectGlobalDark() {
  * - onClose?: () => void
  * - size?: "sm" | "md" | "lg" | "xl" | "full"
  * - width?: number | string
- * - dark?: boolean | "auto"   // "auto" (default) — globaldan aniqlaydi
+ * - dark?: boolean | "auto"   // "auto" (default) — root temadan oladi
  * - preventCloseOnBackdrop?: boolean
  * - disableEscapeClose?: boolean
  * - initialFocusRef?: React.Ref
@@ -74,27 +87,50 @@ export default function Modal({
     };
   }, []);
 
-  // Theme resolution (auto + live update)
+  // Tema: "auto" bo‘lsa faqat root darajasidagi tema flaglarini kuzatamiz
   useEffect(() => {
-    if (dark === true) return setTheme("dark");
-    if (dark === false) return setTheme("light");
+    const compute = () =>
+      setTheme(
+        dark === "auto"
+          ? detectGlobalDark()
+            ? "dark"
+            : "light"
+          : dark
+          ? "dark"
+          : "light"
+      );
 
-    const compute = () => setTheme(detectGlobalDark() ? "dark" : "light");
     compute();
 
+    // OS pref o‘zgarsa
     const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
-    const onMq = () => compute();
+    const onMq = () => dark === "auto" && compute();
     mq?.addEventListener?.("change", onMq);
 
-    const obs = new MutationObserver(compute);
-    obs.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class", "data-theme"],
+    // HTML/BODY/#root/#app/.appshell dagi class/data-theme o‘zgarishini kuzatamiz
+    const obs = new MutationObserver(() => {
+      if (dark === "auto") compute();
     });
-    obs.observe(document.body, {
-      attributes: true,
-      attributeFilter: ["class", "data-theme"],
-    });
+
+    const targets = [
+      document.documentElement,
+      document.body,
+      document.getElementById("root"),
+      document.getElementById("app"),
+      document.querySelector(".appshell"),
+      document.querySelector(".app-shell"),
+      document.querySelector("[data-appshell]"),
+    ].filter(Boolean);
+
+    try {
+      targets.forEach((t) =>
+        obs.observe(t, {
+          attributes: true,
+          attributeFilter: ["class", "data-theme"],
+          subtree: false, // ⚠️ ichkariga tushmaymiz — modalning o‘zi detektsiyani buzmasin
+        })
+      );
+    } catch {}
 
     return () => {
       try {
