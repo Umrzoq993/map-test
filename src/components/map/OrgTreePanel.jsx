@@ -219,16 +219,6 @@ export default function OrgTreePanel({
       </div>
 
       {/* Izoh / holat */}
-      <div className="org-tree-card__hint">
-        <div className="otp-muted">
-          ✔ Poligonlar turiga ko‘ra ranglanadi, markazida ikon ko‘rinadi.
-        </div>
-        <BboxPretty bbox={bbox} />
-        <div className="otp-muted">
-          Xaritadagi obyektlar: {facilitiesCount ?? 0} ta
-        </div>
-      </div>
-
       {/* Turlar filtri */}
       <div className="org-tree-card__body org-tree-card__body--border-top">
         <div className="otp-section-title">Obyekt turlari</div>
@@ -287,6 +277,17 @@ export default function OrgTreePanel({
           {selectedOrgId != null ? (
             <> • Tanlangan ID: {String(selectedOrgId)}</>
           ) : null}
+        </div>
+
+        {/* Izoh / holat pastga ko‘chirildi */}
+        <div className="org-tree-card__hint" style={{ marginTop: 8 }}>
+          <div className="otp-muted">
+            ✔ Poligonlar turiga ko‘ra ranglanadi, markazida ikon ko‘rinadi.
+          </div>
+          <BboxPretty bbox={bbox} />
+          <div className="otp-muted">
+            Xaritadagi obyektlar: {facilitiesCount ?? 0} ta
+          </div>
         </div>
       </div>
     </div>
