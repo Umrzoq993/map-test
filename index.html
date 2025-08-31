@@ -4,6 +4,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/src/assets/zamin-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Basic restrictive CSP (adjust connect-src in env if needed). For full protection set on server headers. -->
+    <!-- NOTE: frame-ancestors ignored in <meta>; set via real HTTP response header for clickjacking protection. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'sha256-oW38UIaT3mr2zAnGZaQXvRR9eB5NPEJfsP9/or8ZdJc='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://localhost:8080 https: wss: ws://localhost:8080; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+    />
+    <!-- Security / privacy headers (some browsers respect via meta, still set on server) -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta
+      http-equiv="Referrer-Policy"
+      content="strict-origin-when-cross-origin"
+    />
+    <meta
+      http-equiv="Permissions-Policy"
+      content="geolocation=(), camera=(), microphone=()"
+    />
     <title>Zamin AAT</title>
     <!-- Temani paintdan oldin qo‘llash (FOUC yo‘qoladi) -->
     <script>

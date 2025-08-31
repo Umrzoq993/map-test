@@ -61,6 +61,19 @@ export const api = axios.create({
   timeout: 30000,
 });
 
+/* =========================
+   Request ID generator (per request) 
+   ========================= */
+function genReqId() {
+  // 12 random hex chars
+  const arr = (
+    window.crypto?.getRandomValues
+      ? Array.from(window.crypto.getRandomValues(new Uint8Array(6)))
+      : Array.from({ length: 6 }, () => Math.floor(Math.random() * 256))
+  ).map((b) => b.toString(16).padStart(2, "0"));
+  return arr.join("");
+}
+
 /* Yordamchi: URL pathni chiqarib olish */
 function getPathname(urlLike) {
   try {
@@ -90,6 +103,11 @@ api.interceptors.request.use((config) => {
   // Device header
   if (!config.headers["X-Device-Id"]) {
     config.headers["X-Device-Id"] = getDeviceId();
+  }
+
+  // Request ID (observability)
+  if (!config.headers["X-Request-Id"]) {
+    config.headers["X-Request-Id"] = genReqId();
   }
 
   // Bearer faqat auth bo'lmagan endpointlar uchun

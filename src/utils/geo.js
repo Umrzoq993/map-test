@@ -3,7 +3,15 @@ export function centroidOfGeometry(geometry) {
   if (!geometry || !geometry.type) return null;
   if (geometry.type === "Point") {
     const [lng, lat] = geometry.coordinates || [];
-    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+    if (
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180
+    )
+      return { lat, lng };
     return null;
   }
   if (geometry.type === "Polygon") {
