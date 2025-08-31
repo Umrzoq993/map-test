@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { isAuthenticated, login, logout, decodeJWT } from "../api/auth";
+import { toast } from "react-toastify";
 import styles from "./LoginPage.module.scss";
 
 // ⚠️ Logoni shu yo‘lga qo‘ying: src/assets/zamin-logo.png
@@ -25,11 +26,18 @@ export default function LoginPage() {
       (async () => {
         try {
           await logout();
+          toast.info("Sessiya yakunlandi");
         } finally {
           navigate("/login", { replace: true });
         }
       })();
     }
+    const reason = searchParams.get("reason");
+    if (reason === "expired")
+      toast.info("Sessiya muddati tugagan edi. Qayta kiring.");
+    else if (reason === "revoked") toast.warn("Sessiya bekor qilingan.");
+    else if (reason === "replay")
+      toast.error("Xavfsizlik: qayta ishlatilgan sessiya.");
   }, [searchParams, navigate]);
 
   // Agar foydalanuvchi login sahifasini ko‘rmoqchi bo‘lsa:
@@ -49,12 +57,18 @@ export default function LoginPage() {
     setError("");
     try {
       const ok = await login(username.trim(), password);
-      if (ok) navigate(from, { replace: true });
-      else setError("Login failed");
+      if (ok) {
+        toast.success("Muvaffaqiyatli kirildi");
+        navigate(from, { replace: true });
+      } else {
+        setError("Login failed");
+        toast.error("Login failed");
+      }
     } catch (err) {
-      setError(
-        err?.response?.data?.message || err?.message || "Login amalga oshmadi"
-      );
+      const msg =
+        err?.response?.data?.message || err?.message || "Login amalga oshmadi";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
@@ -300,6 +314,7 @@ export default function LoginPage() {
                 onClick={async () => {
                   try {
                     await logout();
+                    toast.info("Chiqildi");
                   } finally {
                     navigate("/login", { replace: true });
                   }
