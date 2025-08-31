@@ -129,10 +129,16 @@ export function startSessionManager() {
     }
   };
   window.addEventListener("visibilitychange", onVisibility);
+  const onTokenChanged = () => {
+    scheduleProactiveRefresh();
+    resetIdleTimer();
+  };
+  window.addEventListener("auth:token-changed", onTokenChanged);
 
   return () => {
     window.removeEventListener("storage", onStorage);
     window.removeEventListener("visibilitychange", onVisibility);
+    window.removeEventListener("auth:token-changed", onTokenChanged);
     detach();
     if (refreshTimer) clearTimeout(refreshTimer);
     if (idleTimer) clearTimeout(idleTimer);
