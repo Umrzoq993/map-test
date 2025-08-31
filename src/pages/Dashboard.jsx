@@ -31,10 +31,10 @@ const mapType = (t) => {
     TURKEY: "Kurkaxona",
     COWSHED: "Molxona",
     SHEEPFOLD: "Qo‘yxona",
-    WORKSHOP_SAUSAGE: "Sex (kolbasa)",
-    WORKSHOP_COOKIE: "Sex (pechenye)",
-    AUX_LAND: "Yordamchi yer",
-    BORDER_LAND: "Chegara oldi yer",
+    WORKSHOP_SAUSAGE: "Ishlab chiqarish sexi (kolbasa)",
+    WORKSHOP_COOKIE: "Ishlab chiqarish sexi (pechenye)",
+    AUX_LAND: "Yordamchi xo‘jalik yeri",
+    BORDER_LAND: "Chegara oldi yeri",
     FISHPOND: "Baliqchilik ko‘li",
   };
   return (

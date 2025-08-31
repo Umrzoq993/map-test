@@ -6,13 +6,15 @@ import { toast } from "react-toastify";
 
 const TYPE_OPTIONS = [
   { value: "GREENHOUSE", label: "Issiqxona" },
-  { value: "POULTRY", label: "Tovuqxona" },
+  { value: "POULTRY_MEAT", label: "Tovuqxona (go'sht)" },
+  { value: "POULTRY_EGG", label: "Tovuqxona (tuxum)" },
   { value: "COWSHED", label: "Molxona" },
   { value: "TURKEY", label: "Kurkaxona" },
   { value: "SHEEPFOLD", label: "Qo‘yxona" },
-  { value: "WORKSHOP", label: "Ishlab chiqarish sexi" },
-  { value: "AUX_LAND", label: "Yordamchi xo‘jalik yer" },
-  { value: "BORDER_LAND", label: "Chegara oldi yer" },
+  { value: "WORKSHOP_SAUSAGE", label: "Ishlab chiqarish sexi (kolbasa)" },
+  { value: "WORKSHOP_COOKIE", label: "Ishlab chiqarish sexi (pechenye)" },
+  { value: "AUX_LAND", label: "Yordamchi xo‘jalik yeri" },
+  { value: "BORDER_LAND", label: "Chegara oldi yeri" },
   { value: "FISHPOND", label: "Baliqchilik ko‘li" },
 ];
 

@@ -11,21 +11,7 @@ import FacilityForm from "../../components/facilities/FacilityForm";
 import { toast } from "react-toastify";
 import Modal from "../../components/ui/Modal";
 import "../../styles/_facility_modal.scss";
-
-/** Enum -> o‘zbekcha label (faqat kerakli 11 tur) */
-const TYPE_LABELS = {
-  GREENHOUSE: "Issiqxona",
-  POULTRY_MEAT: "Tovuqxona (go‘sht)",
-  POULTRY_EGG: "Tovuqxona (tuxum)",
-  TURKEY: "Kurkaxona",
-  COWSHED: "Molxona",
-  SHEEPFOLD: "Qo‘yxona",
-  WORKSHOP_SAUSAGE: "Sex (kolbasa)",
-  WORKSHOP_COOKIE: "Sex (pechenye)",
-  AUX_LAND: "Yordamchi xo‘jalik yeri",
-  BORDER_LAND: "Chegara oldi yeri",
-  FISHPOND: "Baliqchilik ko‘li",
-};
+import { TYPE_LABELS } from "../../constants/facilityTypes";
 
 /** URL slug -> enum (kanonik + legacy aliaslar) */
 const SLUG_TO_ENUM = {
@@ -50,8 +36,8 @@ const SLUG_TO_ENUM = {
 const ROUTE_LABELS = {
   "poultry-meat": "Tovuqxona (go‘sht)",
   "poultry-egg": "Tovuqxona (tuxum)",
-  "workshops-sausage": "Sex (kolbasa)",
-  "workshops-cookie": "Sex (pechenye)",
+  "workshops-sausage": "Ishlab chiqarish sexi (kolbasa)",
+  "workshops-cookie": "Ishlab chiqarish sexi (pechenye)",
 };
 
 export default function GenericFacilityPage() {

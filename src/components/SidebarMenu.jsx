@@ -198,14 +198,18 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
               component={<Link to="/facilities/workshops-sausage" />}
               icon={"🥓"}
             >
-              <span className={styles.text}>Sex (kolbasa)</span>
+              <span className={styles.text}>
+                Ishlab chiqarish sexi (kolbasa)
+              </span>
             </MenuItem>
             <MenuItem
               active={isActive("/facilities/workshops-cookie")}
               component={<Link to="/facilities/workshops-cookie" />}
               icon={"🍪"}
             >
-              <span className={styles.text}>Sex (pechenye)</span>
+              <span className={styles.text}>
+                Ishlab chiqarish sexi (pechenye)
+              </span>
             </MenuItem>
 
             <MenuItem
@@ -213,14 +217,14 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
               component={<Link to="/facilities/aux-lands" />}
               icon={"🌾"}
             >
-              <span className={styles.text}>Yordamchi xo‘jalik yerlar</span>
+              <span className={styles.text}>Yordamchi xo‘jalik yeri</span>
             </MenuItem>
             <MenuItem
               active={isActive("/facilities/border-lands")}
               component={<Link to="/facilities/border-lands" />}
               icon={"🧭"}
             >
-              <span className={styles.text}>Chegara oldi yerlar</span>
+              <span className={styles.text}>Chegara oldi yeri</span>
             </MenuItem>
             <MenuItem
               active={isActive("/facilities/fish-ponds")}

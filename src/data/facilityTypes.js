@@ -262,7 +262,7 @@ export const FACILITY_TYPES = {
   },
 
   WORKSHOP_SAUSAGE: {
-    label: "Sex (kolbasa)",
+    label: "Ishlab chiqarish sexi (kolbasa)",
     fields: [
       {
         key: "areaM2",
@@ -293,7 +293,7 @@ export const FACILITY_TYPES = {
   },
 
   WORKSHOP_COOKIE: {
-    label: "Sex (pechenye)",
+    label: "Ishlab chiqarish sexi (pechenye)",
     fields: [
       {
         key: "areaM2",

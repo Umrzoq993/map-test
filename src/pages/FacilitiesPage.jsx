@@ -11,18 +11,7 @@ import FacilityForm from "../components/facilities/FacilityForm";
 import { toast } from "react-toastify";
 import Modal from "../components/ui/Modal";
 import "../styles/_facility_modal.scss"; // styling for facility modal
-
-const TYPE_LABELS = {
-  GREENHOUSE: "Issiqxona",
-  POULTRY: "Tovuqxona",
-  COWSHED: "Molxona",
-  TURKEY: "Kurkaxona",
-  SHEEPFOLD: "Qo‘yxona",
-  WORKSHOP: "Ishlab chiqarish sexi",
-  AUX_LAND: "Yordamchi xo‘jalik yer",
-  BORDER_LAND: "Chegara oldi yer",
-  FISHPOND: "Baliqchilik ko‘li",
-};
+import { TYPE_LABELS } from "../constants/facilityTypes";
 
 export default function FacilitiesPage() {
   const [items, setItems] = useState([]);
