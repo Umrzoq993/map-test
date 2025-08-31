@@ -641,22 +641,7 @@ export default function MapView({
     [orgTree, collectAncestorsKeys]
   );
 
-  // Banner style
-  const editBannerStyle = useMemo(
-    () => ({
-      position: "absolute",
-      top: 12,
-      right: 12,
-      zIndex: 550,
-      background: "#fff",
-      border: "1px solid #e5e7eb",
-      padding: "10px 12px",
-      borderRadius: 12,
-      boxShadow: "0 10px 30px rgba(0,0,0,.12)",
-      maxWidth: 360,
-    }),
-    []
-  );
+  // editBannerStyle removed (migrated to CSS classes in leaflet-theme.css)
 
   // Tiles env
   const HYBRID_URL =
@@ -745,7 +730,7 @@ export default function MapView({
   const initialZoom = introEnabled ? 3 : zoom;
 
   return (
-    <div className="map-wrapper" style={{ position: "relative" }}>
+    <div className="map-wrapper map-ui" style={{ position: "relative" }}>
       <style>{darkDrawerCss}</style>
 
       <CodeJumpBox orgTree={orgTree} onJump={handleCodeJump} />
@@ -1023,16 +1008,14 @@ export default function MapView({
       </div>
 
       {geomEdit && (
-        <div style={editBannerStyle}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>
-            Geometriya tahrirlash rejimi
-          </div>
-          <div style={{ fontSize: 13, color: "#475569", marginBottom: 8 }}>
+        <div className="geom-edit-banner">
+          <div className="title">Geometriya tahrirlash rejimi</div>
+          <div className="desc">
             Mavjud poligonni <b>Edit</b> bilan o‘zgartiring yoki yangi{" "}
             <b>Polygon/Rectangle</b> chizing. Keyin “Geometriyani saqlash”
             tugmasini bosing.
           </div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <div className="actions">
             <button className="btn" onClick={exitGeomEdit}>
               Bekor qilish
             </button>
