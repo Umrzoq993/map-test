@@ -60,10 +60,39 @@ export async function searchOrgUnits({
   return httpGet(`/orgs?${params.toString()}`);
 }
 
+/** Batafsil org ma'lumotlari.
+ * 1) /orgs/{id}/details ishlamasa (404 yoki ruxsat) -> /orgs/{id} ga fallback.
+ * 2) Har ikkisi ham xato bo'lsa undefined.
+ */
 export async function getOrgDetails(id) {
   try {
-    return await httpGet(`/orgs/${id}/details`);
-  } catch {}
+    let info = await httpGet(`/orgs/${id}/details`);
+    if (info && info.org && typeof info.org === "object") {
+      info = { ...info.org, ...info }; // flatten structure
+    }
+    return info;
+  } catch (e) {
+    // Fallback: oddiy DTO
+    try {
+      console.warn(
+        "[getOrgDetails] details fallback /orgs/:id =>",
+        id,
+        e?.message
+      );
+      let base = await httpGet(`/orgs/${id}`);
+      if (base && base.org && typeof base.org === "object") {
+        base = { ...base.org, ...base };
+      }
+      return base;
+    } catch (e2) {
+      console.warn(
+        "[getOrgDetails] fallback ham muvaffaqiyatsiz",
+        id,
+        e2?.message
+      );
+      return undefined;
+    }
+  }
 }
 
 // ======================== CRUD ========================

@@ -54,7 +54,7 @@ function collectDescendantIds(tree, rootId, out = new Set()) {
 
 /* ---------- Component ---------- */
 
-export default function OrgTable({ isAdmin }) {
+export default function OrgTable({ isAdmin, focusId }) {
   // Server-side listing
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(0); // zero-based
@@ -122,6 +122,17 @@ export default function OrgTable({ isAdmin }) {
       const res = await listOrgsPage(params);
       setRows(res?.content || []);
       setTotal(res?.totalElements || 0);
+      // Fokus row scroll
+      if (focusId) {
+        setTimeout(() => {
+          const el = document.querySelector(`[data-org-row='${focusId}']`);
+          if (el) {
+            el.classList.add("highlight-focus");
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            setTimeout(() => el.classList.remove("highlight-focus"), 4000);
+          }
+        }, 50);
+      }
     } catch (e) {
       console.error(e);
       alert("Ma'lumot yuklashda xatolik");

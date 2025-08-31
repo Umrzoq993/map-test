@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import SidebarMenu from "./components/SidebarMenu";
 import Dashboard from "./pages/Dashboard";
 import LoginPage from "./pages/LoginPage";
@@ -29,6 +29,7 @@ function useIsMobile(query = "(max-width: 1024px)") {
 }
 
 export default function App() {
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [toggled, setToggled] = useState(false);
@@ -47,6 +48,18 @@ export default function App() {
     const stop = startHeartbeat(40000);
     return () => stop && stop();
   }, []);
+
+  // Global event: org:open-table -> jadval sahifasiga o'tish
+  useEffect(() => {
+    function onOpen(e) {
+      const id = e?.detail?.id;
+      if (id != null) {
+        navigate(`/orgs-table?focus=${id}`);
+      } else navigate("/orgs-table");
+    }
+    window.addEventListener("org:open-table", onOpen);
+    return () => window.removeEventListener("org:open-table", onOpen);
+  }, [navigate]);
 
   const sidebarWidth = isMobile ? 0 : collapsed ? "80px" : "260px";
 

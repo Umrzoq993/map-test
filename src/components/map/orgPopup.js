@@ -1,6 +1,7 @@
 // src/map/orgPopup.js
 import L from "leaflet";
 import { getOrgDetails } from "../../api/org";
+import { TYPE_LABELS, colorForBack } from "../../constants/facilityTypes";
 import "../../styles/_org_popup.scss";
 
 /**
@@ -34,7 +35,6 @@ export function attachOrgPopup(marker, org, opts = {}) {
 }
 
 /* ---------------- HTML builders ---------------- */
-
 function loadingHTML(org) {
   return `
   <div class="orgp">
@@ -65,49 +65,152 @@ function errorHTML(err) {
 }
 
 function renderHTML(info, fallbackOrg) {
-  const o = info || {};
+  const o0 = info || {};
+  const inner =
+    (o0.data && typeof o0.data === "object" ? o0.data : null) ||
+    (o0.org && typeof o0.org === "object" ? o0.org : null);
+  const o = inner ? { ...inner, ...o0 } : o0;
+  try {
+    if (
+      typeof window !== "undefined" &&
+      window?.localStorage?.getItem("DEBUG_ORG_POPUP") === "1"
+    ) {
+      // eslint-disable-next-line no-console
+      console.debug("[OrgPopup] raw=", o0);
+      // eslint-disable-next-line no-console
+      console.debug("[OrgPopup] flattened=", o);
+    }
+  } catch {}
   const name = o.name ?? fallbackOrg?.name ?? "Bo‘lim";
-  const type = o.type ?? o.orgType ?? "—";
-  const parent = o.parentName ?? o.parent?.name ?? "—";
-  const lat = asNum(o.lat ?? fallbackOrg?.lat);
-  const lng = asNum(o.lng ?? fallbackOrg?.lng);
+  // Tur / Parent talab bo'yicha ko'rsatilmaydi
+  const lat = asNum(o.lat ?? o.latitude ?? fallbackOrg?.lat);
+  const lng = asNum(o.lng ?? o.longitude ?? fallbackOrg?.lng);
   const zoom = asNum(o.zoom ?? fallbackOrg?.zoom) ?? 14;
-  const status = o.status ?? o.state ?? "Active";
+  const status = o.status ?? o.state ?? o.lifeCycleState ?? "Active";
 
-  const childrenCount = numOrDash(o.childrenCount);
-  const facilitiesCount = numOrDash(o.facilitiesCount ?? o.sitesCount);
-  const revenue = valOrDash(o.revenue, " so‘m");
-  const profit = valOrDash(o.profit, " so‘m");
+  const childrenCountRaw =
+    o.childrenCount ??
+    o.childCount ??
+    o.childsCount ??
+    (Array.isArray(o.children) ? o.children.length : undefined);
+  const facilitiesCountRaw =
+    o.facilitiesCount ??
+    o.facilityCount ??
+    o.sitesCount ??
+    o.objectsCount ??
+    (Array.isArray(o.facilities) ? o.facilities.length : undefined) ??
+    (Array.isArray(o.sites) ? o.sites.length : undefined);
+  const childrenCount = numOrDash(childrenCountRaw); // endi UI da ishlatilmaydi
+  const facilitiesCount = numOrDash(facilitiesCountRaw);
+  // Tushum / Sof foyda / Manzil / Mas'ul / Tel talab bo'yicha olib tashlangan
 
-  const address = o.address ?? "—";
-  const manager = o.manager ?? o.head ?? "—";
-  const phone = o.phone ?? "—";
+  // Breadcrumb (parent zanjiri)
+  const breadcrumb = Array.isArray(o.breadcrumb) ? o.breadcrumb : o0.breadcrumb;
+  const crumbHtml = Array.isArray(breadcrumb)
+    ? breadcrumb
+        .map((c, i) => {
+          const last = i === breadcrumb.length - 1;
+          return `<span class="crumb${last ? " current" : ""}">${escapeHtml(
+            c.name || c.code || String(c.id)
+          )}</span>`;
+        })
+        .join('<span class="crumb-sep">›</span>')
+    : "";
+
+  // Type distribution (stats.byType)
+  const byType = (o.stats && o.stats.byType) || o.byType || {};
+  const typeItems = Object.entries(byType)
+    .sort((a, b) => b[1] - a[1])
+    .map(([t, cnt]) => {
+      const label =
+        TYPE_LABELS[t] ||
+        t
+          .toLowerCase()
+          .replace(/_/g, " ")
+          .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+      const col = colorForBack(t);
+      return `<div class="dist-item" title="${escapeHtml(
+        label
+      )}"><span class="sw" style="background:${col}"></span><b>${escapeHtml(
+        label
+      )}</b><em>${cnt}</em></div>`;
+    })
+    .join("");
+
+  // Status distribution
+  const byStatus = (o.stats && o.stats.byStatus) || o.byStatus || {};
+  const statusItems = Object.entries(byStatus)
+    .sort((a, b) => b[1] - a[1])
+    .map(([st, cnt]) => {
+      const pill = statusPill(st);
+      const nice = st
+        .toLowerCase()
+        .replace(/_/g, " ")
+        .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+      return `<div class="status-item ${pill}"><span>${escapeHtml(
+        nice
+      )}</span><b>${cnt}</b></div>`;
+    })
+    .join("");
+
+  // Siblings (navigation)
+  const siblings = Array.isArray(o.siblings) ? o.siblings : o0.siblings;
+  const sibHtml = Array.isArray(siblings)
+    ? siblings
+        .filter((s) => s.id !== o.id)
+        .slice(0, 6)
+        .map(
+          (s) =>
+            `<button class="sib" data-sib-id="${s.id}" data-sib-lat="${
+              s.lat ?? ""
+            }" data-sib-lng="${s.lng ?? ""}" data-sib-zoom="${
+              s.zoom ?? ""
+            }">${escapeHtml(s.name || s.code || String(s.id))}</button>`
+        )
+        .join("")
+    : "";
+
+  const objectsTotal =
+    (o.stats && Number.isFinite(o.stats.total) && o.stats.total) ||
+    (Array.isArray(o.facilities) ? o.facilities.length : facilitiesCountRaw) ||
+    facilitiesCount;
 
   return `
   <div class="orgp" data-id="${o.id ?? fallbackOrg?.id}">
-    <div class="orgp__title">
-      <span class="pill ${statusPill(status)}">${escapeHtml(status)}</span>
-      <b>${escapeHtml(name)}</b>
+    <div class="orgp__head">
+      <div class="orgp__titleLine">
+        <span class="pill ${statusPill(status)}">${escapeHtml(status)}</span>
+        <b class="orgp__name">${escapeHtml(name)}</b>
+      </div>
+      <div class="orgp__crumbs">${crumbHtml}</div>
     </div>
 
-    <div class="orgp__row"><span>Tur</span><b>${escapeHtml(type)}</b></div>
-    <div class="orgp__row"><span>Parent</span><b>${escapeHtml(parent)}</b></div>
-    <div class="orgp__row"><span>Lokatsiya</span><b>${lat ?? "—"}, ${
+    <div class="orgp__quick">
+      <div class="q-item"><span class="lbl">Kod</span><b>${escapeHtml(
+        o.code ?? "—"
+      )}</b></div>
+      <div class="q-item"><span class="lbl">Lokatsiya</span><b>${lat ?? "—"}, ${
     lng ?? "—"
   } (z${zoom})</b></div>
-
-    <div class="orgp__metrics">
-      <div><span>Bolalari</span><b>${childrenCount}</b></div>
-      <div><span>Inshootlar</span><b>${facilitiesCount}</b></div>
-      <div><span>Tushum</span><b>${revenue}</b></div>
-      <div><span>Sof foyda</span><b>${profit}</b></div>
+      <div class="q-item"><span class="lbl">Inshootlar</span><b>${objectsTotal}</b></div>
     </div>
 
-    <div class="orgp__more">
-      <div><span>Manzil</span><b>${escapeHtml(address)}</b></div>
-      <div><span>Mas’ul</span><b>${escapeHtml(manager)}</b></div>
-      <div><span>Tel</span><b>${escapeHtml(phone)}</b></div>
-    </div>
+    ${
+      typeItems && typeItems.length
+        ? `<div class="orgp__dist"><div class="dist-head">Turlar</div><div class="dist-list">${typeItems}</div></div>`
+        : ""
+    }
+    ${
+      statusItems && statusItems.length
+        ? `<div class="orgp__statuses">${statusItems}</div>`
+        : ""
+    }
+
+    ${
+      sibHtml
+        ? `<div class="orgp__siblings"><span class="lbl">Boshqa bo‘limlar:</span>${sibHtml}</div>`
+        : ""
+    }
 
     <div class="orgp__actions">
       <button class="btn ghost" data-act="center">Markazga ol</button>
