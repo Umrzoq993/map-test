@@ -31,6 +31,9 @@ export default function MapPickerModal({
 }) {
   const [map, setMap] = useState(null);
   const [pos, setPos] = useState(null);
+  // Local text inputs for manual entry to avoid jitter during typing
+  const [latText, setLatText] = useState("");
+  const [lngText, setLngText] = useState("");
   const initialZoom = value?.zoom ?? DEFAULT_ZOOM;
 
   const saveBtnRef = useRef(null);
@@ -42,6 +45,17 @@ export default function MapPickerModal({
       );
     }
   }, [open, value?.lat, value?.lng]);
+
+  // Sync text inputs when pos changes externally (map click, initial open)
+  useEffect(() => {
+    if (pos) {
+      setLatText(pos[0].toFixed(6));
+      setLngText(pos[1].toFixed(6));
+    } else if (open) {
+      setLatText("");
+      setLngText("");
+    }
+  }, [pos, open]);
 
   const center = useMemo(() => {
     if (pos) return pos;
@@ -89,14 +103,73 @@ export default function MapPickerModal({
     >
       <div className="map-picker">
         <div className="controls">
-          <div>
+          <div className="selected-pos">
             Tanlangan:&nbsp;
             <b>{pos ? `${pos[0].toFixed(6)}, ${pos[1].toFixed(6)}` : "—"}</b>
           </div>
-          <div className="spacer" />
-          <button className="btn" onClick={locateMe}>
-            Mening joylashuvim
-          </button>
+          <div className="coord-row">
+            <label className="coord-field">
+              <span className="coord-label">Lat</span>
+              <input
+                type="number"
+                step="0.000001"
+                value={latText}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setLatText(v);
+                  const num = Number(v);
+                  const lngNum = Number(lngText);
+                  if (
+                    !isNaN(num) &&
+                    num >= -90 &&
+                    num <= 90 &&
+                    !isNaN(lngNum) &&
+                    lngNum >= -180 &&
+                    lngNum <= 180
+                  ) {
+                    setPos([num, lngNum]);
+                    if (map)
+                      map.flyTo([num, lngNum], map.getZoom(), {
+                        duration: 0.4,
+                      });
+                  }
+                }}
+                placeholder="lat"
+              />
+            </label>
+            <label className="coord-field">
+              <span className="coord-label">Lng</span>
+              <input
+                type="number"
+                step="0.000001"
+                value={lngText}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setLngText(v);
+                  const num = Number(v);
+                  const latNum = Number(latText);
+                  if (
+                    !isNaN(num) &&
+                    num >= -180 &&
+                    num <= 180 &&
+                    !isNaN(latNum) &&
+                    latNum >= -90 &&
+                    latNum <= 90
+                  ) {
+                    setPos([latNum, num]);
+                    if (map)
+                      map.flyTo([latNum, num], map.getZoom(), {
+                        duration: 0.4,
+                      });
+                  }
+                }}
+                placeholder="lng"
+              />
+            </label>
+            <button className="btn locate-btn" onClick={locateMe}>
+              Mening joylashuvim
+            </button>
+          </div>
         </div>
 
         <div
