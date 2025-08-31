@@ -7,6 +7,7 @@ import {
   clearAccessToken as memClearToken,
   clearAccessExpireAt as memClearExp,
 } from "./tokenStore";
+import { toast } from "react-toastify";
 
 /* =========================
    LOCAL KEYS (auth.js bilan mos)
@@ -193,6 +194,16 @@ api.interceptors.response.use(
         // Refresh ham ishlamadi — local tokenlarni tozalaymiz
         memClearToken();
         memClearExp();
+        const code = response?.data?.code;
+        if (code === "REFRESH_REPLAY") {
+          toast.error("Sessiya takrorlandi (replay). Qayta kiring.");
+        } else if (code === "SESSION_REVOKED") {
+          toast.error("Sessiya bekor qilingan. Qayta kiring.");
+        } else if (code === "REFRESH_EXPIRED") {
+          toast.info("Seans muddati tugadi. Qaytadan kiring.");
+        } else if (code === "REFRESH_INVALID") {
+          toast.info("Seans yaroqsiz. Qaytadan kiring.");
+        }
         return Promise.reject(err);
       }
     }

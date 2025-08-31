@@ -15,6 +15,7 @@ let started = false;
 let refreshTimer = null; // setTimeout id
 let idleTimer = null; // setTimeout id
 let lastActivity = Date.now();
+let refreshRetryTimer = null;
 
 function getIdleMinutesCfg() {
   const v = import.meta.env.VITE_IDLE_MINUTES;
@@ -46,8 +47,15 @@ function scheduleProactiveRefresh() {
         await refreshAccessToken();
       }
     } catch (e) {
-      // refresh xato bo'lsa — interceptor logout qiladi; bu yerda faqat log
-      // console.warn("Proactive refresh failed", e);
+      // Bir martalik kechiktirilgan retry (2s) – tarmoq flakeni yumshatish
+      if (!refreshRetryTimer) {
+        refreshRetryTimer = setTimeout(async () => {
+          refreshRetryTimer = null;
+          try {
+            await refreshAccessToken();
+          } catch (_) {}
+        }, 2000);
+      }
     } finally {
       scheduleProactiveRefresh(); // keyingi sikl
     }
@@ -128,6 +136,7 @@ export function startSessionManager() {
     detach();
     if (refreshTimer) clearTimeout(refreshTimer);
     if (idleTimer) clearTimeout(idleTimer);
+    if (refreshRetryTimer) clearTimeout(refreshRetryTimer);
     started = false;
   };
 }
@@ -135,4 +144,14 @@ export function startSessionManager() {
 // Debug helper (browser console): window.__authPayload()
 if (typeof window !== "undefined") {
   window.__authPayload = () => decodeJWT();
+  window.__authCountdown = () => {
+    const exp = getAccessExpireAt();
+    if (!exp) return null;
+    const ms = exp - Date.now();
+    if (ms <= 0) return { expired: true, ms: 0, text: "expired" };
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    const rem = s % 60;
+    return { expired: false, ms, text: `${m}:${String(rem).padStart(2, "0")}` };
+  };
 }
