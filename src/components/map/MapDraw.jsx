@@ -203,6 +203,8 @@ export default function MapDraw({
 
   // Toggles
   const [showPolys, setShowPolys] = useState(true);
+  // GeoJSON panellarini (readonly + import) vaqtincha yashirish uchun toggle
+  const [showGeoTools, setShowGeoTools] = useState(false);
 
   // Load latest drawing (ixtiyoriy)
   useEffect(() => {
@@ -967,49 +969,73 @@ export default function MapDraw({
         </div>
       )}
 
-      {/* Pastki panel: GeoJSON import/export + save backend */}
-      <div className="panel">
-        <div className="panel-col">
-          <h4>GeoJSON (readonly)</h4>
-          <textarea readOnly value={geojsonPretty} />
-        </div>
-        <div className="panel-col">
-          <h4>GeoJSON import</h4>
-          <textarea
-            id="gj-input"
-            placeholder='{"type":"FeatureCollection","features":[...]}'
-          />
-          <div className="panel-actions">
-            <button onClick={importFromTextarea}>Import</button>
-            <a
-              href={
-                "data:application/json;charset=utf-8," +
-                encodeURIComponent(geojsonPretty || "{}")
-              }
-              download="drawings.geojson"
-            >
-              <button disabled={!geojsonPretty}>Download .geojson</button>
-            </a>
-            <button
-              onClick={async () => {
-                try {
-                  if (!saveDrawing)
-                    return toast.error("Backend API ulanishi topilmadi.");
-                  const data = geojson || {};
-                  await saveDrawing(data, "map-drawings");
-                  toast.success("Saqlash muvaffaqiyatli!");
-                } catch (e) {
-                  console.error(e);
-                  toast.error("Saqlashda xatolik");
+      {/* GeoJSON panel toggle button (pastki chap burchak) */}
+      <button
+        type="button"
+        onClick={() => setShowGeoTools((s) => !s)}
+        style={{
+          position: "absolute",
+          left: 8,
+          bottom: showGeoTools ? 230 : 8,
+          zIndex: 1000,
+          background: "var(--db-card,#fff)",
+          border: "1px solid var(--db-border,#d9dde5)",
+          padding: "6px 10px",
+          borderRadius: 6,
+          fontSize: 12,
+          cursor: "pointer",
+          boxShadow: "0 2px 4px -1px rgba(0,0,0,.08)",
+        }}
+        title="GeoJSON vositalarini ko'rsat/yashirish"
+      >
+        {showGeoTools ? "✕ GeoJSON" : "GeoJSON tools"}
+      </button>
+
+      {/* Pastki panel: GeoJSON import/export + save backend (default: hidden) */}
+      {showGeoTools && (
+        <div className="panel">
+          <div className="panel-col">
+            <h4>GeoJSON (readonly)</h4>
+            <textarea readOnly value={geojsonPretty} />
+          </div>
+          <div className="panel-col">
+            <h4>GeoJSON import</h4>
+            <textarea
+              id="gj-input"
+              placeholder='{"type":"FeatureCollection","features":[...]}'
+            />
+            <div className="panel-actions">
+              <button onClick={importFromTextarea}>Import</button>
+              <a
+                href={
+                  "data:application/json;charset=utf-8," +
+                  encodeURIComponent(geojsonPretty || "{}")
                 }
-              }}
-              disabled={!geojson}
-            >
-              Save to backend
-            </button>
+                download="drawings.geojson"
+              >
+                <button disabled={!geojsonPretty}>Download .geojson</button>
+              </a>
+              <button
+                onClick={async () => {
+                  try {
+                    if (!saveDrawing)
+                      return toast.error("Backend API ulanishi topilmadi.");
+                    const data = geojson || {};
+                    await saveDrawing(data, "map-drawings");
+                    toast.success("Saqlash muvaffaqiyatli!");
+                  } catch (e) {
+                    console.error(e);
+                    toast.error("Saqlashda xatolik");
+                  }
+                }}
+                disabled={!geojson}
+              >
+                Save to backend
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

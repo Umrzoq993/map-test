@@ -728,6 +728,8 @@ export default function MapView({
   }, [homeTarget, userRole, flatNodes, center, zoom]);
 
   const initialZoom = introEnabled ? 3 : zoom;
+  // GeoJSON vositalarini vaqtincha yashirish (default: off)
+  const [showGeoTools, setShowGeoTools] = useState(false);
 
   return (
     <div className="map-wrapper map-ui" style={{ position: "relative" }}>
@@ -813,6 +815,13 @@ export default function MapView({
                 />
               )}
             </>
+          </LayersControl.Overlay>
+
+          <LayersControl.Overlay name="GeoJSON tools">
+            <LayersToggle
+              onEnable={() => setShowGeoTools(true)}
+              onDisable={() => setShowGeoTools(false)}
+            />
           </LayersControl.Overlay>
         </LayersControl>
 
@@ -963,49 +972,54 @@ export default function MapView({
         dark={dark}
       />
 
-      <div className="panel">
-        <div className="panel-col">
-          <h4>GeoJSON (faqat o‘qish)</h4>
-          <textarea readOnly value={geojsonPretty} />
-        </div>
-        <div className="panel-col">
-          <h4>GeoJSON import</h4>
-          <textarea
-            id="gj-input"
-            placeholder='{"type":"FeatureCollection","features":[...]}'
-          />
-          <div className="panel-actions">
-            <button onClick={importFromTextarea}>Import</button>
-            <a
-              href={
-                "data:application/json;charset=utf-8," +
-                encodeURIComponent(geojsonPretty || "{}")
-              }
-              download="drawings.geojson"
-            >
-              <button disabled={!geojsonPretty}>.geojson yuklab olish</button>
-            </a>
-            <button
-              onClick={async () => {
-                try {
-                  if (!drawingsApi.saveDrawing) {
-                    toast.error("API topilmadi.");
-                    return;
-                  }
-                  await drawingsApi.saveDrawing(geojson || {}, "map-drawings");
-                  toast.success("Saqlash muvaffaqiyatli!");
-                } catch (e) {
-                  console.error(e);
-                  toast.error("Saqlashda xatolik");
+      {showGeoTools && (
+        <div className="panel">
+          <div className="panel-col">
+            <h4>GeoJSON (faqat o‘qish)</h4>
+            <textarea readOnly value={geojsonPretty} />
+          </div>
+          <div className="panel-col">
+            <h4>GeoJSON import</h4>
+            <textarea
+              id="gj-input"
+              placeholder='{"type":"FeatureCollection","features":[...]}'
+            />
+            <div className="panel-actions">
+              <button onClick={importFromTextarea}>Import</button>
+              <a
+                href={
+                  "data:application/json;charset=utf-8," +
+                  encodeURIComponent(geojsonPretty || "{}")
                 }
-              }}
-              disabled={!geojson}
-            >
-              Backend’ga saqlash
-            </button>
+                download="drawings.geojson"
+              >
+                <button disabled={!geojsonPretty}>.geojson yuklab olish</button>
+              </a>
+              <button
+                onClick={async () => {
+                  try {
+                    if (!drawingsApi.saveDrawing) {
+                      toast.error("API topilmadi.");
+                      return;
+                    }
+                    await drawingsApi.saveDrawing(
+                      geojson || {},
+                      "map-drawings"
+                    );
+                    toast.success("Saqlash muvaffaqiyatli!");
+                  } catch (e) {
+                    console.error(e);
+                    toast.error("Saqlashda xatolik");
+                  }
+                }}
+                disabled={!geojson}
+              >
+                Backend’ga saqlash
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {geomEdit && (
         <div className="geom-edit-banner">
