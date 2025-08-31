@@ -12,6 +12,7 @@ import HeaderBar from "./components/layout/HeaderBar";
 import { useTheme } from "./hooks/useTheme";
 import GenericFacilityPage from "./pages/facilities/GenericFacilityPage";
 import { startHeartbeat } from "./boot/heartbeat";
+import { startSessionManager } from "./boot/sessionManager";
 import SessionsPage from "./pages/admin/SessionsPage";
 import AuditPage from "./pages/admin/AuditPage";
 import UsersPage from "./pages/admin/UsersPage";
@@ -46,6 +47,7 @@ export default function App() {
 
   useEffect(() => {
     const stop = startHeartbeat(40000);
+    const stopSession = startSessionManager();
     return () => stop && stop();
   }, []);
 

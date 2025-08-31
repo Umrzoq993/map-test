@@ -1,5 +1,6 @@
 // src/api/auth.js
 import { httpGet, httpPost } from "./http";
+import axios from "axios"; // proactive refresh uchun bevosita chaqiramiz
 
 /** LocalStorage keys */
 const ACCESS_KEY = "token"; // access token (JWT)
@@ -73,6 +74,47 @@ export function getAccessExpireAt() {
   } catch {
     return null;
   }
+}
+
+/** Access tokenni refresh qilish (proaktiv yoki qo'lda).  */
+let _manualRefreshing = null;
+export async function refreshAccessToken() {
+  if (_manualRefreshing) return _manualRefreshing; // single-flight
+  const rt = getRefreshToken();
+  if (!rt) throw new Error("No refresh token");
+
+  const RAW_BASE = import.meta.env.VITE_API_BASE ?? "/api";
+  const BASE = RAW_BASE.endsWith("/api") ? RAW_BASE : `${RAW_BASE}/api`;
+  const deviceId = getDeviceId();
+
+  _manualRefreshing = axios
+    .post(
+      `${BASE}/auth/refresh`,
+      { refreshToken: rt, deviceId },
+      { headers: { "X-Device-Id": deviceId } }
+    )
+    .then(({ data }) => {
+      const { accessToken, refreshToken, accessExpiresAt, token } = data || {};
+      const newAccess = accessToken || token;
+      if (!newAccess) throw new Error("Malformed refresh response");
+      setAccessToken(newAccess);
+      if (refreshToken) setRefreshToken(refreshToken);
+      if (accessExpiresAt) {
+        const ms =
+          typeof accessExpiresAt === "string"
+            ? Date.parse(accessExpiresAt)
+            : accessExpiresAt;
+        if (ms) setAccessExpireAt(ms);
+      } else {
+        const payload = decodeJWT();
+        if (payload?.exp) setAccessExpireAt(payload.exp * 1000);
+      }
+      return newAccess;
+    })
+    .finally(() => {
+      _manualRefreshing = null;
+    });
+  return _manualRefreshing;
 }
 
 /** Login – backend TokenPair (accessToken, refreshToken, accessExpiresAt) */
