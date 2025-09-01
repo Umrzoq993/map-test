@@ -1,30 +1,32 @@
-import { useEffect, useMemo, useState } from "react";
-import { toast } from "react-toastify";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  searchUsers,
-  createUser,
-  updateUser,
-  changeUserStatus,
-  moveUser,
-  resetUserPassword,
-} from "../../api/users";
-import styles from "./UsersPage.module.scss";
-import { useTheme } from "../../hooks/useTheme";
-import {
-  LuUsers,
-  LuSearch,
+  LuFilter,
+  LuKeyRound,
+  LuMoveRight,
+  LuPencil,
   LuPlus,
   LuRefreshCw,
-  LuPencil,
-  LuMoveRight,
+  LuSave,
+  LuSearch,
   LuShield,
   LuShieldOff,
   LuTrash2,
-  LuKeyRound,
-  LuSave,
+  LuUsers,
+  LuX,
 } from "react-icons/lu";
-import UsersDialog from "./UsersDialog";
+import { toast } from "react-toastify";
+import {
+  changeUserStatus,
+  createUser,
+  moveUser,
+  resetUserPassword,
+  searchUsers,
+  updateUser,
+} from "../../api/users";
+import { useTheme } from "../../hooks/useTheme";
 import OrgUnitSelect from "./OrgUnitSelect";
+import UsersDialog from "./UsersDialog";
+import styles from "./UsersPage.module.scss";
 
 const ROLES = ["ADMIN", "USER"];
 const STATUSES = ["ACTIVE", "SUSPENDED", "TERMINATED"];
@@ -75,35 +77,40 @@ export default function UsersPage() {
     message: "",
     onApprove: null,
   });
-  // legacy alert dialog replaced by toast notifications
 
-  async function load(p = page) {
-    setBusy(true);
-    try {
-      const res = await searchUsers({
-        page: p,
-        size,
-        sort,
-        q: q || undefined,
-        role: role || undefined,
-        status: status || undefined,
-        orgId: orgId ?? undefined,
-        department: dept || undefined,
-      });
-      setRows(res.content || []);
-      setTotal(res.totalElements ?? res.total ?? 0);
-      setPage(res.page ?? p);
-    } finally {
-      setBusy(false);
-    }
-  }
+  // ===== Data Loading =====
+  const load = useCallback(
+    async (p = page) => {
+      setBusy(true);
+      try {
+        const res = await searchUsers({
+          page: p,
+          size,
+          sort,
+          q: q || undefined,
+          role: role || undefined,
+          status: status || undefined,
+          orgId: orgId ?? undefined,
+          department: dept || undefined,
+        });
+        setRows(res.content || []);
+        setTotal(res.totalElements ?? res.total ?? 0);
+        setPage(res.page ?? p);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [page, size, sort, q, role, status, orgId, dept]
+  );
 
   useEffect(() => {
-    load(0); /* eslint-disable-next-line */
+    load(0); // size yoki sort o'zgarsa boshidan qidiradi
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [size, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(total / size));
+  const totalPages = Math.max(1, Math.ceil(total / Math.max(1, size)));
 
+  // ===== CRUD =====
   function startCreate() {
     setEditId(null);
     setForm({ ...emptyForm });
@@ -205,6 +212,7 @@ export default function UsersPage() {
     });
   }
 
+  // ===== Client-side quick filter =====
   const quick = useMemo(() => {
     const t = (q || "").trim().toLowerCase();
     if (!t) return rows;
@@ -215,11 +223,35 @@ export default function UsersPage() {
     );
   }, [rows, q]);
 
+  // ===== Filter helpers =====
+  const appliedFilters = useMemo(() => {
+    const chips = [];
+    if (role) chips.push({ key: "role", label: `Rol: ${role}` });
+    if (status) chips.push({ key: "status", label: `Holat: ${status}` });
+    if (orgId != null) chips.push({ key: "org", label: `Tashk.: #${orgId}` }); // matnda nom bo'lmasa ham ko'rsatamiz
+    if (dept) chips.push({ key: "dept", label: `Bo‘lim: ${dept}` });
+    return chips;
+  }, [role, status, orgId, dept]);
+
+  const clearFilters = useCallback(() => {
+    setRole("");
+    setStatus("");
+    setOrgId(null);
+    setDept("");
+  }, []);
+
+  // ===== Handlers =====
+  const onSearchKeyDown = (e) => {
+    if (e.key === "Enter") load(0);
+  };
+
   return (
     <div className={styles.page} data-theme={isDark ? "dark" : "light"}>
+      {/* Header */}
       <div className={styles.header}>
         <div className={styles.title}>
           <LuUsers /> Foydalanuvchilar
+          <span className={styles.count}>{total}</span>
         </div>
         <div className={styles.actions}>
           <button
@@ -235,15 +267,25 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* Filtr paneli */}
-      <div className={styles.toolbar}>
+      {/* Toolbar */}
+      <div className={styles.toolbar} data-sticky>
         <div className={styles.searchBox}>
           <LuSearch />
           <input
             placeholder="Login / FIO / telefon / lavozim bo‘yicha qidirish..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            onKeyDown={onSearchKeyDown}
           />
+          {q && (
+            <button
+              className={styles.clearInput}
+              onClick={() => setQ("")}
+              title="Tozalash"
+            >
+              <LuX />
+            </button>
+          )}
         </div>
 
         <div className={styles.filters}>
@@ -279,7 +321,7 @@ export default function UsersPage() {
             </select>
           </div>
 
-          <div className={styles.field}>
+          <div className={styles.field} style={{ minWidth: 260 }}>
             <label>Tashkilot birligi</label>
             <OrgUnitSelect
               value={orgId}
@@ -295,13 +337,35 @@ export default function UsersPage() {
               className={styles.input}
               value={dept}
               onChange={(e) => setDept(e.target.value)}
+              placeholder="Masalan: IT"
             />
           </div>
 
-          <button className={styles.btn} onClick={() => load(0)}>
-            Qidirish
-          </button>
+          <div className={styles.actionsRight}>
+            <button
+              className={styles.btn}
+              onClick={() => load(0)}
+              disabled={busy}
+            >
+              <LuFilter /> Qidirish
+            </button>
+            {(role || status || orgId != null || dept) && (
+              <button className={styles.btnGhost} onClick={clearFilters}>
+                <LuX /> Tozalash
+              </button>
+            )}
+          </div>
         </div>
+
+        {!!appliedFilters.length && (
+          <div className={styles.chips}>
+            {appliedFilters.map((c) => (
+              <span key={c.key} className={styles.chip}>
+                {c.label}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Jadval */}
@@ -321,67 +385,97 @@ export default function UsersPage() {
             </tr>
           </thead>
           <tbody>
-            {quick.map((u, i) => (
-              <tr key={u.id}>
-                <td>{page * size + i + 1}</td>
-                <td>{u.username}</td>
-                <td>{u.fullName || "-"}</td>
-                <td>{u.role}</td>
-                <td>{u.status}</td>
-                <td>{u.orgId ?? "-"}</td>
-                <td>{u.department || "-"}</td>
-                <td>
-                  <div className={styles.muted}>{u.phone || "-"}</div>
-                </td>
-                <td className={styles.rowActions}>
-                  <button
-                    className={styles.btn}
-                    title="Tahrirlash"
-                    onClick={() => startEdit(u)}
-                  >
-                    <LuPencil />
-                  </button>
-                  <button
-                    className={styles.btn}
-                    title="Ko'chirish"
-                    onClick={() => startMove(u)}
-                  >
-                    <LuMoveRight />
-                  </button>
-                  {u.status !== "ACTIVE" ? (
-                    <button
-                      className={styles.btnPrimary}
-                      title="Aktivlashtirish"
-                      onClick={() => askStatus(u, "ACTIVE")}
+            {quick.map((u, i) => {
+              const orgName =
+                u.orgName ||
+                u.orgTitle ||
+                u.org?.name ||
+                u.org?.title ||
+                (u.orgId ? `#${u.orgId}` : null);
+
+              return (
+                <tr key={u.id}>
+                  <td>{page * size + i + 1}</td>
+                  <td>{u.username}</td>
+                  <td>{u.fullName || "-"}</td>
+                  <td>
+                    <span
+                      className={`${styles.badge} ${
+                        styles["role" + (u.role || "").toLowerCase()]
+                      }`}
                     >
-                      <LuShield />
-                    </button>
-                  ) : (
-                    <button
-                      className={styles.btnWarn}
-                      title="Vaqtincha bloklash"
-                      onClick={() => askStatus(u, "SUSPENDED")}
+                      {u.role}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={`${styles.badge} ${
+                        styles["st" + (u.status || "").toLowerCase()]
+                      }`}
                     >
-                      <LuShieldOff />
+                      {u.status}
+                    </span>
+                  </td>
+                  <td
+                    className={styles.orgCell}
+                    title={u.orgId ? `ID: ${u.orgId}` : ""}
+                  >
+                    {orgName || "-"}
+                  </td>
+                  <td>{u.department || "-"}</td>
+                  <td>
+                    <div className={styles.muted}>{u.phone || "-"}</div>
+                  </td>
+                  <td className={styles.rowActions}>
+                    <button
+                      className={styles.btn}
+                      title="Tahrirlash"
+                      onClick={() => startEdit(u)}
+                    >
+                      <LuPencil />
                     </button>
-                  )}
-                  <button
-                    className={styles.btnDanger}
-                    title="Bo'shatish"
-                    onClick={() => askStatus(u, "TERMINATED")}
-                  >
-                    <LuTrash2 />
-                  </button>
-                  <button
-                    className={styles.btn}
-                    title="Vaqtinchalik parol"
-                    onClick={() => askReset(u)}
-                  >
-                    <LuKeyRound />
-                  </button>
-                </td>
-              </tr>
-            ))}
+                    <button
+                      className={styles.btn}
+                      title="Ko'chirish"
+                      onClick={() => startMove(u)}
+                    >
+                      <LuMoveRight />
+                    </button>
+                    {u.status !== "ACTIVE" ? (
+                      <button
+                        className={styles.btnPrimary}
+                        title="Aktivlashtirish"
+                        onClick={() => askStatus(u, "ACTIVE")}
+                      >
+                        <LuShield />
+                      </button>
+                    ) : (
+                      <button
+                        className={styles.btnWarn}
+                        title="Vaqtincha bloklash"
+                        onClick={() => askStatus(u, "SUSPENDED")}
+                      >
+                        <LuShieldOff />
+                      </button>
+                    )}
+                    <button
+                      className={styles.btnDanger}
+                      title="Bo'shatish"
+                      onClick={() => askStatus(u, "TERMINATED")}
+                    >
+                      <LuTrash2 />
+                    </button>
+                    <button
+                      className={styles.btn}
+                      title="Vaqtinchalik parol"
+                      onClick={() => askReset(u)}
+                    >
+                      <LuKeyRound />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
             {!quick.length && (
               <tr>
                 <td
@@ -394,6 +488,7 @@ export default function UsersPage() {
             )}
           </tbody>
         </table>
+        {busy && <div className={styles.loadingOverlay}>Yuklanmoqda…</div>}
       </div>
 
       {/* Pager */}
@@ -431,7 +526,8 @@ export default function UsersPage() {
             ‹ Oldingi
           </button>
           <span className={styles.muted}>
-            Sahifa {page + 1} / {Math.max(1, Math.ceil(total / size))}
+            Sahifa {page + 1} /{" "}
+            {Math.max(1, Math.ceil(total / Math.max(1, size)))}
           </span>
           <button
             className={styles.btn}
@@ -549,7 +645,7 @@ export default function UsersPage() {
             />
           </div>
 
-          <div className={styles.field}>
+          <div className={styles.field} style={{ minWidth: 260 }}>
             <label>Tashkilot birligi</label>
             <OrgUnitSelect
               value={form.orgId}
@@ -603,7 +699,7 @@ export default function UsersPage() {
         }
       >
         <div className={styles.vstack}>
-          <div className={styles.field}>
+          <div className={styles.field} style={{ minWidth: 260 }}>
             <label>Yangi tashkilot birligi</label>
             <OrgUnitSelect
               value={moveCtx.orgId}
@@ -674,8 +770,6 @@ export default function UsersPage() {
       >
         <pre className={styles.pre}>{confirm.message}</pre>
       </UsersDialog>
-
-      {/* Former alert dialog removed (toast-based now) */}
     </div>
   );
 }
