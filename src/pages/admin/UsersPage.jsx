@@ -41,7 +41,7 @@ export default function UsersPage() {
   const [dept, setDept] = useState("");
 
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
+  const [size, setSize] = useState(10);
   const [sort, setSort] = useState("id,desc");
 
   const [busy, setBusy] = useState(false);
