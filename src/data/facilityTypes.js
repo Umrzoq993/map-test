@@ -4,10 +4,10 @@ export const FACILITY_TYPES = {
     label: "Issiqxona",
     fields: [
       {
-        key: "totalAreaHa",
+        key: "areaM2",
         label: "Umumiy yer maydoni",
         type: "number",
-        suffix: "ga",
+        suffix: "m²",
         rules: { min: 0 },
       },
       { key: "heatingType", label: "Isitish tizimi turi", type: "text" },
@@ -327,10 +327,10 @@ export const FACILITY_TYPES = {
     label: "Yordamchi xo‘jalik yerlari",
     fields: [
       {
-        key: "areaM2",
+        key: "totalAreaHa",
         label: "Yer maydoni",
         type: "number",
-        suffix: "m²",
+        suffix: "ga",
         rules: { min: 0 },
       },
       {
@@ -360,10 +360,10 @@ export const FACILITY_TYPES = {
     label: "Chegara oldi yerlari",
     fields: [
       {
-        key: "areaM2",
+        key: "totalAreaHa",
         label: "Yer maydoni",
         type: "number",
-        suffix: "m²",
+        suffix: "ga",
         rules: { min: 0 },
       },
       {
