@@ -3,8 +3,25 @@ import { Marker, Popup } from "react-leaflet";
 import { centroidOfGeometry } from "../../utils/geo";
 import { badgeIconFor } from "./mapIcons";
 import { FACILITY_TYPES } from "../../data/facilityTypes";
+import { useEffect, useState } from "react";
 
-export default function FacilityMarkers({ facilities, onOpenEdit }) {
+export default function FacilityMarkers({
+  facilities,
+  onOpenEdit,
+  onOpenGallery,
+}) {
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const root = document.documentElement;
+    const compute = () => setIsDark(root.classList.contains("dark"));
+    compute();
+    const obs = new MutationObserver(compute);
+    obs.observe(root, {
+      attributes: true,
+      attributeFilter: ["class", "data-theme"],
+    });
+    return () => obs.disconnect();
+  }, []);
   if (!Array.isArray(facilities) || facilities.length === 0) return null;
 
   return (
@@ -27,6 +44,9 @@ export default function FacilityMarkers({ facilities, onOpenEdit }) {
             position={pos}
             icon={icon}
             pane="facilities-markers"
+            eventHandlers={{
+              dblclick: () => onOpenGallery?.(f),
+            }}
           >
             <Popup minWidth={260} maxWidth={360} autoPan>
               <div style={{ minWidth: 240 }}>
@@ -63,13 +83,25 @@ export default function FacilityMarkers({ facilities, onOpenEdit }) {
                 </div>
 
                 {/* Popup pastida tahrirlash tugmasi */}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    marginTop: 10,
-                  }}
-                >
+                <div style={{ display: "flex", marginTop: 10, gap: 8 }}>
+                  <button
+                    className="btn"
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 10,
+                      background: isDark ? "#1e293b" : "#f1f5f9",
+                      color: isDark ? "#e2e8f0" : "#0f172a",
+                      border: `1px solid ${isDark ? "#334155" : "#cbd5e1"}`,
+                      boxShadow: isDark
+                        ? "0 2px 6px -2px rgba(0,0,0,.6)"
+                        : "0 2px 6px -2px rgba(0,0,0,.15)",
+                      fontWeight: 600,
+                    }}
+                    onClick={() => onOpenGallery?.(f)}
+                  >
+                    Rasmlar
+                  </button>
+                  <div style={{ flex: 1 }} />
                   <button
                     className="btn primary"
                     style={{ padding: "6px 10px", borderRadius: 10 }}

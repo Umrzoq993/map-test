@@ -38,6 +38,7 @@ import MapFlyer from "./MapFlyer";
 import ViewportWatcher from "./ViewportWatcher";
 import FacilityGeoLayer from "./FacilityGeoLayer";
 import FacilityMarkers from "./FacilityMarkers";
+import FacilityGalleryPanel from "./FacilityGalleryPanel";
 import CreateFacilityDrawer from "./CreateFacilityDrawer";
 import OrgTreePanel from "./OrgTreePanel";
 import FacilityEditModal from "./FacilityEditModal";
@@ -93,7 +94,7 @@ function MapControls({ panelHidden, onTogglePanel }) {
       onAdd() {
         const container = L.DomUtil.create(
           "div",
-          "leaflet-bar leaflet-control"
+          "leaflet-bar leaflet-control org-toggle-control"
         );
         const a = L.DomUtil.create("a", "", container);
         a.href = "#";
@@ -513,6 +514,7 @@ export default function MapView({
   // Edit modal
   const [editOpen, setEditOpen] = useState(false);
   const [editFacility, setEditFacility] = useState(null);
+  const [galleryFacility, setGalleryFacility] = useState(null); // gallery panel
   const handleOpenEdit = (f) => {
     setEditFacility(f);
     setEditOpen(true);
@@ -877,6 +879,7 @@ export default function MapView({
         <FacilityMarkers
           facilities={visibleFacilities}
           onOpenEdit={handleOpenEdit}
+          onOpenGallery={(f) => setGalleryFacility(f)}
         />
 
         {orgForPopup && <OrgMarker org={orgForPopup} open />}
@@ -969,6 +972,13 @@ export default function MapView({
         facility={editFacility}
         onClose={() => setEditOpen(false)}
         onSaved={() => setReloadKey((k) => k + 1)}
+        dark={dark}
+      />
+
+      <FacilityGalleryPanel
+        open={!!galleryFacility}
+        facility={galleryFacility}
+        onClose={() => setGalleryFacility(null)}
         dark={dark}
       />
 
