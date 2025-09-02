@@ -3,10 +3,11 @@ import Chart from "react-apexcharts";
 import { BiBarChart, BiPieChart } from "react-icons/bi";
 import { FiAlertTriangle } from "react-icons/fi";
 import { LuRotateCw, LuTrendingUp } from "react-icons/lu";
-import { httpGet } from "../api/http";
+import { httpGet, api } from "../api/http";
 import s from "./Dashboard.module.scss";
+import OrgUnitSelect from "./admin/OrgUnitSelect";
 
-const EXPORT_ENABLED = false;
+const EXPORT_ENABLED = true;
 const MONTHS = [
   "Yan",
   "Fev",
@@ -64,6 +65,7 @@ export default function Dashboard({ dark = false }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [data, setData] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const [apx, setApx] = useState({
     fg: "#0f172a",
@@ -85,6 +87,7 @@ export default function Dashboard({ dark = false }) {
   }, [dark]);
 
   const [selectedTypes, setSelectedTypes] = useState(() => new Set());
+  const [orgId, setOrgId] = useState(null); // tanlangan org (id yoki null)
   const typesCsv = useMemo(
     () =>
       selectedTypes.size ? Array.from(selectedTypes).join(",") : undefined,
@@ -94,6 +97,7 @@ export default function Dashboard({ dark = false }) {
   const buildParams = () => {
     const p = { year, range };
     if (typesCsv) p.types = typesCsv;
+    if (orgId != null) p.orgId = orgId;
     if (range === "quarter") p.quarter = quarter;
     if (range === "custom" && from && to) {
       p.from = `${from}-01`;
@@ -118,9 +122,45 @@ export default function Dashboard({ dark = false }) {
     }
   };
 
+  const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const p = buildParams();
+      const params = new URLSearchParams();
+      Object.entries(p).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && String(v).length) {
+          params.set(k, String(v));
+        }
+      });
+      const res = await api.get(`/stats/export?${params.toString()}`, {
+        responseType: "blob",
+      });
+      const blob = res.data;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0, 10);
+      const base = `stats_${p.range}`;
+      const orgPart = p.orgId ? `_org-${p.orgId}` : "";
+      a.href = url;
+      a.download = `${base}${orgPart}_${stamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
+    } catch (e) {
+      console.error("Export error", e);
+      setErr(e?.message || "Eksport xatosi");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   useEffect(() => {
     load(); /* eslint-disable-next-line */
-  }, [year, range, quarter, typesCsv, from, to]);
+  }, [year, range, quarter, typesCsv, from, to, orgId]);
 
   const years = useMemo(
     () => Array.from({ length: 6 }, (_, i) => thisYear - i),
@@ -334,6 +374,16 @@ export default function Dashboard({ dark = false }) {
           )}
 
           <div className={s.chips}>
+            {/* Org filter */}
+            <div style={{ minWidth: 260 }}>
+              <OrgUnitSelect
+                value={orgId}
+                onChange={(opt) => setOrgId(opt ? opt.id : null)}
+                placeholder="Tashkilot bo'yicha filtr..."
+                allowClear
+              />
+            </div>
+
             {ALL_TYPES.map((enumVal) => {
               const on = selectedTypes.has(enumVal);
               const present = rawTypes.includes(enumVal);
@@ -369,8 +419,13 @@ export default function Dashboard({ dark = false }) {
           </button>
 
           {EXPORT_ENABLED && (
-            <button className={s.btn} title="CSVga eksport">
-              CSV
+            <button
+              className={s.btn}
+              title="CSVga eksport"
+              disabled={exporting}
+              onClick={handleExport}
+            >
+              {exporting ? "Eksport..." : "CSV"}
             </button>
           )}
         </div>
