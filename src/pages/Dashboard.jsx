@@ -7,7 +7,8 @@ import { httpGet, api } from "../api/http";
 import s from "./Dashboard.module.scss";
 import OrgUnitSelect from "./admin/OrgUnitSelect";
 
-const EXPORT_ENABLED = true;
+// CSV eksport vaqtincha o'chirildi
+const EXPORT_ENABLED = false;
 const MONTHS = [
   "Yan",
   "Fev",
@@ -312,69 +313,67 @@ export default function Dashboard({ dark = false }) {
             {loading ? "Yuklanmoqda…" : `${fmtNum(total)} ta obyekt`}
           </span>
         </div>
-
         <div className={s.toolbar}>
-          <select
-            value={range}
-            onChange={(e) => setRange(e.target.value)}
-            className={s.select}
-            aria-label="Davr"
-          >
-            <option value="year">Yil</option>
-            <option value="quarter">Chorak</option>
-            <option value="custom">Maxsus davr</option>
-          </select>
-
-          {(range === "year" || range === "quarter") && (
+          <div className={s.filterRow}>
             <select
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
+              value={range}
+              onChange={(e) => setRange(e.target.value)}
               className={s.select}
-              aria-label="Yil"
+              aria-label="Davr"
             >
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
+              <option value="year">Yil</option>
+              <option value="quarter">Chorak</option>
+              <option value="custom">Maxsus davr</option>
             </select>
-          )}
 
-          {range === "quarter" && (
-            <select
-              value={quarter}
-              onChange={(e) => setQuarter(Number(e.target.value))}
-              className={s.select}
-              aria-label="Chorak"
-            >
-              <option value={1}>1-chorak</option>
-              <option value={2}>2-chorak</option>
-              <option value={3}>3-chorak</option>
-              <option value={4}>4-chorak</option>
-            </select>
-          )}
-
-          {range === "custom" && (
-            <>
-              <input
-                type="month"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
+            {(range === "year" || range === "quarter") && (
+              <select
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value))}
                 className={s.select}
-                aria-label="Boshlanish (oy)"
-              />
-              <input
-                type="month"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className={s.select}
-                aria-label="Tugash (oy)"
-              />
-            </>
-          )}
+                aria-label="Yil"
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            )}
 
-          <div className={s.chips}>
-            {/* Org filter */}
+            {range === "quarter" && (
+              <select
+                value={quarter}
+                onChange={(e) => setQuarter(Number(e.target.value))}
+                className={s.select}
+                aria-label="Chorak"
+              >
+                <option value={1}>1-chorak</option>
+                <option value={2}>2-chorak</option>
+                <option value={3}>3-chorak</option>
+                <option value={4}>4-chorak</option>
+              </select>
+            )}
+
+            {range === "custom" && (
+              <>
+                <input
+                  type="month"
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                  className={s.select}
+                  aria-label="Boshlanish (oy)"
+                />
+                <input
+                  type="month"
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  className={s.select}
+                  aria-label="Tugash (oy)"
+                />
+              </>
+            )}
+
             <div style={{ minWidth: 260 }}>
               <OrgUnitSelect
                 value={orgId}
@@ -383,51 +382,59 @@ export default function Dashboard({ dark = false }) {
                 allowClear
               />
             </div>
-
-            {ALL_TYPES.map((enumVal) => {
-              const on = selectedTypes.has(enumVal);
-              const present = rawTypes.includes(enumVal);
-              return (
-                <button
-                  key={enumVal}
-                  onClick={() => (present ? toggleType(enumVal) : null)}
-                  className={`${s.chip} ${on ? s.chipActive : ""} ${
-                    !present ? s.chipDisabled : ""
-                  }`}
-                  aria-pressed={on}
-                  title={mapType(enumVal)}
-                  disabled={!present}
-                >
-                  {mapType(enumVal)}
-                </button>
-              );
-            })}
-            {selectedTypes.size > 0 && (
-              <button onClick={clearTypes} className={`${s.btn} ${s.btnSoft}`}>
-                Tozalash
-              </button>
-            )}
           </div>
 
-          <button
-            onClick={load}
-            className={s.btn}
-            title="Yangilash"
-            disabled={loading}
-          >
-            <LuRotateCw size={16} />
-          </button>
-
-          {EXPORT_ENABLED && (
-            <button
-              className={s.btn}
-              title="CSVga eksport"
-              disabled={exporting}
-              onClick={handleExport}
-            >
-              {exporting ? "Eksport..." : "CSV"}
-            </button>
-          )}
+          <div className={s.filterRow}>
+            <div className={s.typeChips}>
+              {ALL_TYPES.map((enumVal) => {
+                const on = selectedTypes.has(enumVal);
+                const present = rawTypes.includes(enumVal);
+                return (
+                  <button
+                    key={enumVal}
+                    onClick={() => (present ? toggleType(enumVal) : null)}
+                    className={`${s.chip} ${on ? s.chipActive : ""} ${
+                      !present ? s.chipDisabled : ""
+                    }`}
+                    aria-pressed={on}
+                    title={mapType(enumVal)}
+                    disabled={!present}
+                  >
+                    {mapType(enumVal)}
+                  </button>
+                );
+              })}
+              {selectedTypes.size > 0 && (
+                <button
+                  onClick={clearTypes}
+                  className={`${s.btn} ${s.btnSoft}`}
+                  title="Tur filtrlarini tozalash"
+                >
+                  Tozalash
+                </button>
+              )}
+            </div>
+            <div className={s.actions}>
+              <button
+                onClick={load}
+                className={s.btn}
+                title="Yangilash"
+                disabled={loading}
+              >
+                <LuRotateCw size={16} />
+              </button>
+              {EXPORT_ENABLED && (
+                <button
+                  className={s.btn}
+                  title="CSVga eksport"
+                  disabled={exporting}
+                  onClick={handleExport}
+                >
+                  {exporting ? "Eksport..." : "CSV"}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

@@ -48,6 +48,45 @@
   justify-content: flex-end;
   flex-wrap: wrap;
 }
+
+/* New structured filter layout */
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+}
+.filterRow + .filterRow {
+  margin-top: 6px;
+}
+
+.typeChips {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 38px;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  align-items: center;
+}
+@media (max-width: 900px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filterRow {
+    justify-content: flex-start;
+  }
+  .actions {
+    justify-content: flex-start;
+  }
+}
 .select,
 .btn {
   height: 38px;
