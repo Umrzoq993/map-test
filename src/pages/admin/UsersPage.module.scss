@@ -353,6 +353,18 @@
   font-size: 11px;
 }
 
+/* NEW: pre formatted text in confirm dialog */
+.pre {
+  white-space: pre-wrap;
+  font-family: inherit;
+  background: var(--thead-bg);
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
 /* Pager */
 .pager {
   display: flex;
