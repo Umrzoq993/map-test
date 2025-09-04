@@ -849,7 +849,7 @@ export default function MapView({
         <Pane name="facilities-centroids" style={{ zIndex: 420 }} />
         <Pane name="facilities-markers" style={{ zIndex: 430 }} />
         {/* Chegaralar uchun alohida pane — yuqoriroq zIndex */}
-        <Pane name="borders-lines" style={{ zIndex: 500 }} />
+        <Pane name="borders-lines" style={{ zIndex: 300 }} />
 
         <ViewportWatcher onBboxChange={setBbox} />
         <MapFlyer target={navTarget} />
