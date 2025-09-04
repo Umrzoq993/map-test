@@ -1,49 +1,51 @@
 // src/components/map/MapView.jsx
+import L from "leaflet";
 import React, {
-  useEffect,
-  useState,
-  useRef,
-  useCallback,
-  useMemo,
   Suspense,
   lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
-import { toast } from "react-toastify";
 import {
-  MapContainer,
-  Marker,
-  Popup,
   FeatureGroup,
+  GeoJSON,
+  LayerGroup,
+  LayersControl,
+  MapContainer,
   Pane,
   useMap,
-  LayersControl,
-  LayerGroup,
-  GeoJSON,
 } from "react-leaflet";
+import { toast } from "react-toastify";
 const EditControlLazy = lazy(() =>
   import("react-leaflet-draw").then((m) => ({ default: m.EditControl }))
 );
-import L from "leaflet";
 
-import MapTiles from "./MapTiles";
 import "../../styles/leaflet-theme.css";
+import MapTiles from "./MapTiles";
 
-import OrgMarker from "./OrgMarker";
-import { locateOrg } from "../../api/org";
 import * as drawingsApi from "../../api/drawings";
 import { listFacilities, patchFacility } from "../../api/facilities";
+import { locateOrg } from "../../api/org";
 import { centroidOfGeometry } from "../../utils/geo";
+import OrgMarker from "./OrgMarker";
 
-import MapFlyer from "./MapFlyer";
-import ViewportWatcher from "./ViewportWatcher";
+import CodeJumpBox from "./CodeJumpBox";
+import CreateFacilityDrawer from "./CreateFacilityDrawer";
+import FacilityEditModal from "./FacilityEditModal";
+import FacilityGalleryPanel from "./FacilityGalleryPanel";
 import FacilityGeoLayer from "./FacilityGeoLayer";
 import FacilityMarkers from "./FacilityMarkers";
-import FacilityGalleryPanel from "./FacilityGalleryPanel";
-import CreateFacilityDrawer from "./CreateFacilityDrawer";
+import MapFlyer from "./MapFlyer";
 import OrgTreePanel from "./OrgTreePanel";
-import FacilityEditModal from "./FacilityEditModal";
-import CodeJumpBox from "./CodeJumpBox";
+import ViewportWatcher from "./ViewportWatcher";
 import ZoomIndicator from "./ZoomIndicator";
+
+// ✅ GeoJSON’ni bundlega qo‘shamiz (fetch O‘RNIGA import)
+// Faylni: src/assets/uz_lines.json ga joylang
+import uzBorders from "../../assets/uz_lines.json";
 
 /* 🔧 DARK MODE PATCH */
 const darkDrawerCss = `
@@ -643,8 +645,6 @@ export default function MapView({
     [orgTree, collectAncestorsKeys]
   );
 
-  // editBannerStyle removed (migrated to CSS classes in leaflet-theme.css)
-
   // Tiles env
   const HYBRID_URL =
     import.meta.env.VITE_TILE_HYBRID || "http://localhost:8008/{z}/{x}/{y}.jpg";
@@ -733,6 +733,11 @@ export default function MapView({
   // GeoJSON vositalarini vaqtincha yashirish (default: off)
   const [showGeoTools, setShowGeoTools] = useState(false);
 
+  /* =========================
+     O‘ZBEKISTON CHEGARASI LINIYALARI (faqat Satellite)
+     ========================= */
+  const [isSatellite, setIsSatellite] = useState(false);
+
   return (
     <div className="map-wrapper map-ui" style={{ position: "relative" }}>
       <style>{darkDrawerCss}</style>
@@ -768,6 +773,9 @@ export default function MapView({
               updateWhenIdle={true}
               keepBuffer={2}
               attribution="&copy; Hybrid (offline)"
+              eventHandlers={{
+                add: () => setIsSatellite(false),
+              }}
             />
           </LayersControl.BaseLayer>
           <LayersControl.BaseLayer name="Bing Satellite (offline, 5005)">
@@ -782,6 +790,9 @@ export default function MapView({
               updateWhenIdle={true}
               keepBuffer={2}
               attribution="&copy; Satellite (offline)"
+              eventHandlers={{
+                add: () => setIsSatellite(true),
+              }}
             />
           </LayersControl.BaseLayer>
 
@@ -833,9 +844,12 @@ export default function MapView({
         />
         <ZoomIndicator position="bottomright" />
 
+        {/* Panes */}
         <Pane name="facilities-polys" style={{ zIndex: 410 }} />
         <Pane name="facilities-centroids" style={{ zIndex: 420 }} />
         <Pane name="facilities-markers" style={{ zIndex: 430 }} />
+        {/* Chegaralar uchun alohida pane — yuqoriroq zIndex */}
+        <Pane name="borders-lines" style={{ zIndex: 500 }} />
 
         <ViewportWatcher onBboxChange={setBbox} />
         <MapFlyer target={navTarget} />
@@ -883,6 +897,21 @@ export default function MapView({
         />
 
         {orgForPopup && <OrgMarker org={orgForPopup} open />}
+
+        {/* ✅ O‘zbekiston chegaralari: faqat Satellite aktiv bo‘lsa ko‘rsatamiz */}
+        {isSatellite && uzBorders && (
+          <GeoJSON
+            data={uzBorders}
+            pane="borders-lines"
+            interactive={false}
+            style={() => ({
+              color: "#22c55e",
+              weight: 2.5,
+              opacity: 0.95,
+              dashArray: "6 3",
+            })}
+          />
+        )}
 
         <FeatureGroup ref={featureGroupRef}>
           {(drawEnabled || geomEdit) && (
