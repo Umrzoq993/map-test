@@ -502,7 +502,21 @@ export default function MapView({
       updateGeoJSON();
       const layer = e.layer,
         type = e.layerType;
-      if (geomEdit) return;
+      // Agar mavjud geometriyani tahrirlash rejimida (geomEdit) yangi polygon/rectangle chizilsa – eski geometriyani almashtiramiz
+      if (geomEdit && ["polygon", "rectangle"].includes(type)) {
+        const fg = featureGroupRef.current;
+        if (fg) {
+          try {
+            fg.clearLayers();
+            fg.addLayer(layer);
+            updateGeoJSON();
+            toast.info("Eski geometriya yangisi bilan almashtirildi");
+          } catch (err) {
+            debugError("Geom replace failed", err);
+          }
+        }
+        return; // create rejimidagi qolgan oqimni bajarmaymiz
+      }
       if (!["marker", "polygon", "rectangle"].includes(type)) return;
       const fg = featureGroupRef.current;
       const gj = layer.toGeoJSON();

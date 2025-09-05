@@ -3,11 +3,9 @@
 // Usage: import { debugLog, debugWarn, debugError, debugEnabled } from '../utils/debug';
 
 export const debugEnabled = (() => {
-  if (typeof window === 'undefined') return import.meta.env.DEV;
+  if (typeof window === "undefined") return import.meta.env.DEV;
   try {
-    return (
-      import.meta.env.DEV || window.localStorage.getItem('debug') === '1'
-    );
+    return import.meta.env.DEV || window.localStorage.getItem("debug") === "1";
   } catch {
     return import.meta.env.DEV;
   }
