@@ -28,11 +28,12 @@ export function attachOrgPopup(marker, org, opts = {}) {
     popup.setContent(loadingHTML(org));
     try {
       const info = await getOrgDetails(org.id);
-      // Sanitizatsiya (escapeHtml ichki chaqiruvlar mavjud, lekin qo'shimcha qatlam sifatida sanitizeHTML())
-      popup.setContent(sanitizeHTML(renderHTML(info, org)));
+      const safe = await sanitizeHTML(renderHTML(info, org));
+      popup.setContent(safe);
       wireActions(popup.getElement(), { map, info, org, ...opts });
     } catch (err) {
-      popup.setContent(sanitizeHTML(errorHTML(err)));
+      const safeErr = await sanitizeHTML(errorHTML(err));
+      popup.setContent(safeErr);
     }
   });
 }

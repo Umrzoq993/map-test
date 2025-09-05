@@ -1,13 +1,92 @@
-# React + Vite
+## Agro Map frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Leaflet + React (Vite) asosidagi geo / inshoot boshqaruv interfeysi.
 
-Currently, two official plugins are available:
+### Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- React 18 + Vite
+- Leaflet, react-leaflet-draw
+- Axios (token refresh + interceptorlar)
+- rc-tree (tashkilot daraxti)
+- react-toastify (bildirishnomalar)
+- SCSS modul & tematik o'zgaruvchilar
 
-## Expanding the ESLint configuration
+### Tez boshlash
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-# map-test
+```bash
+cp .env.example .env   # kerakli qiymatlarni sozlang
+npm install
+npm run dev
+```
+
+Brauzer: http://localhost:5173 (yoki Vite chiqargan port)
+
+### Muhim environment o'zgaruvchilar
+
+| O'zgaruvchi                            | Ma'no                                     |
+| -------------------------------------- | ----------------------------------------- |
+| VITE_API_BASE                          | Backend root (mas: http://localhost:8080) |
+| VITE_IDLE_MINUTES                      | Sessiya bo'sh turish daqiqalari           |
+| VITE_TOKEN_REFRESH_LEEWAY_SEC          | Refresh tampon (sekund)                   |
+| VITE_TILE_HYBRID / VITE_TILE_SATELLITE | Keshlangan plitalar URL shablonlari       |
+| VITE_TILE_TMS                          | TMS yoqilgan (true/false)                 |
+
+### Build (production)
+
+```bash
+npm run build
+```
+
+Natija `dist/` papkada. Static server (nginx, caddy, serve) orqali tarqating:
+
+```bash
+npm run preview   # lokal ishlab ko‘rish
+```
+
+Nginx misol config bo'lagi:
+
+```
+location / {
+	root   /var/www/agro-map/dist;
+	try_files $uri /index.html;
+}
+location /api/ {
+	proxy_pass http://localhost:8080/api/; # backend
+}
+```
+
+### Lint
+
+```bash
+npm run lint
+```
+
+### Debug yordamchi
+
+Konsol loglarini yoqish:
+
+```js
+localStorage.setItem("debug", "1");
+```
+
+O‘chirish:
+
+```js
+localStorage.removeItem("debug");
+```
+
+### Sessiya ogohlantirish
+
+`session:expiring` hodisasi (60s oldin) — `AppShell` toast ko‘rsatadi. Zarur bo‘lsa qo'shimcha tinglovchilar qo‘shing.
+
+### Xavfsizlik
+
+Popup va dinamik HTML `sanitizeHTML` orqali tozalanadi. Har qanday innerHTML kiritishdan avval shu utilni ishlating.
+
+### Cluster / Performance
+
+`ClusteredFacilityMarkers.jsx` tajriba komponenti. Katta datasetlarda marker klasterlardan foydalaning.
+
+---
+
+© 2025 Agro Map
