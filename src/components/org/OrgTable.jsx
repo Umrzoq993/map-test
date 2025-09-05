@@ -449,7 +449,13 @@ export default function OrgTable({ isAdmin, focusId }) {
           <table className="org-table">
             <thead>
               <tr>
-                <th style={{ width: 56 }}>ID</th>
+                <th
+                  style={{ width: 56 }}
+                  className="sortable"
+                  onClick={() => toggleSort("id")}
+                >
+                  ID <span className="sort">{sortIcon("id")}</span>
+                </th>
                 <th
                   className="sortable"
                   onClick={() => toggleSort("code")}
