@@ -16,6 +16,8 @@ let refreshTimer = null; // setTimeout id
 let idleTimer = null; // setTimeout id
 let lastActivity = Date.now();
 let refreshRetryTimer = null;
+let expiryWarnTimer = null; // pre-expiry toast
+const EXPIRY_WARN_MS = 60_000; // 60s oldin ogohlantirish
 
 function getIdleMinutesCfg() {
   const v = import.meta.env.VITE_IDLE_MINUTES;
@@ -32,6 +34,7 @@ function getRefreshLeewaySec() {
 
 function scheduleProactiveRefresh() {
   if (refreshTimer) clearTimeout(refreshTimer);
+  if (expiryWarnTimer) clearTimeout(expiryWarnTimer);
   if (!isAuthenticated()) return;
   const expAt = getAccessExpireAt();
   if (!expAt) return; // unknown exp
@@ -39,6 +42,19 @@ function scheduleProactiveRefresh() {
   const now = Date.now();
   let delay = expAt - leewayMs - now;
   if (delay < 5000) delay = 5000; // kamida 5s
+  // Pre-expiry ogohlantirish (agar window va vaqt yetarli bo'lsa)
+  const warnDelay = expAt - EXPIRY_WARN_MS - now;
+  if (warnDelay > 0) {
+    expiryWarnTimer = setTimeout(() => {
+      try {
+        window.dispatchEvent(
+          new CustomEvent("session:expiring", {
+            detail: { inMs: EXPIRY_WARN_MS },
+          })
+        );
+      } catch {}
+    }, warnDelay);
+  }
   refreshTimer = setTimeout(async () => {
     // Hali ham yaqinlashgan bo'lsa va refresh token mavjud bo'lsa
     try {
@@ -145,6 +161,7 @@ export function startSessionManager() {
     if (refreshTimer) clearTimeout(refreshTimer);
     if (idleTimer) clearTimeout(idleTimer);
     if (refreshRetryTimer) clearTimeout(refreshRetryTimer);
+    if (expiryWarnTimer) clearTimeout(expiryWarnTimer);
     started = false;
   };
 }

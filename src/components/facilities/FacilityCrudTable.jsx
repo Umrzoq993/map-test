@@ -1,5 +1,6 @@
 // src/components/facilities/FacilityCrudTable.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import Modal from "../ui/Modal";
 import {
   listFacilitiesPage,
@@ -7,6 +8,7 @@ import {
   patchFacility,
   deleteFacility,
 } from "../../api/facilities";
+import { toast } from "react-toastify";
 import { listOrgsPage } from "../../api/org";
 import { FACILITY_TYPES } from "../../data/facilityTypes";
 import s from "./FacilityCrudTable.module.scss";
@@ -133,6 +135,8 @@ export default function FacilityCrudTable({ type, title }) {
     return () => (alive = false);
   }, []);
 
+  const debouncedSearch = useDebouncedValue(search, 400);
+
   // Load rows
   useEffect(() => {
     let alive = true;
@@ -143,7 +147,7 @@ export default function FacilityCrudTable({ type, title }) {
           type,
           orgId,
           status: statusFilter !== "ALL" ? statusFilter : undefined,
-          q: search || undefined,
+          q: debouncedSearch || undefined,
           page: pageIdx,
           size: pageSize,
           sort: "createdAt,desc",
@@ -156,12 +160,12 @@ export default function FacilityCrudTable({ type, title }) {
       }
     })();
     return () => (alive = false);
-  }, [type, orgId, statusFilter, search, pageIdx, pageSize]);
+  }, [type, orgId, statusFilter, debouncedSearch, pageIdx, pageSize]);
 
   // Reset page when filters change
   useEffect(() => {
     setPageIdx(0);
-  }, [type, orgId, statusFilter, search]);
+  }, [type, orgId, statusFilter, debouncedSearch]);
 
   /* --------------------- Derived: attr columns & labels --------------------- */
   const attrKeysOrdered = useMemo(() => {
@@ -271,9 +275,30 @@ export default function FacilityCrudTable({ type, title }) {
         lng: null,
         geometry: null,
       };
-      await createFacility(payload);
+      // Optimistic: vaqtinchalik ID
+      const tempId = "temp-" + Date.now();
+      const optimisticRow = {
+        id: tempId,
+        orgId: formOrgId,
+        orgName: orgOptions.find((o) => o.value === formOrgId)?.label || null,
+        name: payload.name,
+        type,
+        status: formStatus,
+        attributes: payload.attributes,
+        lat: null,
+        lng: null,
+        geometry: null,
+        __optimistic: true,
+      };
+      setRows((r) => [optimisticRow, ...r]);
+      setTotal((t) => t + 1);
       setOpenCreate(false);
-      setPageIdx(0);
+      // Server
+      const created = await createFacility(payload);
+      setRows((r) =>
+        r.map((row) => (row.id === tempId ? { ...created } : row))
+      );
+      toast.success("Obyekt yaratildi");
     } finally {
       setSaving(false);
     }
@@ -291,14 +316,19 @@ export default function FacilityCrudTable({ type, title }) {
 
     setSaving(true);
     try {
-      await patchFacility(editing.id, {
+      const patch = {
         name: formName.trim(),
         status: formStatus,
         orgId: formOrgId,
         attributes: normalizeNumbers(formAttr),
-      });
+      };
+      const prev = rows.find((r) => r.id === editing.id);
+      setRows((r) =>
+        r.map((row) => (row.id === editing.id ? { ...row, ...patch } : row))
+      );
       setOpenEdit(false);
-      setPageIdx(0);
+      await patchFacility(editing.id, patch);
+      toast.success("O‘zgartirildi");
     } finally {
       setSaving(false);
     }
@@ -306,8 +336,18 @@ export default function FacilityCrudTable({ type, title }) {
 
   const onDelete = async (row) => {
     if (!window.confirm(`O‘chirishni tasdiqlaysizmi?\n“${row?.name}”`)) return;
-    await deleteFacility(row.id);
-    setPageIdx(0);
+    const prevRows = rows;
+    setRows((r) => r.filter((x) => x.id !== row.id));
+    setTotal((t) => Math.max(0, t - 1));
+    try {
+      await deleteFacility(row.id);
+      toast.success("O‘chirildi");
+    } catch (e) {
+      // Rollback
+      setRows(prevRows);
+      setTotal(prevRows.length);
+      toast.error("O‘chirishda xatolik");
+    }
   };
 
   /* ------------------------------- Rendering ------------------------------- */

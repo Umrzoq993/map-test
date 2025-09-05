@@ -1,6 +1,7 @@
 // src/map/orgPopup.js
 import L from "leaflet";
 import { getOrgDetails } from "../../api/org";
+import { sanitizeHTML } from "../../utils/sanitize";
 import { TYPE_LABELS, colorForBack } from "../../constants/facilityTypes";
 import { debugLog } from "../../utils/debug";
 import "../../styles/_org_popup.scss";
@@ -27,10 +28,11 @@ export function attachOrgPopup(marker, org, opts = {}) {
     popup.setContent(loadingHTML(org));
     try {
       const info = await getOrgDetails(org.id);
-      popup.setContent(renderHTML(info, org));
+      // Sanitizatsiya (escapeHtml ichki chaqiruvlar mavjud, lekin qo'shimcha qatlam sifatida sanitizeHTML())
+      popup.setContent(sanitizeHTML(renderHTML(info, org)));
       wireActions(popup.getElement(), { map, info, org, ...opts });
     } catch (err) {
-      popup.setContent(errorHTML(err));
+      popup.setContent(sanitizeHTML(errorHTML(err)));
     }
   });
 }

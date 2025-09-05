@@ -1,6 +1,7 @@
 // src/api/http.js
 import axios from "axios";
 import { debugWarn } from "../utils/debug";
+import { mapApiError } from "../utils/apiErrors";
 import {
   getAccessToken as memGetToken,
   setAccessToken as memSetToken,
@@ -209,24 +210,21 @@ api.interceptors.response.use(
         original.headers = original.headers || {};
         original.headers.Authorization = `Bearer ${newAccess}`;
         return api(original); // qayta so'rov
-      } catch {
+      } catch (rErr) {
         // Refresh ham ishlamadi — local tokenlarni tozalaymiz
         memClearToken();
         memClearExp();
-        const code = response?.data?.code;
-        if (code === "REFRESH_REPLAY")
-          toast.error("Sessiya takrorlandi (replay). Qayta kiring.");
-        else if (code === "SESSION_REVOKED")
-          toast.error("Sessiya bekor qilingan. Qayta kiring.");
-        else if (code === "REFRESH_EXPIRED")
-          toast.info("Seans muddati tugadi. Qaytadan kiring.");
-        else if (code === "REFRESH_INVALID")
-          toast.info("Seans yaroqsiz. Qaytadan kiring.");
-        return Promise.reject(err);
+        const friendly = mapApiError(
+          rErr || err,
+          "Sessiya yangilashda xatolik"
+        );
+        toast.error(friendly);
+        return Promise.reject(rErr || err);
       }
     }
 
     // MUHIM: 403 bo'lsa tokenlarni TOZALAMAYMIZ — haqiqiy ruxsat masalasi bo'lishi mumkin
+    // Umumiy xabarni avtomatik chiqarib yubormaymiz (komponentlar o'zlari hal qiladi)
     return Promise.reject(err);
   }
 );

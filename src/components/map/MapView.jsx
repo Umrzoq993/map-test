@@ -9,6 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { debugError } from "../../utils/debug";
 import {
   FeatureGroup,
@@ -311,14 +312,11 @@ export default function MapView({
     setPanelHidden((v) => !v);
   }, []);
 
-  // Search
+  // Search (debounced)
   const [searchInput, setSearchInput] = useState("");
-  const [query, setQuery] = useState("");
-  useEffect(() => {
-    const id = setTimeout(() => setQuery(searchInput.trim()), 300);
-    return () => clearTimeout(id);
-  }, [searchInput]);
-  const onEnterSearch = () => setQuery(searchInput.trim());
+  const debouncedSearch = useDebouncedValue(searchInput, 350);
+  const query = useMemo(() => debouncedSearch.trim(), [debouncedSearch]);
+  const onEnterSearch = () => setSearchInput((s) => s.trim());
   const onClearSearch = () => setSearchInput("");
 
   // Viewport

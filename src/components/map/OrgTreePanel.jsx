@@ -2,6 +2,7 @@
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
 import "./OrgTreePanel.css";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 
 /** Faqat ruxsat etilgan 11 yo‘nalish uchun o‘zbekcha yorliqlar (fallback) */
 const DEFAULT_TYPE_LABELS = {
@@ -152,6 +153,8 @@ export default function OrgTreePanel({
       return next;
     });
   };
+
+  const debouncedSearch = useDebouncedValue(searchInput, 400);
 
   return (
     <div className={`org-tree-card ${hide ? "is-hidden" : ""}`}>
