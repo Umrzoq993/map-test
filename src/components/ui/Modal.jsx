@@ -75,14 +75,15 @@ export default function Modal({
 
   // mount/unmount portal
   useEffect(() => {
-    if (!portalEl.current || typeof document === "undefined") return;
+    const el = portalEl.current;
+    if (!el || typeof document === "undefined") return;
     const host = document.body;
-    portalEl.current.className = styles.portalHost;
-    host.appendChild(portalEl.current);
+    el.className = styles.portalHost;
+    host.appendChild(el);
     setMounted(true);
     return () => {
       try {
-        host.removeChild(portalEl.current);
+        host.removeChild(el);
       } catch {}
     };
   }, []);

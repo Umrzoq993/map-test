@@ -2,6 +2,7 @@
 import L from "leaflet";
 import { getOrgDetails } from "../../api/org";
 import { TYPE_LABELS, colorForBack } from "../../constants/facilityTypes";
+import { debugLog } from "../../utils/debug";
 import "../../styles/_org_popup.scss";
 
 /**
@@ -75,10 +76,8 @@ function renderHTML(info, fallbackOrg) {
       typeof window !== "undefined" &&
       window?.localStorage?.getItem("DEBUG_ORG_POPUP") === "1"
     ) {
-      // eslint-disable-next-line no-console
-      console.debug("[OrgPopup] raw=", o0);
-      // eslint-disable-next-line no-console
-      console.debug("[OrgPopup] flattened=", o);
+      debugLog("[OrgPopup] raw=", o0);
+      debugLog("[OrgPopup] flattened=", o);
     }
   } catch {}
   const name = o.name ?? fallbackOrg?.name ?? "Bo‘lim";
@@ -88,8 +87,8 @@ function renderHTML(info, fallbackOrg) {
   const zoom = asNum(o.zoom ?? fallbackOrg?.zoom) ?? 14;
   const status = o.status ?? o.state ?? o.lifeCycleState ?? "Active";
 
-  const childrenCountRaw =
-    o.childrenCount ??
+  // const childrenCountRaw = (removed unused)
+  o.childrenCount ??
     o.childCount ??
     o.childsCount ??
     (Array.isArray(o.children) ? o.children.length : undefined);
@@ -100,7 +99,7 @@ function renderHTML(info, fallbackOrg) {
     o.objectsCount ??
     (Array.isArray(o.facilities) ? o.facilities.length : undefined) ??
     (Array.isArray(o.sites) ? o.sites.length : undefined);
-  const childrenCount = numOrDash(childrenCountRaw); // endi UI da ishlatilmaydi
+  // const childrenCount = numOrDash(childrenCountRaw); // removed unused variable (kept logic for potential future use)
   const facilitiesCount = numOrDash(facilitiesCountRaw);
   // Tushum / Sof foyda / Manzil / Mas'ul / Tel talab bo'yicha olib tashlangan
 
@@ -261,12 +260,6 @@ function statusPill(s) {
 }
 function numOrDash(n) {
   return Number.isFinite(n) ? n : "—";
-}
-function valOrDash(v, suffix = "") {
-  if (v == null) return "—";
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toLocaleString("uz-UZ") + suffix;
 }
 function asNum(v) {
   const n = Number(v);

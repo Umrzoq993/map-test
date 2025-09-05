@@ -46,14 +46,16 @@ function scheduleProactiveRefresh() {
       if (beforeExp < leewayMs + 30000) {
         await refreshAccessToken();
       }
-    } catch (e) {
+    } catch {
       // Bir martalik kechiktirilgan retry (2s) – tarmoq flakeni yumshatish
       if (!refreshRetryTimer) {
         refreshRetryTimer = setTimeout(async () => {
           refreshRetryTimer = null;
           try {
             await refreshAccessToken();
-          } catch (_) {}
+          } catch {
+            // silent retry failure
+          }
         }, 2000);
       }
     } finally {

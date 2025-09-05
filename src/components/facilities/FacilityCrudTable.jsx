@@ -104,10 +104,14 @@ async function fetchOrgOptions() {
 
 /* ============================ Main component ============================ */
 export default function FacilityCrudTable({ type, title }) {
-  const schema = FACILITY_TYPES[type] || {
-    label: FACILITY_TYPES?.[type]?.label || String(type),
-    fields: [],
-  };
+  const schema = useMemo(() => {
+    return (
+      FACILITY_TYPES[type] || {
+        label: FACILITY_TYPES?.[type]?.label || String(type),
+        fields: [],
+      }
+    );
+  }, [type]);
 
   // Filters
   const [orgId, setOrgId] = useState(null);
@@ -511,7 +515,6 @@ export default function FacilityCrudTable({ type, title }) {
           <FormFields
             schema={schema}
             errors={formErrors}
-            readOnlyType
             formName={formName}
             setFormName={setFormName}
             formStatus={formStatus}
@@ -565,7 +568,6 @@ export default function FacilityCrudTable({ type, title }) {
           <FormFields
             schema={schema}
             errors={formErrors}
-            readOnlyType
             formName={formName}
             setFormName={setFormName}
             formStatus={formStatus}
@@ -608,7 +610,6 @@ export default function FacilityCrudTable({ type, title }) {
 function FormFields({
   schema,
   errors,
-  readOnlyType = false,
   formName,
   setFormName,
   formStatus,

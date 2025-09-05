@@ -1,5 +1,6 @@
 // src/pages/admin/SessionsPage.jsx
 import { useEffect, useMemo, useState } from "react";
+import { debugError } from "../../utils/debug";
 import {
   listSessions,
   revokeAllForUser,
@@ -37,7 +38,7 @@ export default function SessionsPage() {
   const [size, setSize] = useState(10); // default 10
   const [total, setTotal] = useState(0);
   const [totalPagesState, setTotalPagesState] = useState(1);
-  const [sortStr, setSortStr] = useState("lastSeenAt,desc");
+  const [sortStr] = useState("lastSeenAt,desc"); // removed unused setter
 
   // UI holatlar
   const [online, setOnline] = useState(0);
@@ -99,7 +100,7 @@ export default function SessionsPage() {
       if (e?.response?.status === 403) {
         setForbidden(true);
       } else {
-        console.error("Sessions load error:", e);
+        debugError("Sessions load error", e);
       }
     } finally {
       setBusy(false);

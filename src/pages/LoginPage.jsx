@@ -55,7 +55,8 @@ export default function LoginPage() {
   // CAPTCHA state
   const [captchaId, setCaptchaId] = useState("");
   const [captchaAnswer, setCaptchaAnswer] = useState("");
-  const [captchaNearExpiry, setCaptchaNearExpiry] = useState(false);
+  // near-expiry flag removed (unused)
+  // const [captchaNearExpiry, setCaptchaNearExpiry] = useState(false);
 
   const onCaptchaChange = useCallback(({ id, answer }) => {
     setCaptchaId(id || "");
@@ -63,7 +64,7 @@ export default function LoginPage() {
   }, []);
 
   const onCaptchaExpired = useCallback(() => {
-    setCaptchaNearExpiry(true);
+    /* no-op for now */
   }, []);
 
   const onSubmit = async (e) => {
@@ -78,27 +79,20 @@ export default function LoginPage() {
         return;
       }
 
-      let verified = false;
-      try {
-        const v = await verifyCaptcha({ id: captchaId, answer: captchaAnswer });
-        verified = !!v?.ok;
-      } catch (err) {
-        // Rate limit handling (429)
-        if (err?.response?.status === 429) {
-          await new Promise((r) => setTimeout(r, 1200));
-          try {
-            const v2 = await verifyCaptcha({
-              id: captchaId,
-              answer: captchaAnswer,
-            });
-            verified = !!v2?.ok;
-          } catch (e2) {
-            throw e2;
+      const verifyOnce = async () =>
+        verifyCaptcha({ id: captchaId, answer: captchaAnswer }).then(
+          (v) => !!v?.ok,
+          (err) => {
+            if (err?.response?.status === 429) return null; // signal retry
+            throw err;
           }
-        } else {
-          throw err;
-        }
+        );
+      let verified = await verifyOnce();
+      if (verified === null) {
+        await new Promise((r) => setTimeout(r, 1200));
+        verified = await verifyOnce();
       }
+      verified = !!verified;
 
       if (!verified) {
         setError("CAPTCHA noto‘g‘ri yoki muddati tugagan");

@@ -1,5 +1,6 @@
 // src/api/http.js
 import axios from "axios";
+import { debugWarn } from "../utils/debug";
 import {
   getAccessToken as memGetToken,
   setAccessToken as memSetToken,
@@ -152,7 +153,7 @@ async function refreshTokens() {
     }
   );
 
-  const { accessToken, refreshToken, accessExpiresAt, token } = data || {};
+  const { accessToken, accessExpiresAt, token } = data || {};
   const newAccess = accessToken || token;
   if (!newAccess) throw new Error("Malformed refresh response");
 
@@ -187,8 +188,8 @@ api.interceptors.response.use(
     const original = config || {};
 
     // Tarmoq xatosi — foydali log
-    if (err?.code === "ERR_NETWORK") {
-      console.warn("[API] Network error. Backend ishlyaptimi? baseURL=", BASE);
+    if (err?.code === "ERR_NETWORK" && import.meta.env.DEV) {
+      debugWarn("[API] Network error. Backend ishlyaptimi? baseURL=", BASE);
     }
 
     // 429 — to'g'ridan-to'g'ri qaytarib yuboramiz
@@ -208,20 +209,19 @@ api.interceptors.response.use(
         original.headers = original.headers || {};
         original.headers.Authorization = `Bearer ${newAccess}`;
         return api(original); // qayta so'rov
-      } catch (e) {
+      } catch {
         // Refresh ham ishlamadi — local tokenlarni tozalaymiz
         memClearToken();
         memClearExp();
         const code = response?.data?.code;
-        if (code === "REFRESH_REPLAY") {
+        if (code === "REFRESH_REPLAY")
           toast.error("Sessiya takrorlandi (replay). Qayta kiring.");
-        } else if (code === "SESSION_REVOKED") {
+        else if (code === "SESSION_REVOKED")
           toast.error("Sessiya bekor qilingan. Qayta kiring.");
-        } else if (code === "REFRESH_EXPIRED") {
+        else if (code === "REFRESH_EXPIRED")
           toast.info("Seans muddati tugadi. Qaytadan kiring.");
-        } else if (code === "REFRESH_INVALID") {
+        else if (code === "REFRESH_INVALID")
           toast.info("Seans yaroqsiz. Qaytadan kiring.");
-        }
         return Promise.reject(err);
       }
     }

@@ -17,25 +17,25 @@ import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
 
 import { getLatestDrawing, saveDrawing } from "../../api/drawings";
+import { debugError } from "../../utils/debug";
 import {
   fetchFacilities,
   patchFacility,
   deleteFacility,
   createFacility,
 } from "../../api/facilities";
-import { iconFor, typeColor, badgeIconFor } from "./mapIcons";
+import { typeColor, badgeIconFor } from "./mapIcons"; // removed unused iconFor
 
 /** FlyTo: yon ta'sirlar useEffect ichida */
 function MapFlyer({ target } = {}) {
   const map = useMap();
   useEffect(() => {
     if (!target || typeof target !== "object") return;
-    const { lat, lng, zoom = 13 } = target;
+    const { lat, lng, zoom = 13, ts } = target;
     if (typeof lat !== "number" || typeof lng !== "number") return;
-
+    if (!ts) return; // ts trigger sifatida
     const curZoom = map.getZoom();
     const midZoom = Math.max(3, curZoom - 3);
-
     map.flyTo(map.getCenter(), midZoom, {
       duration: 0.6,
       easeLinearity: 0.15,
@@ -48,9 +48,8 @@ function MapFlyer({ target } = {}) {
         animate: true,
       });
     }, 650);
-
     return () => clearTimeout(t);
-  }, [target?.ts]);
+  }, [map, target]);
   return null;
 }
 
@@ -219,7 +218,7 @@ export default function MapDraw({
         L.geoJSON(latest.geojson).eachLayer((lyr) => fg.addLayer(lyr));
         setGeojson(latest.geojson);
       } catch (e) {
-        console.error("Load latest drawing failed:", e);
+        debugError("Load latest drawing failed:", e);
       }
     })();
   }, []);
@@ -336,7 +335,7 @@ export default function MapDraw({
         });
         if (!cancelled) setFacilities(data);
       } catch (e) {
-        if (!cancelled) console.error("fetchFacilities failed:", e);
+        if (!cancelled) debugError("fetchFacilities failed:", e);
       }
     }, 250);
     return () => {
@@ -605,7 +604,7 @@ export default function MapDraw({
                           setReloadKey((k) => k + 1);
                         } catch (e) {
                           toast.error("Yangilashda xatolik");
-                          console.error(e);
+                          debugError(e);
                         }
                       }}
                       style={{
@@ -626,7 +625,7 @@ export default function MapDraw({
                           setReloadKey((k) => k + 1);
                         } catch (e) {
                           toast.error("O'chirishda xatolik");
-                          console.error(e);
+                          debugError(e);
                         }
                       }}
                       style={{
@@ -958,7 +957,7 @@ export default function MapDraw({
                   setReloadKey((k) => k + 1);
                   toast.success("Obyekt saqlandi!");
                 } catch (e) {
-                  console.error(e);
+                  debugError(e);
                   toast.error("Saqlashda xatolik.");
                 }
               }}
@@ -1024,7 +1023,7 @@ export default function MapDraw({
                     await saveDrawing(data, "map-drawings");
                     toast.success("Saqlash muvaffaqiyatli!");
                   } catch (e) {
-                    console.error(e);
+                    debugError(e);
                     toast.error("Saqlashda xatolik");
                   }
                 }}

@@ -1,5 +1,6 @@
 // src/components/map/FacilityDetailsModal.jsx
 import { useEffect, useState } from "react";
+import { debugError } from "../../utils/debug";
 import { FACILITY_TYPES } from "./CreateFacilityDrawer";
 import { patchFacility, deleteFacility } from "../../api/facilities";
 import Modal from "../ui/Modal"; // Portal orqali
@@ -33,7 +34,7 @@ export default function FacilityDetailsModal({
       if (schemaKeys.has(k)) merged[k] = v ?? "";
     }
     setDetails(merged);
-  }, [facility?.id]);
+  }, [facility]);
 
   const onChangeDetail = (k, v) => setDetails((d) => ({ ...d, [k]: v }));
 
@@ -49,7 +50,7 @@ export default function FacilityDetailsModal({
       onClose?.();
       onSaved?.();
     } catch (e) {
-      console.error(e);
+      debugError("FacilityDetails save failed", e);
       toast.error(e?.data?.message || "Saqlashda xatolik");
     }
   };
@@ -62,7 +63,7 @@ export default function FacilityDetailsModal({
       onClose?.();
       onSaved?.();
     } catch (e) {
-      console.error(e);
+      debugError("FacilityDetails delete failed", e);
       toast.error(e?.data?.message || "O‘chirishda xatolik");
     }
   };

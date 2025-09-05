@@ -41,7 +41,7 @@ export default function AuditPage() {
   // Sahifalash (default 10)
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
-  const [sort, setSort] = useState("ts,desc");
+  const [sort] = useState("ts,desc"); // removed unused setter
 
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);

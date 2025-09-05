@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { debugError } from "../../utils/debug";
 import Modal from "../ui/Modal"; // Agar fayl `map/modals/` ichida bo'lsa: `../../ui/Modal` qilib qo'ying.
 import { patchFacility } from "../../api/facilities";
 import styles from "./FacilityEditModal.module.scss";
@@ -41,7 +42,7 @@ export default function FacilityEditModal({
       if (k in base) merged[k] = v ?? "";
     }
     setAttrs(merged);
-  }, [facility?.id]);
+  }, [facility]);
 
   const typeLabel = FACILITY_TYPES[type]?.label || type;
   const orgLabel =
@@ -117,7 +118,7 @@ export default function FacilityEditModal({
       );
       onClose?.(); // modalni yopamiz
     } catch (e) {
-      console.error(e);
+      debugError("FacilityEdit geometry edit dispatch failed", e);
       toast.error("Geometriya tahrirlashni ishga tushirib bo‘lmadi.");
     }
   };
@@ -158,7 +159,7 @@ export default function FacilityEditModal({
       onClose?.();
       onSaved?.();
     } catch (e) {
-      console.error(e);
+      debugError("FacilityEdit save failed", e);
       toast.error(e?.data?.message || "Saqlashda xatolik");
     }
   };

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { debugError } from "../../utils/debug";
 import { useParams } from "react-router-dom";
 import {
   createFacility,
   deleteFacility,
-  listFacilities,
   listFacilitiesPage,
   putFacility,
 } from "../../api/facilities";
@@ -91,7 +91,7 @@ export default function GenericFacilityPage() {
       setItems(res?.content ?? []);
       setTotal(res?.totalElements ?? 0);
     } catch (e) {
-      console.error(e);
+      debugError("GenericFacilityPage listFacilitiesPage failed", e);
       toast.error("Ma’lumot yuklashda xatolik");
     } finally {
       setLoading(false);

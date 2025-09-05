@@ -9,6 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { debugError } from "../../utils/debug";
 import {
   FeatureGroup,
   GeoJSON,
@@ -193,7 +194,7 @@ function IntroFlight({ enabled, delayMs, target }) {
       });
     }, Math.max(0, Number(delayMs) || 0));
     return () => clearTimeout(tid);
-  }, [enabled, delayMs, target?.lat, target?.lng, target?.zoom, map]);
+  }, [enabled, delayMs, target, map]);
   return null;
 }
 
@@ -240,7 +241,7 @@ export default function MapView({
             fg.addLayer(lyr)
           );
         } catch (err) {
-          console.error("Geometry load failed:", err);
+          debugError("Geometry load failed", err);
         }
       }
     };
@@ -287,7 +288,7 @@ export default function MapView({
       exitGeomEdit();
       setReloadKey((k) => k + 1);
     } catch (e) {
-      console.error(e);
+      debugError("Facility geometry patch failed", e);
       toast.error("Geometriyani saqlashda xatolik yuz berdi.");
     }
   }, [geomEdit?.facilityId, exitGeomEdit]);
@@ -306,7 +307,9 @@ export default function MapView({
   }, []);
 
   const [panelHidden, setPanelHidden] = useState(!hideTree);
-  const togglePanel = () => setPanelHidden((v) => !v);
+  const togglePanel = useCallback(() => {
+    setPanelHidden((v) => !v);
+  }, []);
 
   // Search
   const [searchInput, setSearchInput] = useState("");
@@ -386,7 +389,7 @@ export default function MapView({
       }
       setDraftGeoJSON({ ...src, features });
     } catch (e) {
-      console.error("Draftni yuklashda xatolik:", e);
+      debugError("Draftni yuklashda xatolik", e);
     }
   }, [DRAFT_TTL_MS]);
   const maybeSaveDraft = useCallback(async (geometry) => {
@@ -401,7 +404,7 @@ export default function MapView({
       await drawingsApi.saveDrawing(fc, "latest-draft");
       setDraftGeoJSON(fc);
     } catch (e) {
-      console.error("Draftni saqlashda xatolik:", e);
+      debugError("Draftni saqlashda xatolik", e);
     }
   }, []);
   const clearDraft = useCallback(async () => {
@@ -418,7 +421,7 @@ export default function MapView({
           "latest-draft:clear"
         );
     } catch (e) {
-      console.error("Draftni o‘chirib bo‘lmadi:", e);
+      debugError("Draftni o‘chirib bo‘lmadi", e);
     } finally {
       try {
         draftLayerRef.current?.remove();
@@ -430,21 +433,35 @@ export default function MapView({
   // Facilities fetch (bbox+cache)
   const facCacheRef = useRef(new Map());
   const FAC_TTL = 15_000;
-  useEffect(() => {
-    let cancelled = false;
-    if (!bbox || checkedOrgIds.length === 0 || enabledTypes.length === 0) {
-      setFacilities([]);
-      return;
-    }
-    const buffered = bufferBBoxStr(bbox, 0.2);
-    const cacheKey = [
-      buffered,
+  // Stable serializations for deps (avoid JSON.stringify in dep array)
+  const checkedOrgIdsKey = useMemo(
+    () =>
       checkedOrgIds
         .slice()
         .sort((a, b) => a - b)
         .join(","),
-      enabledTypes.slice().sort().join(","),
-    ].join("|");
+    [checkedOrgIds]
+  );
+  const enabledTypesKey = useMemo(
+    () => enabledTypes.slice().sort().join(","),
+    [enabledTypes]
+  );
+  useEffect(() => {
+    let cancelled = false;
+    if (!bbox || !checkedOrgIdsKey || !enabledTypesKey) {
+      setFacilities([]);
+      return;
+    }
+    const ids = checkedOrgIdsKey
+      .split(",")
+      .map((x) => Number(x))
+      .filter((n) => Number.isFinite(n));
+    if (ids.length === 0 || enabledTypes.length === 0) {
+      setFacilities([]);
+      return;
+    }
+    const buffered = bufferBBoxStr(bbox, 0.2);
+    const cacheKey = [buffered, checkedOrgIdsKey, enabledTypesKey].join("|");
     const hit = facCacheRef.current.get(cacheKey);
     if (hit && Date.now() - hit.ts < FAC_TTL) {
       setFacilities(hit.data);
@@ -452,7 +469,7 @@ export default function MapView({
     }
     const t = setTimeout(async () => {
       try {
-        const reqs = checkedOrgIds.map((orgId) =>
+        const reqs = ids.map((orgId) =>
           listFacilities({ orgId, types: enabledTypes, bbox: buffered })
         );
         const all = (await Promise.all(reqs)).flat();
@@ -469,14 +486,14 @@ export default function MapView({
           facCacheRef.current.set(cacheKey, { ts: Date.now(), data: uniq });
         }
       } catch (e) {
-        if (!cancelled) console.error("listFacilities failed:", e);
+        if (!cancelled) debugError("listFacilities failed", e);
       }
     }, 250);
     return () => {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [bbox, JSON.stringify(checkedOrgIds), enabledTypes.join(","), reloadKey]);
+  }, [bbox, checkedOrgIdsKey, enabledTypesKey, enabledTypes, reloadKey]);
 
   // Create drawer
   const [createOpen, setCreateOpen] = useState(false);
@@ -563,24 +580,21 @@ export default function MapView({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [togglePanel]);
 
   /** Ancestors keys */
-  const collectAncestorsKeys = useCallback(
-    (nodes, targetKey, trail = []) => {
-      for (const n of nodes || []) {
-        const key = String(n.key);
-        const nextTrail = [...trail, key];
-        if (key === String(targetKey)) return trail.map(String);
-        if (n.children && n.children.length) {
-          const res = collectAncestorsKeys(n.children, targetKey, nextTrail);
-          if (res) return res;
-        }
+  const collectAncestorsKeys = useCallback((nodes, targetKey, trail = []) => {
+    for (const n of nodes || []) {
+      const key = String(n.key);
+      const nextTrail = [...trail, key];
+      if (key === String(targetKey)) return trail.map(String);
+      if (n.children && n.children.length) {
+        const res = collectAncestorsKeys(n.children, targetKey, nextTrail);
+        if (res) return res;
       }
-      return null;
-    },
-    [orgTree]
-  );
+    }
+    return null;
+  }, []); // orgTree funksiyaga parameter sifatida uzatiladi, closure'da ishlatilmaydi
 
   /** Code jump -> locate */
   const handleCodeJump = useCallback(
@@ -636,7 +650,7 @@ export default function MapView({
           setOrgForPopup(null);
         }
       } catch (e) {
-        console.error(e);
+        debugError("locateOrg failed", e);
         const msg =
           e?.response?.status === 403 ? "Sizga ruxsat yo‘q." : "Kod topilmadi.";
         toast.error(msg);
@@ -707,9 +721,9 @@ export default function MapView({
   }, [visibleKeySet]);
 
   // Intro target
-  const UZ_CENTER = { lat: 41.3775, lng: 64.5853 };
-  const UZ_ZOOM = 6;
   const computedHome = useMemo(() => {
+    const UZ_CENTER = { lat: 41.3775, lng: 64.5853 };
+    const UZ_ZOOM = 6;
     if (
       homeTarget &&
       Number.isFinite(homeTarget.lat) &&
@@ -1047,7 +1061,7 @@ export default function MapView({
                     );
                     toast.success("Saqlash muvaffaqiyatli!");
                   } catch (e) {
-                    console.error(e);
+                    debugError("saveDrawing (panel) failed", e);
                     toast.error("Saqlashda xatolik");
                   }
                 }}

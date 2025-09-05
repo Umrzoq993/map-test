@@ -16,6 +16,6 @@ export default function MapFlyer({ target } = {}) {
       map.flyTo([lat, lng], zoom, { duration: 1.2, animate: true });
     }, 650);
     return () => clearTimeout(t);
-  }, [target?.ts]);
+  }, [map, target]);
   return null;
 }

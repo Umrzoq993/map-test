@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { debugError } from "../../utils/debug";
 import { toast } from "react-toastify";
 import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
@@ -66,12 +67,11 @@ export default function OrgTreeEditor() {
   // xarita tanlovchi
   const [pickOpen, setPickOpen] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const t = await getOrgTree();
       setTree(Array.isArray(t) ? t : []);
-      // selection ni yangilash (agar id hali mavjud bo'lsa)
       if (selected) {
         const hit = flattenWithParents(t).find((x) => x.id === selected.id);
         setSelected(hit ?? null);
@@ -79,11 +79,11 @@ export default function OrgTreeEditor() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selected]);
 
   useEffect(() => {
     load();
-  }, []); // ilk yuklash
+  }, [load]);
 
   /* ---------- Tree <-> rc-tree format ---------- */
   const rcData = useMemo(() => {
@@ -158,7 +158,7 @@ export default function OrgTreeEditor() {
       setCreateOpen(false);
       await load();
     } catch (e) {
-      console.error(e);
+      debugError("OrgTreeEditor create failed", e);
       toast.error("Yaratishda xatolik");
     } finally {
       setLoading(false);
@@ -180,7 +180,7 @@ export default function OrgTreeEditor() {
       setEditOpen(false);
       await load();
     } catch (e) {
-      console.error(e);
+      debugError("OrgTreeEditor update failed", e);
       toast.error("Saqlashda xatolik");
     } finally {
       setLoading(false);
@@ -196,7 +196,7 @@ export default function OrgTreeEditor() {
       setSelected(null);
       await load();
     } catch (e) {
-      console.error(e);
+      debugError("OrgTreeEditor delete failed", e);
       toast.error("O‘chirishda xatolik (bolalari bo‘lishi mumkin)");
     } finally {
       setLoading(false);
@@ -221,7 +221,7 @@ export default function OrgTreeEditor() {
       });
       await load();
     } catch (e) {
-      console.error(e);
+      debugError("OrgTreeEditor move failed", e);
       toast.error("Ko‘chirishda xatolik");
     }
   };

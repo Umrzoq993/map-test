@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { debugError } from "../../utils/debug";
 import { createPortal } from "react-dom";
 import styles from "./OrgUnitSelect.module.scss";
 import { searchOrgUnits, getOrgUnit } from "../../api/org";
@@ -71,7 +72,7 @@ export default function OrgUnitSelect({
         }));
         setOpts(items);
       } catch (e) {
-        console.error("Org search error:", e);
+        debugError("Org search error", e);
         setOpts([]);
       } finally {
         setLoading(false);
@@ -112,7 +113,6 @@ export default function OrgUnitSelect({
       window.removeEventListener("scroll", onWin, true);
       scroller.removeEventListener("scroll", onWin, true);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // tashqi klik — lekin portal menyuni hisobga olamiz

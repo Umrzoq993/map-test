@@ -1,5 +1,6 @@
 // src/components/map/CreateFacilityDrawer.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { debugError } from "../../utils/debug";
 import Modal from "../ui/Modal";
 import { createFacility } from "../../api/facilities";
 import { centroidOfGeometry, areaOfGeometryM2 } from "../../utils/geo";
@@ -101,15 +102,16 @@ export default function CreateFacilityDrawer({
     }
   }, [open]); // eslint-disable-line
 
-  const schema =
-    FACILITY_TYPES && FACILITY_TYPES[type]
-      ? FACILITY_TYPES[type]
-      : {
-          label: FT.getFacilityTypeLabel
-            ? FT.getFacilityTypeLabel(type)
-            : String(type),
-          fields: [],
-        };
+  // Schema ni memo qilamiz — shunda object identifikatori barqaror bo'ladi
+  const schema = useMemo(() => {
+    if (FACILITY_TYPES && FACILITY_TYPES[type]) return FACILITY_TYPES[type];
+    return {
+      label: FT.getFacilityTypeLabel
+        ? FT.getFacilityTypeLabel(type)
+        : String(type),
+      fields: [],
+    };
+  }, [type]);
 
   // form states
   const [name, setName] = useState("");
@@ -140,25 +142,26 @@ export default function CreateFacilityDrawer({
     };
   }, []);
 
-  // reset on open/close
+  // Formani reset qilish (open yoki type o'zgarganda qayta tuzamiz)
+  const rebuildAttr = useCallback(() => {
+    const init = {};
+    for (const f of schema.fields || []) init[f.key] = null;
+    setAttr(init);
+  }, [schema]);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) return; // faqat ochilganda
     setName("");
     setStatus("ACTIVE");
     setOrgId(selectedOrgId ?? null);
-    const init = {};
-    for (const f of schema.fields || []) init[f.key] = null;
-    setAttr(init);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+    rebuildAttr();
+  }, [open, selectedOrgId, rebuildAttr]);
 
-  // rebuild attributes form when type changes
+  // Type o'zgarganda (ochiq bo'lsa) attribute formani yangilaymiz
   useEffect(() => {
-    const init = {};
-    for (const f of schema.fields || []) init[f.key] = null;
-    setAttr(init);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type]);
+    if (!open) return;
+    rebuildAttr();
+  }, [type, open, rebuildAttr]);
 
   // validation live
   useEffect(() => {
@@ -222,7 +225,7 @@ export default function CreateFacilityDrawer({
 
       return changed ? next : prev;
     });
-  }, [open, calcAreaM2, schema?.fields, type]);
+  }, [open, calcAreaM2, schema, type]);
 
   const canSave =
     open && name.trim() && orgId != null && !hasErrors(errors) && geometry;
@@ -245,7 +248,7 @@ export default function CreateFacilityDrawer({
       onSaved?.();
       onClose?.();
     } catch (err) {
-      console.error(err);
+      debugError("CreateFacilityDrawer createFacility failed", err);
       toast.error("Saqlashda xatolik yuz berdi");
     } finally {
       setSaving(false);

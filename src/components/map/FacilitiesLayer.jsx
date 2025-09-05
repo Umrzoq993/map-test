@@ -1,7 +1,7 @@
 // src/components/map/FacilitiesLayer.jsx
 import { useCallback, useMemo, useRef } from "react";
 import { GeoJSON, Marker, Pane, Popup } from "react-leaflet";
-import { badgeIconFor, iconFor, typeColor } from "./mapIcons";
+import { badgeIconFor, typeColor } from "./mapIcons"; // removed unused iconFor
 
 /** GeoJSON centroid helpers */
 function centroidOfGeometry(geometry) {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
+import { debugError, debugWarn } from "../../utils/debug";
 import { toast } from "react-toastify";
 import Modal from "../ui/Modal";
 import MapPickerModal from "../map/MapPickerModal.jsx";
@@ -159,7 +160,7 @@ export default function OrgTable({ isAdmin, focusId }) {
         }, 50);
       }
     } catch (e) {
-      console.error(e);
+      debugError("listOrgsPage failed", e);
       toast.error("Ma'lumot yuklashda xatolik");
     } finally {
       setLoading(false);
@@ -171,7 +172,7 @@ export default function OrgTable({ isAdmin, focusId }) {
       const t = await getOrgTree();
       setTree(Array.isArray(t) ? t : []);
     } catch (e) {
-      console.error(e);
+      debugError("getOrgTree failed", e);
     }
   };
 
@@ -280,7 +281,7 @@ export default function OrgTable({ isAdmin, focusId }) {
       await loadPage();
       await loadTree();
     } catch (e) {
-      console.error(e);
+      debugError("createOrg failed", e);
       toast.error("Yaratishda xatolik");
     } finally {
       setLoading(false);
@@ -323,7 +324,7 @@ export default function OrgTable({ isAdmin, focusId }) {
           setContextRow(nf);
         }
       })
-      .catch((e) => console.warn("openEdit fetch fail", e?.message))
+      .catch((e) => debugWarn("openEdit fetch fail", e?.message))
       .finally(() => setEditFetching(false));
   };
 
@@ -348,7 +349,7 @@ export default function OrgTable({ isAdmin, focusId }) {
       await loadPage();
       await loadTree();
     } catch (e) {
-      console.error(e);
+      debugError("updateOrg/moveOrg failed", e);
       toast.error("Saqlashda xatolik");
     } finally {
       setLoading(false);
@@ -369,7 +370,7 @@ export default function OrgTable({ isAdmin, focusId }) {
       await loadPage();
       await loadTree();
     } catch (e) {
-      console.error(e);
+      debugError("deleteOrg failed", e);
       toast.error("O‘chirishda xatolik (ehtimol bolalari mavjud?)");
     } finally {
       setLoading(false);

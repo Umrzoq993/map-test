@@ -1,5 +1,7 @@
 // src/api/org.js
 import { api, httpGet } from "./http";
+import { debugWarn } from "../utils/debug";
+import { debugWarn as debugWarn2 } from "../utils/debug"; // alias to replace console.warn below
 
 // ======================== TREE ========================
 /** Org strukturani daraxt ko‘rinishida olish */
@@ -74,7 +76,7 @@ export async function getOrgDetails(id) {
   } catch (e) {
     // Fallback: oddiy DTO
     try {
-      console.warn(
+      debugWarn2(
         "[getOrgDetails] details fallback /orgs/:id =>",
         id,
         e?.message
@@ -85,7 +87,7 @@ export async function getOrgDetails(id) {
       }
       return base;
     } catch (e2) {
-      console.warn(
+      debugWarn(
         "[getOrgDetails] fallback ham muvaffaqiyatsiz",
         id,
         e2?.message

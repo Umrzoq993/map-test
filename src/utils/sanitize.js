@@ -31,7 +31,7 @@ export async function sanitizeHTML(html, opts) {
       ADD_ATTR: ["target", "rel"],
       ...opts,
     });
-  } catch (e) {
+  } catch {
     return sanitizeHTMLSync(html);
   }
 }

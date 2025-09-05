@@ -1,5 +1,6 @@
 //src/pages/MapPages.jsx
 import { useEffect, useState } from "react";
+import { debugError } from "../utils/debug";
 import MapView from "../components/map/MapView";
 import { getOrgTree } from "../api/org";
 
@@ -13,7 +14,7 @@ export default function MapPage({ dark }) {
         const data = await getOrgTree();
         setOrgTree(Array.isArray(data) ? data : []);
       } catch (e) {
-        console.error(e);
+        debugError("MapPage getOrgTree failed", e);
         setError(e.message || "Org tree loading error");
       }
     })();

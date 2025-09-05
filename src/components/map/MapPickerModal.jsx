@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
+import { debugWarn } from "../../utils/debug";
 import { MapContainer, Marker, useMapEvents } from "react-leaflet";
 import Modal from "../ui/Modal";
 import MapTiles from "./MapTiles";
@@ -84,7 +85,7 @@ export default function MapPickerModal({
         map.flyTo(p, 16, { duration: 0.8 });
       },
       (err) => {
-        console.warn("Geolocation error", err);
+        debugWarn("Geolocation error", err);
         toast.error("Geolokatsiya ruxsati berilmadi yoki xatolik yuz berdi.");
       },
       { enableHighAccuracy: true, timeout: 10000 }

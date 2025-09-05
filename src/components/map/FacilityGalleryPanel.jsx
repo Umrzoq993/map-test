@@ -7,6 +7,7 @@ import {
   buildImageSrc,
 } from "../../api/facilityImages";
 import { toast } from "react-toastify";
+import { debugError } from "../../utils/debug";
 
 export default function FacilityGalleryPanel({
   open,
@@ -35,7 +36,7 @@ export default function FacilityGalleryPanel({
         const list = await listFacilityImages(facility.id);
         if (!canceled) setImages(list);
       } catch (e) {
-        if (!canceled) console.error(e);
+        if (!canceled) debugError("listFacilityImages failed", e);
       } finally {
         if (!canceled) setLoading(false);
       }
@@ -104,7 +105,7 @@ export default function FacilityGalleryPanel({
             prev.map((img) => (img.id === tempId ? dto : img))
           );
         } catch (err) {
-          console.error(err);
+          debugError("uploadFacilityImage failed", err);
           setImages((prev) => prev.filter((img) => img.id !== tempId));
           const st = err?.response?.status;
           if (st === 400) toast.error("Noto'g'ri rasm (400)");
@@ -169,7 +170,7 @@ export default function FacilityGalleryPanel({
       setImages((prev) => prev.filter((x) => x.id !== img.id));
       try {
         if (!img.__temp) await deleteFacilityImage(facility.id, img.id);
-      } catch (e) {
+      } catch {
         toast.error("O'chirishda xatolik");
         // rollback
         setImages((prev) => [...prev, img]);

@@ -47,8 +47,11 @@ export default function App() {
 
   useEffect(() => {
     const stop = startHeartbeat(40000);
-    const stopSession = startSessionManager();
-    return () => stop && stop();
+    const stopSessionManager = startSessionManager();
+    return () => {
+      stop && stop();
+      stopSessionManager && stopSessionManager();
+    };
   }, []);
 
   // Global event: org:open-table -> jadval sahifasiga o'tish

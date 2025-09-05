@@ -4,7 +4,6 @@ import {
   createFacility,
   deleteFacility,
   listFacilities,
-  patchFacility,
   putFacility,
 } from "../api/facilities";
 import FacilityForm from "../components/facilities/FacilityForm";

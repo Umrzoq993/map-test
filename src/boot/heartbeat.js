@@ -16,7 +16,7 @@ export function startHeartbeat(intervalMs = 40000) {
   };
 
   // Token o'zgarganda (login / refresh) tezkor heartbeat
-  const onToken = (e) => {
+  const onToken = () => {
     if (!isAuthenticated()) return; // token tozalangan bo'lishi mumkin
     if (pendingImmediate) return;
     pendingImmediate = true;

@@ -33,9 +33,8 @@ class ErrorBoundary extends React.Component {
   static getDerivedStateFromError(error) {
     return { error };
   }
-  componentDidCatch(error, info) {
+  componentDidCatch() {
     // Avoid leaking details to user; could send to logging endpoint
-    // console.error('App crash', error, info);
   }
   render() {
     if (this.state.error) {

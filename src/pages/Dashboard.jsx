@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { debugError } from "../utils/debug";
 import Chart from "react-apexcharts";
 import { BiBarChart, BiPieChart } from "react-icons/bi";
 import { FiAlertTriangle } from "react-icons/fi";
@@ -116,7 +117,7 @@ export default function Dashboard({ dark = false }) {
       const res = await httpGet("/stats/overview", buildParams());
       setData(res);
     } catch (e) {
-      console.error(e);
+      debugError("Dashboard stats load failed", e);
       setErr(e?.message || "Statistikani yuklashda xatolik");
     } finally {
       setLoading(false);
@@ -152,7 +153,7 @@ export default function Dashboard({ dark = false }) {
         URL.revokeObjectURL(url);
       }, 0);
     } catch (e) {
-      console.error("Export error", e);
+      debugError("Export error", e);
       setErr(e?.message || "Eksport xatosi");
     } finally {
       setExporting(false);
@@ -230,13 +231,9 @@ export default function Dashboard({ dark = false }) {
 
   const topOrg = data?.topOrgRevenue ?? [];
 
-  const yoyNewPct = data?.yoyNewPct ?? null;
-  const revenueYtd = data?.revenueYtd ?? 0;
-  const yoyRevenuePct = data?.yoyRevenuePct ?? null;
-  const profitYtd = data?.profitYtd ?? 0;
-  const yoyProfitPct = data?.yoyProfitPct ?? null;
-  const capacityUtilPct = data?.capacityUtilPct ?? null;
-  const productivity = data?.productivityKgPerM2 ?? null;
+  // Removed unused KPI fields (can be re-added when UI uses them):
+  // yoyNewPct, revenueYtd, yoyRevenuePct, profitYtd, yoyProfitPct,
+  // capacityUtilPct, productivity
 
   const themeKey = dark ? "dark" : "light";
   const baseArea = {

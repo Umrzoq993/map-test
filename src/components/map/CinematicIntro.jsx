@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
 
@@ -43,13 +43,13 @@ export default function CinematicIntro({
     Number.isFinite(t.lng) &&
     Number.isFinite(t.zoom);
 
-  const callDoneOnce = () => {
+  const callDoneOnce = useCallback(() => {
     if (doneCalledRef.current) return;
     doneCalledRef.current = true;
     try {
       onDone?.();
     } catch {}
-  };
+  }, [onDone]);
 
   const clearTimer = (id) => {
     try {
@@ -57,7 +57,7 @@ export default function CinematicIntro({
     } catch {}
   };
 
-  const cleanup = () => {
+  const cleanup = useCallback(() => {
     try {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       timersRef.current.forEach(clearTimer);
@@ -77,14 +77,14 @@ export default function CinematicIntro({
     } finally {
       callDoneOnce();
     }
-  };
+  }, [freezeInteractions, tilesDim, unfreeze, callDoneOnce, setTilesOpacity]);
 
-  const ensureGroup = () => {
+  const ensureGroup = useCallback(() => {
     if (!groupRef.current) groupRef.current = L.layerGroup().addTo(map);
     return groupRef.current;
-  };
+  }, [map]);
 
-  const addOverlay = () => {
+  const addOverlay = useCallback(() => {
     if (!showOverlay) return;
     const el = document.createElement("div");
     Object.assign(el.style, {
@@ -100,9 +100,9 @@ export default function CinematicIntro({
     map.getContainer().appendChild(el);
     requestAnimationFrame(() => (el.style.opacity = "1"));
     overlayRef.current = el;
-  };
+  }, [showOverlay, map]);
 
-  const fadeOutOverlay = () => {
+  const fadeOutOverlay = useCallback(() => {
     if (!overlayRef.current) return;
     overlayRef.current.style.opacity = "0";
     timersRef.current.push(
@@ -113,17 +113,20 @@ export default function CinematicIntro({
         overlayRef.current = null;
       }, 350)
     );
-  };
+  }, []);
 
-  const setTilesOpacity = (op) => {
-    map.eachLayer((l) => {
-      if (l instanceof L.TileLayer && typeof l.setOpacity === "function") {
-        l.setOpacity(op);
-      }
-    });
-  };
+  const setTilesOpacity = useCallback(
+    (op) => {
+      map.eachLayer((l) => {
+        if (l instanceof L.TileLayer && typeof l.setOpacity === "function") {
+          l.setOpacity(op);
+        }
+      });
+    },
+    [map]
+  );
 
-  const freeze = () => {
+  const freeze = useCallback(() => {
     try {
       map.dragging.disable();
       map.scrollWheelZoom.disable();
@@ -132,8 +135,8 @@ export default function CinematicIntro({
       map.touchZoom.disable();
       map.keyboard.disable();
     } catch {}
-  };
-  const unfreeze = () => {
+  }, [map]);
+  const unfreeze = useCallback(() => {
     try {
       map.dragging.enable();
       map.scrollWheelZoom.enable();
@@ -142,9 +145,9 @@ export default function CinematicIntro({
       map.touchZoom.enable();
       map.keyboard.enable();
     } catch {}
-  };
+  }, [map]);
 
-  const autoQuality = () => {
+  const autoQuality = useCallback(() => {
     if (quality !== "auto") return quality;
     // Reduce Motion → low
     if (
@@ -160,66 +163,74 @@ export default function CinematicIntro({
     // Kuchsiz / yuqori dpi bo‘lsa — low; aks holda medium
     if (dm <= 4 || hc <= 4 || pr > 2.5) return "low";
     return "medium";
-  };
+  }, [quality]);
 
-  const animateDot = (polyline, duration = 800) => {
-    if (!polyline) return;
-    const group = ensureGroup();
-    const path = polyline.getLatLngs();
-    if (!path?.length) return;
-    const dot = L.circleMarker(path[0], {
-      radius: 3.5,
-      color: "#60A5FA",
-      weight: 2,
-      fillColor: "#fff",
-      fillOpacity: 0.9,
-    }).addTo(group);
+  const animateDot = useCallback(
+    (polyline, duration = 800) => {
+      if (!polyline) return;
+      const group = ensureGroup();
+      const path = polyline.getLatLngs();
+      if (!path?.length) return;
+      const dot = L.circleMarker(path[0], {
+        radius: 3.5,
+        color: "#60A5FA",
+        weight: 2,
+        fillColor: "#fff",
+        fillOpacity: 0.9,
+      }).addTo(group);
 
-    const t0 = performance.now();
-    const step = (now) => {
-      const p = Math.min(1, (now - t0) / duration);
-      const idx = Math.floor(p * (path.length - 1));
-      dot.setLatLng(path[idx]);
-      if (p < 1) rafRef.current = requestAnimationFrame(step);
-      else
-        timersRef.current.push(
-          setTimeout(() => {
-            try {
-              dot.remove();
-            } catch {}
-          }, 120)
-        );
-    };
-    rafRef.current = requestAnimationFrame(step);
-  };
+      const t0 = performance.now();
+      const step = (now) => {
+        const p = Math.min(1, (now - t0) / duration);
+        const idx = Math.floor(p * (path.length - 1));
+        dot.setLatLng(path[idx]);
+        if (p < 1) rafRef.current = requestAnimationFrame(step);
+        else
+          timersRef.current.push(
+            setTimeout(() => {
+              try {
+                dot.remove();
+              } catch {}
+            }, 120)
+          );
+      };
+      rafRef.current = requestAnimationFrame(step);
+    },
+    [ensureGroup]
+  );
 
-  const ripple = (latlng) => {
-    const group = ensureGroup();
-    const c = L.circle(latlng, {
-      radius: 40,
-      color: "#4F46E5",
-      weight: 2,
-      fillColor: "#6366F1",
-      fillOpacity: 0.22,
-    }).addTo(group);
-    const t0 = performance.now();
-    const dur = 600;
-    const grow = (now) => {
-      const p = Math.min(1, (now - t0) / dur);
-      c.setRadius(40 + p * 600);
-      c.setStyle({ opacity: 1 - p, fillOpacity: 0.22 * (1 - p) });
-      if (p < 1) rafRef.current = requestAnimationFrame(grow);
-    };
-    rafRef.current = requestAnimationFrame(grow);
-    timersRef.current.push(
-      setTimeout(() => {
-        try {
-          c.remove();
-        } catch {}
-      }, dur + 50)
-    );
-  };
+  const ripple = useCallback(
+    (latlng) => {
+      const group = ensureGroup();
+      const c = L.circle(latlng, {
+        radius: 40,
+        color: "#4F46E5",
+        weight: 2,
+        fillColor: "#6366F1",
+        fillOpacity: 0.22,
+      }).addTo(group);
+      const t0 = performance.now();
+      const dur = 600;
+      const grow = (now) => {
+        const p = Math.min(1, (now - t0) / dur);
+        c.setRadius(40 + p * 600);
+        c.setStyle({ opacity: 1 - p, fillOpacity: 0.22 * (1 - p) });
+        if (p < 1) rafRef.current = requestAnimationFrame(grow);
+      };
+      rafRef.current = requestAnimationFrame(grow);
+      timersRef.current.push(
+        setTimeout(() => {
+          try {
+            c.remove();
+          } catch {}
+        }, dur + 50)
+      );
+    },
+    [ensureGroup]
+  );
 
+  // NOTE: Yon funksiyalar (freeze, unfreeze, fadeOutOverlay va h.k.) komponent scope ichida yaratiladi.
+  // Animatsiya faqat bir marta ishlaydi — deps to'liq ro'yxatini qo'shgan holda ham rerun guard (didRunRef) buni to'xtatadi.
   useEffect(() => {
     if (!enabled || didRunRef.current) return;
     if (!isValid(target)) return;
@@ -357,9 +368,7 @@ export default function CinematicIntro({
     };
   }, [
     enabled,
-    target?.lat,
-    target?.lng,
-    target?.zoom,
+    target,
     delayMs,
     quality,
     drawPath,
@@ -372,6 +381,16 @@ export default function CinematicIntro({
     onStart,
     onDone,
     map,
+    autoQuality,
+    addOverlay,
+    animateDot,
+    cleanup,
+    ensureGroup,
+    fadeOutOverlay,
+    freeze,
+    ripple,
+    setTilesOpacity,
+    unfreeze,
   ]);
 
   return null;

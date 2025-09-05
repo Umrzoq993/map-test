@@ -42,7 +42,7 @@ export default function UsersPage() {
 
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
-  const [sort, setSort] = useState("id,desc");
+  const [sort] = useState("id,desc"); // removed unused setter
 
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState([]);
