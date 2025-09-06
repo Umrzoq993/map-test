@@ -7,6 +7,22 @@ import { defineConfig, globalIgnores } from "eslint/config";
 export default defineConfig([
   // Ignore build output and this config file itself
   globalIgnores(["dist", "eslint.config.js"]),
+  // Node environment for config and script files
+  {
+    files: [
+      "vite.config.js",
+      "vite.config.*.js",
+      "*.config.js",
+      "*.config.cjs",
+      "*.config.mjs",
+      "scripts/**/*.js",
+    ],
+    languageOptions: {
+      globals: globals.node,
+      ecmaVersion: "latest",
+      sourceType: "module",
+    },
+  },
   {
     files: ["**/*.{js,jsx}"],
     extends: [
