@@ -126,6 +126,13 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
                 <span className={styles.text}>Sessiyalar</span>
               </MenuItem>
               <MenuItem
+                icon={<LuMonitorSmartphone size={18} />}
+                component={<Link to="/admin/online-users" />}
+                active={isActive("/admin/online-users")}
+              >
+                <span className={styles.text}>Onlayn foydalanuvchilar</span>
+              </MenuItem>
+              <MenuItem
                 icon={<LuListChecks size={18} />}
                 component={<Link to="/admin/audit" />}
                 active={isActive("/admin/audit")}

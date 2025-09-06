@@ -16,6 +16,7 @@ import { startSessionManager } from "./boot/sessionManager";
 import SessionsPage from "./pages/admin/SessionsPage";
 import AuditPage from "./pages/admin/AuditPage";
 import UsersPage from "./pages/admin/UsersPage";
+import OnlineUsersPage from "./pages/admin/OnlineUsersPage";
 
 function useIsMobile(query = "(max-width: 1024px)") {
   const [isMobile, setIsMobile] = useState(false);
@@ -141,6 +142,14 @@ export default function App() {
                       element={
                         <AdminRoute>
                           <SessionsPage />
+                        </AdminRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/online-users"
+                      element={
+                        <AdminRoute>
+                          <OnlineUsersPage />
                         </AdminRoute>
                       }
                     />

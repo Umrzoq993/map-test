@@ -176,3 +176,55 @@ export async function listAudit(opts = {}) {
 
   return { content, page: pageNo, size: pageSize, total: totalAll, totalPages };
 }
+
+/**
+ * Online foydalanuvchilar ro'yxati (paging + server sort).
+ * opts: { page=0, size=20, sort="id,desc" }
+ * Endpoint: /api/admin/users/online
+ * Response: PageResponse<UserRes> (id, username, fullName, role, status, orgId, orgName, department, position, title, phone, avatarUrl)
+ */
+export async function listOnlineUsers(opts = {}) {
+  const { page = 0, size = 20, sort = "id,desc" } = opts;
+
+  const params = { page, size, sort };
+  const res = await httpGet("/admin/users/online", params);
+
+  const isNum = (v) => typeof v === "number" && Number.isFinite(v);
+  const raw = res || {};
+
+  const contentRaw = Array.isArray(raw.content) ? raw.content : [];
+  const pageNo = isNum(raw.page) ? raw.page : isNum(raw.number) ? raw.number : page;
+  const pageSize = isNum(raw.size)
+    ? raw.size
+    : isNum(raw.pageSize)
+    ? raw.pageSize
+    : size;
+  const totalAll = isNum(raw.total)
+    ? raw.total
+    : isNum(raw.totalElements)
+    ? raw.totalElements
+    : contentRaw.length;
+  const totalPages = isNum(raw.totalPages)
+    ? raw.totalPages
+    : Math.max(1, Math.ceil(totalAll / Math.max(1, pageSize)));
+
+  const baseIndex = pageNo * pageSize;
+
+  const content = contentRaw.map((u, i) => ({
+    rowNo: baseIndex + i + 1, // jadvaldagi "№"
+    id: u.id,
+    username: u.username,
+    fullName: u.fullName,
+    role: u.role,
+    status: u.status,
+    orgId: u.orgId,
+    orgName: u.orgName,
+    department: u.department,
+    position: u.position,
+    title: u.title,
+    phone: u.phone,
+    avatarUrl: u.avatarUrl,
+  }));
+
+  return { content, page: pageNo, size: pageSize, total: totalAll, totalPages };
+}
