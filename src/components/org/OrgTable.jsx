@@ -474,10 +474,10 @@ export default function OrgTable({ isAdmin, focusId }) {
                 </th>
                 <th>Parent</th>
                 <th className="sortable" onClick={() => toggleSort("lat")}>
-                  Lat <span className="sort">{sortIcon("lat")}</span>
+                Geografik kenglik <span className="sort">{sortIcon("lat")}</span>
                 </th>
                 <th className="sortable" onClick={() => toggleSort("lng")}>
-                  Lng <span className="sort">{sortIcon("lng")}</span>
+                Geografik uzunlik <span className="sort">{sortIcon("lng")}</span>
                 </th>
                 <th className="sortable" onClick={() => toggleSort("zoom")}>
                   Zoom <span className="sort">{sortIcon("zoom")}</span>
@@ -743,7 +743,7 @@ export default function OrgTable({ isAdmin, focusId }) {
               </div>
               <div className="grid3 geo-fields">
                 <div className="field">
-                  <label>Lat</label>
+                  <label>Geografik kenglik</label>
                   <input
                     type="number"
                     step="0.000001"
@@ -755,7 +755,7 @@ export default function OrgTable({ isAdmin, focusId }) {
                   />
                 </div>
                 <div className="field">
-                  <label>Lng</label>
+                  <label>Geografik uzunlik</label>
                   <input
                     type="number"
                     step="0.000001"

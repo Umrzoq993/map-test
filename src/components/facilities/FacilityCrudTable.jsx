@@ -425,8 +425,8 @@ export default function FacilityCrudTable({ type, title }) {
               <th>Nomi</th>
               <th>Tashkilot</th>
               <th>Status</th>
-              <th>Lat</th>
-              <th>Lng</th>
+              <th>Geografik kenglik</th>
+              <th>Geografik uzunlik</th>
               {attrKeysOrdered.map((k) => (
                 <th key={k}>
                   {labelByKey[k] || k}
