@@ -116,7 +116,7 @@ export default function FacilitiesPage() {
   return (
     <div className="org-table-page">
       <div className="page-header">
-        <h2>Inshootlar (Facilities)</h2>
+        <h2>Inshootlar</h2>
         <div className="muted">
           9 tur bo‘yicha CRUD — Issiqxona, Tovuqxona, Molxona, Kurkaxona,
           Qo‘yxona, Sexlar, Yordamchi va Chegara yerlari, Baliqchilik ko‘llari.
@@ -158,8 +158,8 @@ export default function FacilitiesPage() {
                 <th style={{ width: 60 }}>ID</th>
                 <th>Nomi</th>
                 <th>Turi</th>
-                <th>Org ID</th>
-                <th>Loc</th>
+                <th>Tashk. ID</th>
+                <th>Koordinata</th>
                 <th style={{ width: 220 }}>Amallar</th>
               </tr>
             </thead>

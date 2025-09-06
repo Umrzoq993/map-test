@@ -13,7 +13,7 @@ function useForm(init) {
   return { v, onChange, set };
 }
 
-/** + Root */
+/** + Ildiz */
 export function AddRootModal({ open, onClose, onDone }) {
   const { v, onChange, set } = useForm({ name: "", code: "" });
   const [loading, setLoading] = useState(false);
@@ -53,7 +53,7 @@ export function AddRootModal({ open, onClose, onDone }) {
     <Modal
       open={open}
       onClose={onClose}
-      title="+ Root tashkilot"
+      title="+ Ildiz tashkilot"
       initialFocusRef={focusRef}
     >
       <div className={css.form}>

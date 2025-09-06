@@ -110,12 +110,12 @@ export default function LoginPage() {
         toast.success("Muvaffaqiyatli kirildi");
         navigate(from, { replace: true });
       } else {
-        setError("Login failed");
-        toast.error("Login failed");
+        setError("Kirish amalga oshmadi");
+        toast.error("Kirish amalga oshmadi");
       }
     } catch (err) {
       const msg =
-        err?.response?.data?.message || err?.message || "Login amalga oshmadi";
+        err?.response?.data?.message || err?.message || "Kirish amalga oshmadi";
       setError(msg);
       toast.error(msg);
     } finally {
@@ -164,7 +164,7 @@ export default function LoginPage() {
 
               <form className={styles.form} onSubmit={onSubmit}>
                 <div className={styles.field}>
-                  <label>Username</label>
+                  <label>Login</label>
                   <input
                     autoFocus
                     placeholder="admin"
@@ -178,7 +178,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className={`${styles.field} ${styles.pwd}`}>
-                  <label>Password</label>
+                  <label>Parol</label>
                   <input
                     placeholder="••••••••"
                     type={showPwd ? "text" : "password"}
@@ -262,7 +262,7 @@ export default function LoginPage() {
 
               <form className={styles.form} onSubmit={onSubmit}>
                 <div className={styles.field}>
-                  <label>Username</label>
+                  <label>Login</label>
                   <input
                     autoFocus
                     placeholder="username"
@@ -275,7 +275,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className={`${styles.field} ${styles.pwd}`}>
-                  <label>Password</label>
+                  <label>Parol</label>
                   <input
                     placeholder="••••••••"
                     type={showPwd ? "text" : "password"}

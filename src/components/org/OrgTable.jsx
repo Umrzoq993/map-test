@@ -223,7 +223,7 @@ export default function OrgTable({ isAdmin, focusId }) {
       collectDescendantIds(tree, draft.id, exclude);
       exclude.add(Number(draft.id));
     }
-    const opts = [{ value: "", label: "— Root —" }];
+    const opts = [{ value: "", label: "— Ildiz —" }];
     flat.forEach((r) => {
       if (!exclude.has(r.id)) {
         opts.push({
@@ -440,7 +440,7 @@ export default function OrgTable({ isAdmin, focusId }) {
           </button>
           {isAdmin && (
             <button className="btn primary" onClick={openCreateRoot}>
-              + Root qo‘shish
+              + Tashkilot qo‘shish
             </button>
           )}
         </div>
@@ -461,7 +461,7 @@ export default function OrgTable({ isAdmin, focusId }) {
                   onClick={() => toggleSort("code")}
                   style={{ width: 90 }}
                 >
-                  Code <span className="sort">{sortIcon("code")}</span>
+                  Kod <span className="sort">{sortIcon("code")}</span>
                 </th>
                 <th className="sortable" onClick={() => toggleSort("name")}>
                   Nomi <span className="sort">{sortIcon("name")}</span>
@@ -472,15 +472,17 @@ export default function OrgTable({ isAdmin, focusId }) {
                 >
                   Tartib <span className="sort">{sortIcon("sortOrder")}</span>
                 </th>
-                <th>Parent</th>
+                <th>Ota bo‘lim</th>
                 <th className="sortable" onClick={() => toggleSort("lat")}>
-                Geografik kenglik <span className="sort">{sortIcon("lat")}</span>
+                  Geografik kenglik{" "}
+                  <span className="sort">{sortIcon("lat")}</span>
                 </th>
                 <th className="sortable" onClick={() => toggleSort("lng")}>
-                Geografik uzunlik <span className="sort">{sortIcon("lng")}</span>
+                  Geografik uzunlik{" "}
+                  <span className="sort">{sortIcon("lng")}</span>
                 </th>
                 <th className="sortable" onClick={() => toggleSort("zoom")}>
-                  Zoom <span className="sort">{sortIcon("zoom")}</span>
+                  Masshtab <span className="sort">{sortIcon("zoom")}</span>
                 </th>
                 <th style={{ width: 220 }}>Amallar</th>
               </tr>
@@ -499,7 +501,7 @@ export default function OrgTable({ isAdmin, focusId }) {
                   </td>
                   <td className="num">{r.sortOrder ?? "—"}</td>
                   <td className="muted">
-                    {r.parentName ?? (r.parentId ? r.parentId : "— Root —")}
+                    {r.parentName ?? (r.parentId ? r.parentId : "— Ildiz —")}
                   </td>
                   <td className="num">{r.lat ?? "—"}</td>
                   <td className="num">{r.lng ?? "—"}</td>
@@ -507,19 +509,19 @@ export default function OrgTable({ isAdmin, focusId }) {
                   <td>
                     <div className="actions">
                       <button
-                        className="btn"
+                        className="btn add-child"
                         onClick={() => openCreateChild(r)}
                       >
-                        + Child
+                        + Bo‘lim
                       </button>
                       <button className="btn" onClick={() => openEdit(r)}>
-                        Edit
+                        Tahrirlash
                       </button>
                       <button
                         className="btn danger"
                         onClick={() => openDelete(r)}
                       >
-                        Delete
+                        O‘chirish
                       </button>
                     </div>
                   </td>
@@ -553,7 +555,7 @@ export default function OrgTable({ isAdmin, focusId }) {
             ‹
           </button>
           <span className="muted">
-            Page {page + 1} / {totalPages}
+            Sahifa {page + 1} / {totalPages}
           </span>
           <button
             className="btn"

@@ -230,8 +230,8 @@ export default function GenericFacilityPage() {
                 <th style={{ width: 60 }}>ID</th>
                 <th>Nomi</th>
                 <th>Turi</th>
-                <th>Org ID</th>
-                <th>Loc</th>
+                <th>Tashk. ID</th>
+                <th>Koordinata</th>
                 <th style={{ width: 220 }}>Amallar</th>
               </tr>
             </thead>
@@ -299,7 +299,7 @@ export default function GenericFacilityPage() {
             </button>
 
             <span className="muted">
-              Page {page + 1} / {totalPages}
+              Sahifa {page + 1} / {totalPages}
             </span>
 
             <button

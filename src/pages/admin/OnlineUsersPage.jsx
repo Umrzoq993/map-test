@@ -131,7 +131,7 @@ export default function OnlineUsersPage() {
         <div className={styles.searchBox}>
           <LuSearch />
           <input
-            placeholder="fullName / username / orgName / department / telefon / lavozim…"
+            placeholder="F.I.Sh / login / tashkilot / bo‘lim / telefon / lavozim…"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
@@ -155,13 +155,13 @@ export default function OnlineUsersPage() {
                 F.I.Sh <LuChevronsUpDown />
               </th>
               <th onClick={() => toggleServerSort("username")}>
-                Username <LuChevronsUpDown />
+                Login <LuChevronsUpDown />
               </th>
               <th onClick={() => toggleServerSort("role")}>
-                Role <LuChevronsUpDown />
+                Rol <LuChevronsUpDown />
               </th>
               <th onClick={() => toggleServerSort("status")}>
-                Status <LuChevronsUpDown />
+                Holat <LuChevronsUpDown />
               </th>
               <th onClick={() => toggleServerSort("orgName")}>
                 Tashkilot <LuChevronsUpDown />

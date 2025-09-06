@@ -232,7 +232,7 @@ export default function OrgTreeEditor() {
       <div className="org-tree-toolbar">
         <div className="left">
           <button className="btn primary" onClick={openCreateRoot}>
-            + Root
+            + Ildiz
           </button>
           <button className="btn" onClick={openCreateChild}>
             + Child
@@ -269,7 +269,7 @@ export default function OrgTreeEditor() {
         </div>
       </div>
 
-      {/* CREATE MODAL (root/child ikkalasiga ham) */}
+      {/* CREATE MODAL (ildiz/bola ikkalasiga ham) */}
       <Modal
         open={createOpen}
         title="Bo‘lim qo‘shish"
@@ -294,7 +294,7 @@ export default function OrgTreeEditor() {
                 onChange={(e) =>
                   setDraft({ ...draft, parentId: e.target.value })
                 }
-                placeholder="(ixtiyoriy, root uchun bo‘sh)"
+                placeholder="(ixtiyoriy, ildiz uchun bo‘sh)"
               />
             </div>
 

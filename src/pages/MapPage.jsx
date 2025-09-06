@@ -15,7 +15,7 @@ export default function MapPage({ dark }) {
         setOrgTree(Array.isArray(data) ? data : []);
       } catch (e) {
         debugError("MapPage getOrgTree failed", e);
-        setError(e.message || "Org tree loading error");
+        setError(e.message || "Tashkilot daraxtini yuklashda xato");
       }
     })();
   }, []);

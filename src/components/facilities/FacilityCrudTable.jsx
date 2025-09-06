@@ -383,9 +383,9 @@ export default function FacilityCrudTable({ type, title }) {
               </select>
             </div>
 
-            {/* Status */}
+            {/* Holat */}
             <div className={s.fItem}>
-              <label className={s.lbl}>Status</label>
+              <label className={s.lbl}>Holat</label>
               <select
                 className={s.selectLike}
                 value={statusFilter}
@@ -424,7 +424,7 @@ export default function FacilityCrudTable({ type, title }) {
             <tr>
               <th>Nomi</th>
               <th>Tashkilot</th>
-              <th>Status</th>
+              <th>Holat</th>
               <th>Geografik kenglik</th>
               <th>Geografik uzunlik</th>
               {attrKeysOrdered.map((k) => (

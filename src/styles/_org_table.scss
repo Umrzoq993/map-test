@@ -200,6 +200,10 @@
         background: var(--card);
         cursor: pointer;
       }
+      .btn.add-child {
+        min-width: 104px; /* widen "+ Bo‘lim" for readability */
+        text-align: center;
+      }
       .danger {
         background: #fff0f0;
         border-color: #ffd6d6;

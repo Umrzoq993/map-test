@@ -40,7 +40,7 @@ export default function HeaderBar({ dark, onToggleTheme, onHamburger }) {
         <span className={styles.role}>{role || "USER"}</span>
         <span className={styles.username}>{username}</span>
         <button className={styles.logoutBtn} onClick={onLogout}>
-          Logout
+          Chiqish
         </button>
       </div>
     </header>
