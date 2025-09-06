@@ -128,6 +128,17 @@ function MapControls({ panelHidden, onTogglePanel }) {
   return null;
 }
 
+function StripLeafletAttribution() {
+  const map = useMap();
+  useEffect(() => {
+    // "Leaflet" havolasini o‘chiradi (bayroq ham shu bilan ketadi)
+    if (map?.attributionControl?.setPrefix) {
+      map.attributionControl.setPrefix("");
+    }
+  }, [map]);
+  return null;
+}
+
 /* -------- util -------- */
 function parseBBox(bboxStr) {
   const [w, s, e, n] = String(bboxStr || "")
@@ -677,7 +688,7 @@ export default function MapView({
   const SATELLITE_URL =
     import.meta.env.VITE_TILE_SATELLITE ||
     "http://localhost:5005/{z}/{x}/{y}.jpg";
-  const OSMUZ_URL = "https://osm.uz/tiles/{z}/{x}/{y}.png"; // ✅ yangi qatlam
+  const OSMUZ_URL = "https://osm.uz/tile/{z}/{x}/{y}.png"; // ✅ yangi qatlam
   const TMS = envBool(import.meta.env.VITE_TILE_TMS, true);
 
   // Org-tree flatten + depth
@@ -781,6 +792,7 @@ export default function MapView({
         wheelPxPerZoomLevel={80}
         style={{ height, width: "100%" }}
       >
+        <StripLeafletAttribution />
         <IntroFlight
           enabled={!!introEnabled}
           delayMs={introDelayMs}
@@ -788,7 +800,7 @@ export default function MapView({
         />
 
         <LayersControl position="bottomright">
-          <LayersControl.BaseLayer checked name="Bing Hybrid (offline, 8008)">
+          <LayersControl.BaseLayer name="Bing Hybrid (offline, 8008)">
             <MapTiles
               key="hybrid-8008"
               url={HYBRID_URL}
@@ -825,7 +837,7 @@ export default function MapView({
           </LayersControl.BaseLayer>
 
           {/* ✅ Yangi qatlam: OSM.uz (XYZ) */}
-          <LayersControl.BaseLayer name="OSM.uz (XYZ)">
+          <LayersControl.BaseLayer checked name="OSM.uz (XYZ)">
             <MapTiles
               key="osm-uz-xyz"
               url={OSMUZ_URL}
