@@ -9,8 +9,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import useDebouncedValue from "../../hooks/useDebouncedValue";
-import { debugError } from "../../utils/debug";
 import {
   FeatureGroup,
   GeoJSON,
@@ -21,6 +19,8 @@ import {
   useMap,
 } from "react-leaflet";
 import { toast } from "react-toastify";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
+import { debugError } from "../../utils/debug";
 const EditControlLazy = lazy(() =>
   import("react-leaflet-draw").then((m) => ({ default: m.EditControl }))
 );
@@ -431,7 +431,7 @@ export default function MapView({
   // Facilities fetch (bbox+cache)
   const facCacheRef = useRef(new Map());
   const FAC_TTL = 15_000;
-  // Stable serializations for deps (avoid JSON.stringify in dep array)
+  // Stable serializations for deps
   const checkedOrgIdsKey = useMemo(
     () =>
       checkedOrgIds
@@ -502,7 +502,7 @@ export default function MapView({
       updateGeoJSON();
       const layer = e.layer,
         type = e.layerType;
-      // Agar mavjud geometriyani tahrirlash rejimida (geomEdit) yangi polygon/rectangle chizilsa – eski geometriyani almashtiramiz
+      // Edit rejimida yangi polygon/rectangle chizilsa – eskisini almashtiramiz
       if (geomEdit && ["polygon", "rectangle"].includes(type)) {
         const fg = featureGroupRef.current;
         if (fg) {
@@ -515,7 +515,7 @@ export default function MapView({
             debugError("Geom replace failed", err);
           }
         }
-        return; // create rejimidagi qolgan oqimni bajarmaymiz
+        return;
       }
       if (!["marker", "polygon", "rectangle"].includes(type)) return;
       const fg = featureGroupRef.current;
@@ -606,7 +606,7 @@ export default function MapView({
       }
     }
     return null;
-  }, []); // orgTree funksiyaga parameter sifatida uzatiladi, closure'da ishlatilmaydi
+  }, []);
 
   /** Code jump -> locate */
   const handleCodeJump = useCallback(
@@ -677,6 +677,7 @@ export default function MapView({
   const SATELLITE_URL =
     import.meta.env.VITE_TILE_SATELLITE ||
     "http://localhost:5005/{z}/{x}/{y}.jpg";
+  const OSMUZ_URL = "https://osm.uz/tiles/{z}/{x}/{y}.png"; // ✅ yangi qatlam
   const TMS = envBool(import.meta.env.VITE_TILE_TMS, true);
 
   // Org-tree flatten + depth
@@ -804,6 +805,7 @@ export default function MapView({
               }}
             />
           </LayersControl.BaseLayer>
+
           <LayersControl.BaseLayer name="Bing Satellite (offline, 5005)">
             <MapTiles
               key="satellite-5005"
@@ -818,6 +820,25 @@ export default function MapView({
               attribution="&copy; Satellite (offline)"
               eventHandlers={{
                 add: () => setIsSatellite(true),
+              }}
+            />
+          </LayersControl.BaseLayer>
+
+          {/* ✅ Yangi qatlam: OSM.uz (XYZ) */}
+          <LayersControl.BaseLayer name="OSM.uz (XYZ)">
+            <MapTiles
+              key="osm-uz-xyz"
+              url={OSMUZ_URL}
+              minZoom={0}
+              maxZoom={19}
+              maxNativeZoom={19}
+              tms={false}
+              noWrap={false}
+              updateWhenIdle={true}
+              keepBuffer={2}
+              attribution="&copy; OSM.uz & OpenStreetMap contributors"
+              eventHandlers={{
+                add: () => setIsSatellite(false),
               }}
             />
           </LayersControl.BaseLayer>
@@ -892,7 +913,7 @@ export default function MapView({
                 lat: n.pos[0],
                 lng: n.pos[1],
                 zoom: Number.isFinite(n.zoom) ? n.zoom : 13,
-                level: Number.isFinite(n.level) ? Number(n.level) : n.depth, // 🔑
+                level: Number.isFinite(n.level) ? Number(n.level) : n.depth,
                 type: n.type || n.kind || n.orgType,
               }}
               open={false}
@@ -1071,7 +1092,7 @@ export default function MapView({
                       geojson || {},
                       "map-drawings"
                     );
-                    toast.success("Saqlash muvaffaqiyatli!");
+                    toast.success("Saqlash muvaffiyatli!");
                   } catch (e) {
                     debugError("saveDrawing (panel) failed", e);
                     toast.error("Saqlashda xatolik");
