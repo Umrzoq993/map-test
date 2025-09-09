@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { debugError } from "../../utils/debug";
 import { createPortal } from "react-dom";
+import { LuChevronDown, LuSearch, LuX } from "react-icons/lu";
+import { getOrgUnit, searchOrgUnits } from "../../api/org";
+import { debugError } from "../../utils/debug";
 import styles from "./OrgUnitSelect.module.scss";
-import { searchOrgUnits, getOrgUnit } from "../../api/org";
-import { LuSearch, LuChevronDown, LuX } from "react-icons/lu";
 
 /** Qidiruvli org tanlash (dropdown) */
 export default function OrgUnitSelect({
@@ -157,7 +157,7 @@ export default function OrgUnitSelect({
         className={`${styles.menu} ${pos.up ? styles.up : ""}`}
         style={{ left: pos.left, top: pos.top, width: pos.width }}
         role="listbox"
-        aria-label="Tashkilotlar"
+        aria-label="Bo'linmalar"
       >
         {loading ? (
           <div className={styles.empty}>Yuklanmoqda...</div>

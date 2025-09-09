@@ -158,7 +158,7 @@ export default function FacilitiesPage() {
                 <th style={{ width: 60 }}>ID</th>
                 <th>Nomi</th>
                 <th>Turi</th>
-                <th>Tashk. ID</th>
+                <th>Bo'linma</th>
                 <th>Koordinata</th>
                 <th style={{ width: 220 }}>Amallar</th>
               </tr>
@@ -186,7 +186,7 @@ export default function FacilitiesPage() {
                     <td className="num">{row.id}</td>
                     <td>{row.name}</td>
                     <td>{TYPE_LABELS[row.type] || row.type}</td>
-                    <td className="num">{row.orgId}</td>
+                    <td className="num">{row.orgName || row.orgId}</td>
                     <td className="muted">
                       {row.lat != null && row.lng != null
                         ? `${row.lat.toFixed(4)}, ${row.lng.toFixed(4)}`

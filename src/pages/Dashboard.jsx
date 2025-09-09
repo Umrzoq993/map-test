@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { debugError } from "../utils/debug";
 import Chart from "react-apexcharts";
 import { BiBarChart, BiPieChart } from "react-icons/bi";
 import { FiAlertTriangle } from "react-icons/fi";
 import { LuRotateCw, LuTrendingUp } from "react-icons/lu";
-import { httpGet, api } from "../api/http";
+import { api, httpGet } from "../api/http";
+import { debugError } from "../utils/debug";
 import s from "./Dashboard.module.scss";
 import OrgUnitSelect from "./admin/OrgUnitSelect";
 
@@ -642,7 +642,7 @@ export default function Dashboard({ dark = false }) {
 
         <div className={s.card}>
           <div className={s.cardHead}>
-            <span>Tashkilotlar TOP-10 — Tushum</span>
+            <span>Bo'linmalar TOP-10 — Tushum</span>
           </div>
           <Chart
             type="bar"
@@ -683,7 +683,7 @@ export default function Dashboard({ dark = false }) {
 
       <div className={s.card} style={{ marginTop: 12 }}>
         <div className={s.cardHead}>
-          <span>Tashkilotlar kesimida (soni)</span>
+          <span>Bo'linmalar kesimida (soni)</span>
           {!loading && (
             <span className={s.sub}>{(data?.orgs ?? []).length} ta</span>
           )}

@@ -1,20 +1,20 @@
 import { useEffect } from "react";
-import { Sidebar, Menu, MenuItem, SubMenu } from "react-pro-sidebar";
-import { Link, useLocation } from "react-router-dom";
 import {
   LuLayoutDashboard,
-  LuMap,
-  LuSettings,
-  LuUser,
-  LuShield,
-  LuNetwork,
-  LuMonitorSmartphone,
   LuListChecks,
+  LuMap,
+  LuMonitorSmartphone,
+  LuNetwork,
+  LuSettings,
+  LuShield,
+  LuUser,
   LuUsers,
 } from "react-icons/lu";
+import { Menu, MenuItem, Sidebar, SubMenu } from "react-pro-sidebar";
+import { Link, useLocation } from "react-router-dom";
+import appLogo from "../assets/zamin-logo.png";
 import { useAuth } from "../hooks/useAuth";
 import styles from "./SidebarMenu.module.scss";
-import appLogo from "../assets/zamin-logo.png";
 
 export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
   const { pathname } = useLocation();
@@ -101,14 +101,14 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
             </span>
           </MenuItem>
 
-          {/* Tashkilotlar: faqat ADMIN */}
+          {/* Bo'linmalar: faqat ADMIN */}
           {isAdmin && (
             <MenuItem
               active={isActive("/orgs-table", false)}
               component={<Link to="/orgs-table" />}
               icon={<LuNetwork size={18} />}
             >
-              <span className={styles.text}>Tashkilotlar</span>
+              <span className={styles.text}>Bo'linmalar</span>
             </MenuItem>
           )}
 
