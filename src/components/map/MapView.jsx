@@ -26,7 +26,7 @@ const EditControlLazy = lazy(() =>
 );
 
 import "../../styles/leaflet-theme.css";
-import MapTiles from "./MapTiles";
+import MapTiles, { SasPlanetTiles } from "./MapTiles";
 
 import * as drawingsApi from "../../api/drawings";
 import { listFacilities, patchFacility } from "../../api/facilities";
@@ -46,7 +46,6 @@ import ViewportWatcher from "./ViewportWatcher";
 import ZoomIndicator from "./ZoomIndicator";
 
 // ✅ GeoJSON’ni bundlega qo‘shamiz (fetch O‘RNIGA import)
-// Faylni: src/assets/uz_lines.json ga joylang
 import uzBorders from "../../assets/uz_lines.json";
 
 /* 🔧 DARK MODE PATCH */
@@ -131,7 +130,6 @@ function MapControls({ panelHidden, onTogglePanel }) {
 function StripLeafletAttribution() {
   const map = useMap();
   useEffect(() => {
-    // "Leaflet" havolasini o‘chiradi (bayroq ham shu bilan ketadi)
     if (map?.attributionControl?.setPrefix) {
       map.attributionControl.setPrefix("");
     }
@@ -442,7 +440,6 @@ export default function MapView({
   // Facilities fetch (bbox+cache)
   const facCacheRef = useRef(new Map());
   const FAC_TTL = 15_000;
-  // Stable serializations for deps
   const checkedOrgIdsKey = useMemo(
     () =>
       checkedOrgIds
@@ -513,7 +510,6 @@ export default function MapView({
       updateGeoJSON();
       const layer = e.layer,
         type = e.layerType;
-      // Edit rejimida yangi polygon/rectangle chizilsa – eskisini almashtiramiz
       if (geomEdit && ["polygon", "rectangle"].includes(type)) {
         const fg = featureGroupRef.current;
         if (fg) {
@@ -688,8 +684,14 @@ export default function MapView({
   const SATELLITE_URL =
     import.meta.env.VITE_TILE_SATELLITE ||
     "http://localhost:5005/{z}/{x}/{y}.jpg";
-  const OSMUZ_URL = "https://osm.uz/tile/{z}/{x}/{y}.png"; // ✅ yangi qatlam
+  const OSMUZ_URL = "https://osm.uz/tile/{z}/{x}/{y}.png";
   const TMS = envBool(import.meta.env.VITE_TILE_TMS, true);
+
+  // ✅ Vesat (SAS Planet store) sozlamalari
+  const VESAT_BASE =
+    import.meta.env.VITE_TILE_VESAT_BASE || "https://vesat-map.uz";
+  const VESAT_EXT = import.meta.env.VITE_TILE_VESAT_EXT || "jpg";
+  const VESAT_TMS = envBool(import.meta.env.VITE_TILE_VESAT_TMS, false);
 
   // Org-tree flatten + depth
   const flatNodes = useMemo(() => {
@@ -768,11 +770,10 @@ export default function MapView({
   }, [homeTarget, userRole, flatNodes, center, zoom]);
 
   const initialZoom = introEnabled ? 3 : zoom;
-  // GeoJSON vositalarini vaqtincha yashirish (default: off)
   const [showGeoTools, setShowGeoTools] = useState(false);
 
   /* =========================
-     O‘ZBEKISTON CHEGARASI LINIYALARI (faqat Satellite)
+     O‘ZBEKISTON CHEGARASI LINIYALARI (faqat “satellite” turida)
      ========================= */
   const [isSatellite, setIsSatellite] = useState(false);
 
@@ -836,8 +837,30 @@ export default function MapView({
             />
           </LayersControl.BaseLayer>
 
-          {/* ✅ Yangi qatlam: OSM.uz (XYZ) */}
-          <LayersControl.BaseLayer checked name="OSM.uz (XYZ)">
+          {/* ✅ Yangi: Vesat (SAS Planet default store) */}
+          <LayersControl.BaseLayer
+            checked
+            name="Vesat (SAS Planet, 10.25.1.90)"
+          >
+            <SasPlanetTiles
+              key="vesat-sasplanet"
+              url={VESAT_BASE} // masalan: http://10.25.1.90/vesat
+              ext={VESAT_EXT} // jpg/png
+              minZoom={0}
+              maxZoom={19}
+              tms={VESAT_TMS} // ko‘pincha false
+              noWrap={true}
+              updateWhenIdle={true}
+              keepBuffer={2}
+              attribution="&copy; Vesat (SAS cache)"
+              eventHandlers={{
+                add: () => setIsSatellite(true), // Chegaralarni ko‘rsatish
+              }}
+            />
+          </LayersControl.BaseLayer>
+
+          {/* ✅ OSM.uz (XYZ) */}
+          <LayersControl.BaseLayer name="OSM.uz (XYZ)">
             <MapTiles
               key="osm-uz-xyz"
               url={OSMUZ_URL}
@@ -907,13 +930,11 @@ export default function MapView({
         <Pane name="facilities-polys" style={{ zIndex: 410 }} />
         <Pane name="facilities-centroids" style={{ zIndex: 420 }} />
         <Pane name="facilities-markers" style={{ zIndex: 430 }} />
-        {/* Chegaralar uchun alohida pane — yuqoriroq zIndex */}
         <Pane name="borders-lines" style={{ zIndex: 300 }} />
 
         <ViewportWatcher onBboxChange={setBbox} />
         <MapFlyer target={navTarget} />
 
-        {/* Org markerlar — ierarxiyaga mos ikon */}
         {flatNodes
           .filter((n) => n.pos && checkedKeys.includes(String(n.key)))
           .map((n) => (
@@ -957,16 +978,16 @@ export default function MapView({
 
         {orgForPopup && <OrgMarker org={orgForPopup} open />}
 
-        {/* ✅ O‘zbekiston chegaralari: faqat Satellite aktiv bo‘lsa ko‘rsatamiz */}
+        {/* ✅ O‘zbekiston chegaralari: Satellite yoki Vesat tanlanganda ko‘rinadi */}
         {isSatellite && uzBorders && (
           <GeoJSON
             data={uzBorders}
             pane="borders-lines"
             interactive={false}
             style={() => ({
-              color: "#22c55e",
-              weight: 2.5,
-              opacity: 0.95,
+              color: "#1b2440",
+              weight: 4,
+              opacity: 1,
               dashArray: "6 3",
             })}
           />

@@ -1,20 +1,18 @@
 // src/components/map/MapTiles.jsx
+import { createLayerComponent } from "@react-leaflet/core";
+import L from "leaflet";
 import React from "react";
 import { TileLayer } from "react-leaflet";
 
 /**
- * OFFLINE XYZ yoki TMS tiles (z/x/y.{ext}) uchun qatlam.
+ * OFFLINE XYZ yoki TMS tiles (z/x/y.{ext}) uchun oddiy qatlam.
  *
- * ⚙️ Konfiguratsiya (env orqali boshqariladi):
- * - VITE_TILE_URL         -> tile URL shablon (masalan: http://localhost:8008/{z}/{x}/{y}.png)
- * - VITE_TILE_MIN_ZOOM    -> minimal zoom (default: 0)
- * - VITE_TILE_MAX_ZOOM    -> maksimal zoom (default: 19)
- * - VITE_TILE_TMS         -> "true" bo‘lsa TMS rejimida ishlaydi (Y teskari hisoblanadi)
- * - VITE_TILE_ATTRIBUTION -> attribution matni
- *
- * Misol:
- *   VITE_TILE_URL=http://localhost:8008/{z}/{x}/{y}.jpg
- *   VITE_TILE_TMS=true
+ * ENV:
+ * - VITE_TILE_URL
+ * - VITE_TILE_MIN_ZOOM
+ * - VITE_TILE_MAX_ZOOM
+ * - VITE_TILE_TMS
+ * - VITE_TILE_ATTRIBUTION
  */
 
 const envBool = (v, def = false) => {
@@ -44,9 +42,8 @@ export default function MapTiles(props) {
     url = DEFAULT_URL,
     minZoom = DEFAULT_MIN_ZOOM,
     maxZoom = DEFAULT_MAX_ZOOM,
-    tms = DEFAULT_TMS, // ⚠️ env bilan boshqariladi
+    tms = DEFAULT_TMS,
     attribution = DEFAULT_ATTR,
-    // detectRetina yoki crossOrigin ni majburan qo‘ymaymiz — server tayyor bo‘lmasligi mumkin
     ...rest
   } = props;
 
@@ -61,6 +58,45 @@ export default function MapTiles(props) {
     />
   );
 }
+
+// ======== SAS PLANET DEFAULT STORE (foldered) ========
+// Path format: /z{z}/{floor(x/1024)}/x{x}/{floor(y/1024)}/y{y}.{ext}
+// Misol: z13/2/x2678/1/y1493.jpg
+const SasPlanetTileLayer = L.TileLayer.extend({
+  initialize: function (baseUrl, options = {}) {
+    L.TileLayer.prototype.initialize.call(this, baseUrl, options);
+    this.options.ext = options.ext || "jpg";
+  },
+  getTileUrl: function (coords) {
+    const z = coords.z;
+    let { x, y } = coords;
+
+    // TMS bo'lsa Y ni ag'daramiz
+    if (this.options.tms) {
+      const n = Math.pow(2, z);
+      y = n - y - 1;
+    }
+
+    const xFolder = Math.floor(x / 1024);
+    const yFolder = Math.floor(y / 1024);
+    const ext = this.options.ext || "jpg";
+    const base = this._url.endsWith("/") ? this._url.slice(0, -1) : this._url;
+
+    return `${base}/z${z + 1}/${xFolder}/x${x}/${yFolder}/y${y}.${ext}`;
+  },
+});
+
+const createSasPlanet = (props, context) => {
+  const { url, ...opts } = props;
+  const instance = new SasPlanetTileLayer(url, opts);
+  return { instance, context };
+};
+
+/**
+ * React-Leaflet komponenti:
+ * <SasPlanetTiles url="http://10.25.1.90/vesat" ext="jpg" tms={false} />
+ */
+export const SasPlanetTiles = createLayerComponent(createSasPlanet);
 
 // Default konfiguratsiyalarni tashqarida ishlatish uchun eksport
 // eslint-disable-next-line react-refresh/only-export-components
