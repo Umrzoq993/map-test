@@ -83,7 +83,7 @@ export async function getOrgDetails(id) {
       );
       let base = await httpGet(`/orgs/${id}`);
       if (base && base.org && typeof base.org === "object") {
-        base = { ...base.org, ...base };
+        base = { ...base, ...base.org };
       }
       return base;
     } catch (e2) {

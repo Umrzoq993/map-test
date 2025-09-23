@@ -10,6 +10,7 @@ import {
   clearAccessExpireAt as memClearExp,
 } from "./tokenStore";
 import { toast } from "react-toastify";
+import { getDeviceId } from "./deviceId";
 
 /* =========================
    LOCAL KEYS (auth.js bilan mos)
@@ -31,29 +32,6 @@ function setAccessExpireAt(ms) {
    ========================= */
 const RAW_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 const BASE = RAW_BASE.endsWith("/api") ? RAW_BASE : `${RAW_BASE}/api`;
-
-/* =========================
-   Device ID (barqaror)
-   ========================= */
-function getDeviceId() {
-  try {
-    let id = localStorage.getItem("deviceId");
-    if (!id) {
-      const rnd = (n) =>
-        (window.crypto?.getRandomValues
-          ? Array.from(window.crypto.getRandomValues(new Uint8Array(n)))
-          : Array.from({ length: n }, () => Math.floor(Math.random() * 256))
-        )
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
-      id = `${rnd(4)}-${rnd(2)}-${rnd(2)}-${rnd(2)}-${rnd(6)}`; // 8-4-4-4-12
-      localStorage.setItem("deviceId", id);
-    }
-    return id;
-  } catch {
-    return "unknown-device";
-  }
-}
 
 /* =========================
    Axios instance

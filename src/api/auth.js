@@ -7,35 +7,14 @@ import {
   setAccessExpireAt as memSetExp,
   getAccessExpireAt as memGetExp,
 } from "./tokenStore";
+import { getDeviceId } from "./deviceId";
 
 /** LocalStorage keys */
 const ACCESS_KEY = "token"; // access token (JWT)
 const ACCESS_EXP_KEY = "tokenExpAt"; // access expire time (ms since epoch)
 
 // --- Device ID (barqaror) ---
-export function getDeviceId() {
-  try {
-    let id = localStorage.getItem("deviceId");
-    if (!id) {
-      const rndBytes = (len = 16) =>
-        window.crypto?.getRandomValues
-          ? Array.from(window.crypto.getRandomValues(new Uint8Array(len)))
-          : Array.from({ length: len }, () => Math.floor(Math.random() * 256));
-      const toHex = (arr) =>
-        arr.map((b) => (b & 0xff).toString(16).padStart(2, "0")).join("");
-      const p1 = toHex(rndBytes(8)).slice(0, 8);
-      const p2 = toHex(rndBytes(4)).slice(0, 4);
-      const p3 = toHex(rndBytes(4)).slice(0, 4);
-      const p4 = toHex(rndBytes(4)).slice(0, 4);
-      const p5 = toHex(rndBytes(12)).slice(0, 12);
-      id = `${p1}-${p2}-${p3}-${p4}-${p5}`;
-      localStorage.setItem("deviceId", id);
-    }
-    return id;
-  } catch {
-    return "unknown-device";
-  }
-}
+// moved to ./deviceId as single source of truth
 
 // --- Token helpers ---
 export function setAccessToken(t) {

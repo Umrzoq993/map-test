@@ -17,6 +17,7 @@ import SessionsPage from "./pages/admin/SessionsPage";
 import AuditPage from "./pages/admin/AuditPage";
 import UsersPage from "./pages/admin/UsersPage";
 import OnlineUsersPage from "./pages/admin/OnlineUsersPage";
+import Forbidden from "./pages/Forbidden";
 
 function useIsMobile(query = "(max-width: 1024px)") {
   const [isMobile, setIsMobile] = useState(false);
@@ -135,6 +136,7 @@ export default function App() {
                     />
                     <Route path="/orgs" element={<OrgManager />} />
                     <Route path="/orgs-table" element={<OrgTablePage />} />
+                    <Route path="/forbidden" element={<Forbidden />} />
 
                     {/* Admin – faqat ADMIN roli */}
                     <Route

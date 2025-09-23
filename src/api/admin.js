@@ -1,6 +1,7 @@
 // src/api/admin.js
 import { httpGet, httpPost } from "./http";
-import { me, getDeviceId } from "./auth";
+import { me } from "./auth";
+import { getDeviceId } from "./deviceId";
 
 /** Online count (fallback 0 agar endpoint bo'lmasa) */
 export async function getOnlineCount() {
