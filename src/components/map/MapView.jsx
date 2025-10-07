@@ -26,7 +26,7 @@ const EditControlLazy = lazy(() =>
 );
 
 import "../../styles/leaflet-theme.css";
-import MapTiles, { SasPlanetTiles } from "./MapTiles";
+import MapTiles from "./MapTiles";
 
 import * as drawingsApi from "../../api/drawings";
 import { listFacilities, patchFacility } from "../../api/facilities";
@@ -679,19 +679,12 @@ export default function MapView({
   );
 
   // Tiles env
-  const HYBRID_URL =
-    import.meta.env.VITE_TILE_HYBRID || "http://localhost:8008/{z}/{x}/{y}.jpg";
-  const SATELLITE_URL =
-    import.meta.env.VITE_TILE_SATELLITE ||
-    "http://localhost:5005/{z}/{x}/{y}.jpg";
   const OSMUZ_URL = "https://osm.uz/tile/{z}/{x}/{y}.png";
-  const TMS = envBool(import.meta.env.VITE_TILE_TMS, true);
 
   // ✅ Vesat (SAS Planet store) sozlamalari
-  const VESAT_BASE =
-    import.meta.env.VITE_TILE_VESAT_BASE || "https://vesat-map.uz";
+  const VESAT_BASE = import.meta.env.VITE_TILE_VESAT_BASE || "https://vesat.uz";
   const VESAT_EXT = import.meta.env.VITE_TILE_VESAT_EXT || "jpg";
-  const VESAT_TMS = envBool(import.meta.env.VITE_TILE_VESAT_TMS, false);
+  const VESAT_TMS = envBool(import.meta.env.VITE_TILE_VESAT_TMS, true);
 
   // Org-tree flatten + depth
   const flatNodes = useMemo(() => {
@@ -801,60 +794,21 @@ export default function MapView({
         />
 
         <LayersControl position="bottomright">
-          <LayersControl.BaseLayer name="Bing Hybrid (offline, 8008)">
+          {/* ✅ Sun'iy yo‘ldosh (Gibrid) */}
+          <LayersControl.BaseLayer checked name="Sun'iy yo‘ldosh (Gibrid)">
             <MapTiles
-              key="hybrid-8008"
-              url={HYBRID_URL}
-              minZoom={minZoom}
-              maxZoom={maxZoom}
-              maxNativeZoom={maxZoom}
-              tms={TMS}
-              noWrap={true}
-              updateWhenIdle={true}
-              keepBuffer={2}
-              attribution="&copy; Hybrid (offline)"
-              eventHandlers={{
-                add: () => setIsSatellite(false),
-              }}
-            />
-          </LayersControl.BaseLayer>
-
-          <LayersControl.BaseLayer name="Bing Satellite (offline, 5005)">
-            <MapTiles
-              key="satellite-5005"
-              url={SATELLITE_URL}
-              minZoom={minZoom}
-              maxZoom={maxZoom}
-              maxNativeZoom={maxZoom}
-              tms={TMS}
-              noWrap={true}
-              updateWhenIdle={true}
-              keepBuffer={2}
-              attribution="&copy; Satellite (offline)"
-              eventHandlers={{
-                add: () => setIsSatellite(true),
-              }}
-            />
-          </LayersControl.BaseLayer>
-
-          {/* ✅ Yangi: Vesat (SAS Planet default store) */}
-          <LayersControl.BaseLayer
-            checked
-            name="Vesat (SAS Planet, 10.25.1.90)"
-          >
-            <SasPlanetTiles
-              key="vesat-sasplanet"
-              url={VESAT_BASE} // masalan: http://10.25.1.90/vesat
-              ext={VESAT_EXT} // jpg/png
+              key="vesat-xyz"
+              url={`${VESAT_BASE}/{z}/{x}/{y}.${VESAT_EXT}`}
               minZoom={0}
               maxZoom={19}
-              tms={VESAT_TMS} // ko‘pincha false
+              tms={VESAT_TMS}
               noWrap={true}
               updateWhenIdle={true}
               keepBuffer={2}
-              attribution="&copy; Vesat (SAS cache)"
+              attribution="&copy; Vesat"
               eventHandlers={{
-                add: () => setIsSatellite(true), // Chegaralarni ko‘rsatish
+                // Vesat tanlanganda O‘zbekiston chegaralarini ko‘rsatmaymiz
+                add: () => setIsSatellite(false),
               }}
             />
           </LayersControl.BaseLayer>

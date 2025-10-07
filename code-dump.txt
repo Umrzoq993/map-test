@@ -9560,7 +9560,7 @@ SIZE: 37874 bytes
    689: 
    690:   // ✅ Vesat (SAS Planet store) sozlamalari
    691:   const VESAT_BASE =
-   692:     import.meta.env.VITE_TILE_VESAT_BASE || "https://vesat-map.uz";
+   692:     import.meta.env.VITE_TILE_VESAT_BASE || "https://vesat.uz";
    693:   const VESAT_EXT = import.meta.env.VITE_TILE_VESAT_EXT || "jpg";
    694:   const VESAT_TMS = envBool(import.meta.env.VITE_TILE_VESAT_TMS, false);
    695: 

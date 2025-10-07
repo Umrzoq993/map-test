@@ -137,7 +137,7 @@ server {
 }
 ```
 
-- connect-src/img-src ichiga o‘zingizning real tile server(lar) domennarini qo‘shing: masalan `https://vesat-map.uz`, `http://10.25.1.90`, `https://osm.uz`.
+- connect-src/img-src ichiga o‘zingizning real tile server(lar) domennarini qo‘shing: masalan `https://vesat.uz`, `http://10.25.1.90`, `https://osm.uz`.
 - Agar saytni iframe’da ko‘rsatish kerak bo‘lsa, `frame-ancestors`ni tegishli domen(lar)ga sozlang.
 
 ## 403 UX
