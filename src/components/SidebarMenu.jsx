@@ -212,13 +212,7 @@ export default function SidebarMenu({
           {/* External link to C4 system */}
           <MenuItem
             icon={<LuExternalLink size={18} />}
-            component={
-              <a
-                href="http://c4.uz"
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
+            component={<Link to="http://c4.uz" />}
           >
             <span className={styles.text}>C4 tizimi</span>
           </MenuItem>
