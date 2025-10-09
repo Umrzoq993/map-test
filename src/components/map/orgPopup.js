@@ -2,9 +2,37 @@
 import L from "leaflet";
 import { getOrgDetails } from "../../api/org";
 import { sanitizeHTML } from "../../utils/sanitize";
-import { TYPE_LABELS, colorForBack } from "../../constants/facilityTypes";
+import { typeColor, loadDynamicTypeColors } from "./mapIcons";
+import { listActiveFacilityTypes } from "../../api/facilityTypes";
 import { debugLog } from "../../utils/debug";
 import "../../styles/_org_popup.scss";
+
+// minimal cache for labels to avoid tight coupling with React context
+let _typeLabelMap = null;
+async function ensureTypeLabelsLoaded() {
+  if (_typeLabelMap) return _typeLabelMap;
+  try {
+    const defs = await listActiveFacilityTypes();
+    _typeLabelMap = new Map();
+    if (Array.isArray(defs)) {
+      for (const d of defs)
+        if (d?.code) _typeLabelMap.set(d.code, d.nameUz || d.nameRu || d.code);
+    }
+  } catch {
+    _typeLabelMap = new Map();
+  }
+  return _typeLabelMap;
+}
+function labelForType(code) {
+  if (!_typeLabelMap) return fallbackLabel(code);
+  return _typeLabelMap.get(code) || fallbackLabel(code);
+}
+function fallbackLabel(code) {
+  return String(code || "")
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+}
 
 /**
  * Markerga boy popup bog'laydi.
@@ -27,6 +55,7 @@ export function attachOrgPopup(marker, org, opts = {}) {
     const popup = e.popup;
     popup.setContent(loadingHTML(org));
     try {
+      await Promise.all([loadDynamicTypeColors(), ensureTypeLabelsLoaded()]);
       const info = await getOrgDetails(org.id);
       const safe = await sanitizeHTML(renderHTML(info, org));
       popup.setContent(safe);
@@ -124,13 +153,8 @@ function renderHTML(info, fallbackOrg) {
   const typeItems = Object.entries(byType)
     .sort((a, b) => b[1] - a[1])
     .map(([t, cnt]) => {
-      const label =
-        TYPE_LABELS[t] ||
-        t
-          .toLowerCase()
-          .replace(/_/g, " ")
-          .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
-      const col = colorForBack(t);
+      const label = labelForType(t);
+      const col = typeColor(t);
       return `<div class="dist-item" title="${escapeHtml(
         label
       )}"><span class="sw" style="background:${col}"></span><b>${escapeHtml(

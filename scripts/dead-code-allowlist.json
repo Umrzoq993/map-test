@@ -1,0 +1,6 @@
+{
+  "ignore": [
+    "src/leaflet.fix.js",
+    "src/components/map/leafletDefaultIconPatch.js"
+  ]
+}

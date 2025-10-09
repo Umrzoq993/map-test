@@ -3,6 +3,7 @@ import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
+import { FacilityTypesProvider } from "./hooks/useFacilityTypes";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./leaflet.fix.js";
@@ -53,19 +54,23 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ErrorBoundary>
       <BrowserRouter>
-        <Suspense fallback={<div style={{ padding: 16 }}>Yuklanmoqda...</div>}>
-          <App />
-        </Suspense>
-        <ToastContainer
-          position="top-right"
-          autoClose={4000}
-          newestOnTop
-          closeOnClick
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="colored"
-        />
+        <FacilityTypesProvider>
+          <Suspense
+            fallback={<div style={{ padding: 16 }}>Yuklanmoqda...</div>}
+          >
+            <App />
+          </Suspense>
+          <ToastContainer
+            position="top-right"
+            autoClose={4000}
+            newestOnTop
+            closeOnClick
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="colored"
+          />
+        </FacilityTypesProvider>
       </BrowserRouter>
     </ErrorBoundary>
   </React.StrictMode>

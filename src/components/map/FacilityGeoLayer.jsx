@@ -4,7 +4,7 @@ import { GeoJSON, Marker, Popup } from "react-leaflet";
 import { typeColor, badgeIconFor } from "./mapIcons";
 import { centroidOfGeometry } from "../../utils/geo";
 import { areaOfGeometryM2 } from "../../utils/geo";
-import { FACILITY_TYPES } from "../../data/facilityTypes";
+import { useFacilityTypes } from "../../hooks/useFacilityTypes";
 
 export default function FacilityGeoLayer({
   facilities,
@@ -12,6 +12,7 @@ export default function FacilityGeoLayer({
   onFlyTo,
   onOpenEdit, // popupdagi "Tahrirlash" va marker kliklari uchun
 }) {
+  const { byCode, label: labelFor } = useFacilityTypes();
   const geoJsonRef = useRef(null);
 
   const facilityById = useMemo(() => {
@@ -84,12 +85,15 @@ export default function FacilityGeoLayer({
           }
         } catch {}
 
-        const typeLabel = FACILITY_TYPES[f.type]?.label || f.type;
+        const typeLabel = labelFor(f.type) || f.type;
         const orgLabel =
           f.orgName ||
           f.org?.name ||
           (f.orgId != null ? `Org #${f.orgId}` : "—");
         const details = f.attributes || f.details || {};
+        const schema = Array.isArray(byCode.get(f.type)?.schema)
+          ? byCode.get(f.type).schema
+          : [];
 
         return (
           <Marker
@@ -139,7 +143,7 @@ export default function FacilityGeoLayer({
 
                 {/* maydonlar (eski popup tarkibi bilan mos) */}
                 <div style={{ display: "grid", gap: 6 }}>
-                  {(FACILITY_TYPES[f.type]?.fields || []).map((fld) => {
+                  {schema.map((fld) => {
                     const val = details[fld.key];
                     if (
                       val === null ||
@@ -222,7 +226,7 @@ export default function FacilityGeoLayer({
       const f = id != null ? facilityById.get(id) : null;
       if (!f) return;
 
-      const typeLabel = FACILITY_TYPES[f.type]?.label || f.type;
+      const typeLabel = labelFor(f.type) || f.type;
       const orgLabel =
         f.orgName || f.org?.name || (f.orgId != null ? `Org #${f.orgId}` : "—");
       const details = f.attributes || f.details || {};
@@ -243,7 +247,11 @@ export default function FacilityGeoLayer({
         }
       } catch {}
 
-      const rows = (FACILITY_TYPES[f.type]?.fields || [])
+      const rows = (
+        Array.isArray(byCode.get(f.type)?.schema)
+          ? byCode.get(f.type).schema
+          : []
+      )
         .map((fld) => {
           const val = details[fld.key];
           if (val === null || val === undefined || String(val).trim?.() === "")
@@ -295,7 +303,7 @@ export default function FacilityGeoLayer({
         }
       });
     },
-    [facilityById, onFlyTo, onOpenEdit]
+    [facilityById, onFlyTo, onOpenEdit, byCode, labelFor]
   );
 
   return (

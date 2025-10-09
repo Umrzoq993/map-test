@@ -8,7 +8,9 @@
     "build": "vite build",
     "lint": "eslint . --max-warnings=200",
     "preview": "vite preview",
-    "serve": "npx --yes serve -s dist"
+    "serve": "npx --yes serve -s dist",
+    "deadcode": "node ./scripts/dead-code-check.mjs",
+    "cleanup:deadcode": "node ./scripts/cleanup-deadcode.mjs"
   },
   "dependencies": {
     "apexcharts": "^5.3.3",

@@ -6,8 +6,7 @@ import { createFacility } from "../../api/facilities";
 import { centroidOfGeometry, areaOfGeometryM2 } from "../../utils/geo";
 import { listOrgsPage } from "../../api/org";
 import { toast } from "react-toastify";
-import * as FT from "../../data/facilityTypes";
-const FACILITY_TYPES = FT.FACILITY_TYPES;
+import { useFacilityTypes } from "../../hooks/useFacilityTypes";
 
 /* -------------------------- Validation helpers -------------------------- */
 function validateByRules(schema, { name, attributes }) {
@@ -93,25 +92,32 @@ export default function CreateFacilityDrawer({
   center,
   selectedOrgId,
 }) {
+  const {
+    types: typeDefs,
+    byCode,
+    label: labelFor,
+    codes,
+  } = useFacilityTypes();
   // type tanlovi
-  const typeKeys = Object.keys(FACILITY_TYPES || {});
-  const [type, setType] = useState(typeKeys[0] || "OTHER");
+  const typeKeys =
+    Array.isArray(typeDefs) && typeDefs.length
+      ? typeDefs.map((t) => t.code)
+      : codes || [];
+  const [type, setType] = useState(typeKeys[0] || codes?.[0] || "GREENHOUSE");
   useEffect(() => {
-    if (open && !FACILITY_TYPES?.[type]) {
-      setType(typeKeys[0] || "OTHER");
+    if (open && !byCode.get(type)) {
+      setType(typeKeys[0] || codes?.[0] || "GREENHOUSE");
     }
   }, [open]); // eslint-disable-line
 
   // Schema ni memo qilamiz — shunda object identifikatori barqaror bo'ladi
   const schema = useMemo(() => {
-    if (FACILITY_TYPES && FACILITY_TYPES[type]) return FACILITY_TYPES[type];
+    const t = byCode.get(type);
     return {
-      label: FT.getFacilityTypeLabel
-        ? FT.getFacilityTypeLabel(type)
-        : String(type),
-      fields: [],
+      label: t?.nameUz || t?.nameRu || labelFor(type) || String(type),
+      fields: Array.isArray(t?.schema) ? t.schema : [],
     };
-  }, [type]);
+  }, [type, byCode, labelFor]);
 
   // form states
   const [name, setName] = useState("");
@@ -283,11 +289,15 @@ export default function CreateFacilityDrawer({
             value={type}
             onChange={(e) => setType(e.target.value)}
           >
-            {typeKeys.map((k) => (
-              <option key={k} value={k}>
-                {FT.getFacilityTypeLabel ? FT.getFacilityTypeLabel(k) : k}
-              </option>
-            ))}
+            {typeKeys.map((k) => {
+              const t = byCode.get(k);
+              const lbl = t?.nameUz || t?.nameRu || labelFor(k) || k;
+              return (
+                <option key={k} value={k}>
+                  {lbl}
+                </option>
+              );
+            })}
           </select>
         </div>
 

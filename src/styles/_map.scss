@@ -104,9 +104,76 @@
   background: var(--card) !important;
   color: var(--text) !important;
   border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
 }
 .leaflet-bar a:hover {
   background: color-mix(in srgb, var(--brand) 8%, var(--card)) !important;
+}
+
+/* LayersControl — expanded panel theme */
+.leaflet-control-layers-expanded {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12) !important;
+  padding: 6px 6px 8px 6px !important;
+}
+
+.leaflet-control-layers-list {
+  margin: 0 !important;
+  padding: 4px !important;
+}
+
+.leaflet-control-layers-separator {
+  border-top: 1px solid var(--border) !important;
+  margin: 6px 4px !important;
+}
+
+.leaflet-control-layers-base label,
+.leaflet-control-layers-overlays label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: var(--text) !important;
+  background: transparent !important;
+  padding: 6px 8px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+}
+
+.leaflet-control-layers-base label:hover,
+.leaflet-control-layers-overlays label:hover {
+  background: color-mix(in srgb, var(--brand) 8%, var(--card)) !important;
+}
+
+/* Radio/checkbox accent rangini tema brandidan olamiz */
+.leaflet-control-layers-selector {
+  accent-color: var(--brand);
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin: 0 8px 0 0 !important; /* label matnidan oldin bo'shliq */
+  align-self: center;
+}
+
+/* Label matnini ham vertikal markazga keltiramiz */
+.leaflet-control-layers-base label span,
+.leaflet-control-layers-overlays label span {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.2;
+}
+
+/* Kichik ekranlarda panel biroz kattaroq bo'lsin */
+@media (max-width: 640px) {
+  .leaflet-control-layers-expanded {
+    padding: 8px !important;
+  }
+  .leaflet-control-layers-base label,
+  .leaflet-control-layers-overlays label {
+    padding: 8px 10px !important;
+  }
 }
 
 /* Popuplar */
@@ -116,4 +183,3 @@
   color: var(--text);
   border: 1px solid var(--border);
 }
-

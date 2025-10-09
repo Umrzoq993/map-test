@@ -93,6 +93,21 @@ Popup va dinamik HTML `sanitizeHTML` orqali tozalanadi. Har qanday innerHTML kir
 
 ---
 
+## Inshoot turlari (admin orqali boshqaruv)
+
+- Backend endpointlar:
+
+  - GET `/api/facility-types` — aktiv turlar roʻyxati (frontend foydalanadi)
+  - Admin CRUD: `/api/admin/facility-types` (GET page, POST, PUT, DELETE)
+  - Admin ikon yuklash: POST `/api/admin/uploads/icon` (multipart/form-data -> `{ url }`)
+
+- Frontend:
+  - Sahifa: `Admin → Inshoot turlari` (`/admin/facility-types`) — jadval + forma
+  - Formadagi `Schema (JSON)` orqali har bir tur uchun atributlar roʻyxatini moslang
+  - `FacilityForm` va `Facilities` sahifalari dinamik roʻyxatdan foydalanadi (server boʻlmasa eski fallback mavjud)
+
+Eslatma: Hozircha inshootning `type` maydoni backendda `enum FacilityType` bilan cheklangan. Shu sabab yangi kod qoʻshishda enumga mos kelishi kerak. Zarur boʻlsa keyingi bosqichda enumdan string turga migratsiya qilinadi.
+
 ## Production xavfsizlik sarlavhalari (NGINX misoli)
 
 Eslatma: Frontend ichidagi `<meta http-equiv="Content-Security-Policy">` faqat dev uchun yumshoq. Prod’da CSP va boshqa headerlarni **server** darajasida qo‘ying va **real tile server domenlarini** qo‘shing (VESAT, OSM.UZ, va h.k.).

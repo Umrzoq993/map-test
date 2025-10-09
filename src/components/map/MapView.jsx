@@ -44,6 +44,7 @@ import MapFlyer from "./MapFlyer";
 import OrgTreePanel from "./OrgTreePanel";
 import ViewportWatcher from "./ViewportWatcher";
 import ZoomIndicator from "./ZoomIndicator";
+import { useFacilityTypes } from "../../hooks/useFacilityTypes";
 
 // ✅ GeoJSON’ni bundlega qo‘shamiz (fetch O‘RNIGA import)
 import uzBorders from "../../assets/uz_lines.json";
@@ -222,6 +223,38 @@ export default function MapView({
   userRole = "user",
   homeTarget = null,
 }) {
+  const { types: typeDefs } = useFacilityTypes();
+  const typeLabels = useMemo(() => {
+    const m = {};
+    if (Array.isArray(typeDefs)) {
+      for (const t of typeDefs)
+        if (t?.code) m[t.code] = t.nameUz || t.nameRu || t.code;
+    }
+    return m;
+  }, [typeDefs]);
+  const typeOrder = useMemo(() => {
+    if (Array.isArray(typeDefs) && typeDefs.length) {
+      return typeDefs
+        .slice()
+        .sort(
+          (a, b) => (a.sort ?? a.sortOrder ?? 0) - (b.sort ?? b.sortOrder ?? 0)
+        )
+        .map((t) => t.code);
+    }
+    return [
+      "GREENHOUSE",
+      "POULTRY_MEAT",
+      "POULTRY_EGG",
+      "TURKEY",
+      "COWSHED",
+      "SHEEPFOLD",
+      "WORKSHOP_SAUSAGE",
+      "WORKSHOP_COOKIE",
+      "AUX_LAND",
+      "BORDER_LAND",
+      "FISHPOND",
+    ];
+  }, [typeDefs]);
   const featureGroupRef = useRef(null);
   const lastDrawnLayerRef = useRef(null);
 
@@ -333,19 +366,36 @@ export default function MapView({
 
   // Facilities
   const [facilities, setFacilities] = useState([]);
-  const [typeFilter, setTypeFilter] = useState({
-    GREENHOUSE: true,
-    POULTRY_MEAT: true,
-    POULTRY_EGG: true,
-    TURKEY: true,
-    COWSHED: true,
-    SHEEPFOLD: true,
-    WORKSHOP_SAUSAGE: true,
-    WORKSHOP_COOKIE: true,
-    FISHPOND: true,
-    AUX_LAND: false,
-    BORDER_LAND: false,
+  const [typeFilter, setTypeFilter] = useState(() => {
+    // Initialize from dynamic types; default true for first 8, then false
+    const init = {};
+    const order = typeOrder;
+    order.forEach((code, idx) => {
+      init[code] = idx < 8; // heuristic: show first N by default
+    });
+    return init;
   });
+  // When typeOrder changes (e.g., after loading), merge to preserve toggles and add missing keys
+  useEffect(() => {
+    setTypeFilter((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const code of typeOrder) {
+        if (!(code in next)) {
+          next[code] = Object.keys(next).length < 8; // default on for first few
+          changed = true;
+        }
+      }
+      // Optionally remove keys no longer present
+      Object.keys(next).forEach((k) => {
+        if (!typeOrder.includes(k)) {
+          delete next[k];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [typeOrder]);
   const enabledTypes = useMemo(
     () =>
       Object.entries(typeFilter)
@@ -1007,6 +1057,8 @@ export default function MapView({
         onClearSearch={onClearSearch}
         typeFilter={typeFilter}
         setTypeFilter={setTypeFilter}
+        typeOrder={typeOrder}
+        typeLabels={typeLabels}
         showPolys={showPolys}
         setShowPolys={setShowPolys}
         bbox={bbox}

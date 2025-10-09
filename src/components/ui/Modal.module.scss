@@ -289,6 +289,24 @@
   color: color-mix(in srgb, var(--card-fg) 55%, transparent);
 }
 
+/* 5.2) Native select dropdown (options) — theme-aware */
+.modalRoot .header :global(select option),
+.modalRoot [data-dialog-body] :global(select option) {
+  background: var(--card-bg);
+  color: var(--card-fg);
+}
+.modalRoot .header :global(select optgroup),
+.modalRoot [data-dialog-body] :global(select optgroup) {
+  background: var(--card-bg);
+  color: var(--muted);
+}
+/* Selected option highlight (best-effort; varies by browser/OS) */
+.modalRoot .header :global(select option:checked),
+.modalRoot [data-dialog-body] :global(select option:checked) {
+  background: color-mix(in srgb, var(--brand) 18%, var(--card-bg));
+  color: var(--card-fg);
+}
+
 /* 6) RESPONSIVE */
 @media (max-width: 640px) {
   .card {

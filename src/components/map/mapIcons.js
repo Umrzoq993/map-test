@@ -1,5 +1,6 @@
 // src/components/map/mapIcons.js
 import L from "leaflet";
+import { listActiveFacilityTypes } from "../../api/facilityTypes";
 
 export const colorMap = {
   GREENHOUSE: "#16a34a",
@@ -29,7 +30,27 @@ export const emojiMap = {
   FISHPOND: "🐟",
 };
 
+// Optional icon image url per type (populated from backend if provided)
+export const iconUrlMap = {};
+
 export const typeColor = (t = "GREENHOUSE") => colorMap[t] || "#3b82f6";
+
+// Optional: bootstrap dynamic colors once per load
+let loaded = false;
+export async function loadDynamicTypeColors() {
+  if (loaded) return;
+  loaded = true;
+  try {
+    const defs = await listActiveFacilityTypes();
+    if (Array.isArray(defs)) {
+      defs.forEach((d) => {
+        if (d?.code && d?.color) colorMap[d.code] = d.color;
+        if (d?.code && d?.iconEmoji) emojiMap[d.code] = d.iconEmoji;
+        if (d?.code && d?.iconUrl) iconUrlMap[d.code] = d.iconUrl;
+      });
+    }
+  } catch {}
+}
 
 export const iconFor = (type = "GREENHOUSE") =>
   L.divIcon({
@@ -45,14 +66,24 @@ export const iconFor = (type = "GREENHOUSE") =>
 export const badgeIconFor = (type = "GREENHOUSE", size = 28) => {
   const col = typeColor(type);
   const emoji = emojiMap[type] || "📍";
+  const iconUrl = iconUrlMap[type] || null;
   const pad = Math.round(size * 0.18);
   const fz = Math.round(size * 0.64);
   return L.divIcon({
     className: "facility-badge",
     html: `<div style="display:inline-flex;align-items:center;justify-content:center;
       width:${size}px;height:${size}px;border-radius:50%;background:${col};color:#fff;border:2px solid #fff;
-      box-shadow:0 2px 8px rgba(0,0,0,.25);font-size:${fz}px;line-height:1;user-select:none;">
-      <span style="transform:translateY(-1px);padding:${pad}px">${emoji}</span></div>`,
+      box-shadow:0 2px 8px rgba(0,0,0,.25);font-size:${fz}px;line-height:1;user-select:none;overflow:hidden;">
+      ${
+        iconUrl
+          ? `<img src="${iconUrl}" alt="" style="width:${Math.round(
+              size * 0.8
+            )}px;height:${Math.round(
+              size * 0.8
+            )}px;object-fit:contain;filter:drop-shadow(0 1px 1px rgba(0,0,0,.2))" />`
+          : `<span style=\"transform:translateY(-1px);padding:${pad}px\">${emoji}</span>`
+      }
+      </div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });

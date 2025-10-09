@@ -17,7 +17,9 @@ import SessionsPage from "./pages/admin/SessionsPage";
 import AuditPage from "./pages/admin/AuditPage";
 import UsersPage from "./pages/admin/UsersPage";
 import OnlineUsersPage from "./pages/admin/OnlineUsersPage";
+import FacilityTypesPage from "./pages/admin/FacilityTypesPage";
 import Forbidden from "./pages/Forbidden";
+import FirstFacilityRedirect from "./components/facilities/FirstFacilityRedirect";
 
 function useIsMobile(query = "(max-width: 1024px)") {
   const [isMobile, setIsMobile] = useState(false);
@@ -31,9 +33,22 @@ function useIsMobile(query = "(max-width: 1024px)") {
   return isMobile;
 }
 
+function useIsWide(query = "(min-width: 1280px)") {
+  const [isWide, setIsWide] = useState(false);
+  useEffect(() => {
+    const m = window.matchMedia(query);
+    const onChange = () => setIsWide(m.matches);
+    onChange();
+    m.addEventListener("change", onChange);
+    return () => m.removeEventListener("change", onChange);
+  }, [query]);
+  return isWide;
+}
+
 export default function App() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const isWide = useIsWide();
   const [collapsed, setCollapsed] = useState(false);
   const [toggled, setToggled] = useState(false);
   const { isDark, toggle } = useTheme();
@@ -68,7 +83,8 @@ export default function App() {
     return () => window.removeEventListener("org:open-table", onOpen);
   }, [navigate]);
 
-  const sidebarWidth = isMobile ? 0 : collapsed ? "80px" : "260px";
+  const expandedWidth = isWide ? "340px" : "320px";
+  const sidebarWidth = isMobile ? 0 : collapsed ? "80px" : expandedWidth;
 
   return (
     <Routes>
@@ -86,6 +102,7 @@ export default function App() {
                     collapsed={collapsed}
                     toggled={false}
                     setToggled={setToggled}
+                    width={expandedWidth}
                   />
                 </div>
               )}
@@ -102,6 +119,7 @@ export default function App() {
                       collapsed={false}
                       toggled={toggled}
                       setToggled={setToggled}
+                      width={expandedWidth}
                     />
                   </div>
                 </div>
@@ -171,11 +189,19 @@ export default function App() {
                         </AdminRoute>
                       }
                     />
+                    <Route
+                      path="/admin/facility-types"
+                      element={
+                        <AdminRoute>
+                          <FacilityTypesPage />
+                        </AdminRoute>
+                      }
+                    />
 
                     {/* Facilities: kanonik yo‘llar */}
                     <Route
                       path="/facilities"
-                      element={<Navigate to="/facilities/greenhouse" replace />}
+                      element={<FirstFacilityRedirect />}
                     />
                     <Route
                       path="/facilities/:type"

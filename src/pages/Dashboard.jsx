@@ -7,6 +7,7 @@ import { api, httpGet } from "../api/http";
 import { debugError } from "../utils/debug";
 import s from "./Dashboard.module.scss";
 import OrgUnitSelect from "./admin/OrgUnitSelect";
+import { useFacilityTypes } from "../hooks/useFacilityTypes";
 
 // CSV eksport vaqtincha o'chirildi
 const EXPORT_ENABLED = false;
@@ -25,29 +26,13 @@ const MONTHS = [
   "Dek",
 ];
 
-// ✅ To'liq o'zbekcha mapping (11 tur)
-const mapType = (t) => {
-  const M = {
-    GREENHOUSE: "Issiqxona",
-    POULTRY_MEAT: "Tovuqxona (go‘sht)",
-    POULTRY_EGG: "Tovuqxona (tuxum)",
-    TURKEY: "Kurkaxona",
-    COWSHED: "Molxona",
-    SHEEPFOLD: "Qo‘yxona",
-    WORKSHOP_SAUSAGE: "Ishlab chiqarish sexi (kolbasa)",
-    WORKSHOP_COOKIE: "Ishlab chiqarish sexi (pechenye)",
-    AUX_LAND: "Yordamchi xo‘jalik yeri",
-    BORDER_LAND: "Chegara oldi yeri",
-    FISHPOND: "Baliqchilik ko‘li",
-  };
-  return (
-    M[t] ??
-    (t || "")
-      .toLowerCase()
-      .replace(/_/g, " ")
-      .replace(/(^|\s)\S/g, (c) => c.toUpperCase())
-  );
-};
+// Dinamik mapping: provider’dan label; fallback SNAKE->Title Case
+const mapTypeWith = (labelFn) => (t) =>
+  labelFn(t) ||
+  (t || "")
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
 
 const fmtNum = (v) => new Intl.NumberFormat("uz-UZ").format(v ?? 0);
 const fmtMoney = (v) =>
@@ -55,6 +40,7 @@ const fmtMoney = (v) =>
 const fmtPct = (v) => (v == null ? "—" : `${v.toFixed(1)}%`);
 
 export default function Dashboard({ dark = false }) {
+  const { types: typeDefs, label: labelFor } = useFacilityTypes();
   const rootRef = useRef(null);
 
   const thisYear = new Date().getFullYear();
@@ -176,21 +162,12 @@ export default function Dashboard({ dark = false }) {
   const distinctTypes = typeAgg.length;
 
   const rawTypes = typeAgg.map((t) => t.type);
-  // Barcha turlar ro'yxati (doimiy ko'rinsin). Agar backend yangi qo'shsa, shu yerga qo'shish kifoya.
-  const ALL_TYPES = [
-    "GREENHOUSE",
-    "POULTRY_MEAT",
-    "POULTRY_EGG",
-    "TURKEY",
-    "COWSHED",
-    "SHEEPFOLD",
-    "WORKSHOP_SAUSAGE",
-    "WORKSHOP_COOKIE",
-    "AUX_LAND",
-    "BORDER_LAND",
-    "FISHPOND",
-  ];
+  const ALL_TYPES = (Array.isArray(typeDefs) ? typeDefs : [])
+    .slice()
+    .sort((a, b) => (a.sort ?? a.sortOrder ?? 0) - (b.sort ?? b.sortOrder ?? 0))
+    .map((t) => t.code);
   const donutSeries = typeAgg.map((t) => t.count);
+  const mapType = useMemo(() => mapTypeWith(labelFor), [labelFor]);
   const donutLabelsLocalized = rawTypes.map(mapType);
 
   const toggleType = (enumVal) =>

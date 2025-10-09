@@ -3,7 +3,7 @@ import { debugError } from "../../utils/debug";
 import Modal from "../ui/Modal"; // Agar fayl `map/modals/` ichida bo'lsa: `../../ui/Modal` qilib qo'ying.
 import { patchFacility } from "../../api/facilities";
 import styles from "./FacilityEditModal.module.scss";
-import { FACILITY_TYPES } from "../../data/facilityTypes";
+import { useFacilityTypes } from "../../hooks/useFacilityTypes";
 import { toast } from "react-toastify";
 import { areaOfGeometryM2 } from "../../utils/geo";
 
@@ -14,26 +14,30 @@ export default function FacilityEditModal({
   onSaved,
   dark,
 }) {
+  const { byCode, label: labelFor, codes } = useFacilityTypes();
   const [name, setName] = useState("");
   const [status, setStatus] = useState("ACTIVE");
-  const [type, setType] = useState("GREENHOUSE");
+  // Default to the first available type code if any, else GREENHOUSE
+  const firstType = (codes && codes[0]) || "GREENHOUSE";
+  const [type, setType] = useState(firstType);
   const [attrs, setAttrs] = useState({});
   const canSave = name.trim().length > 0;
 
   // Schema (tanlangan turga mos maydonlar)
-  const schemaFields = useMemo(
-    () => FACILITY_TYPES[type]?.fields || [],
-    [type]
-  );
+  const schemaFields = useMemo(() => {
+    const t = byCode.get(type);
+    return Array.isArray(t?.schema) ? t.schema : [];
+  }, [byCode, type]);
 
   // Modal ochilganda boshlang'ich qiymatlar
   useEffect(() => {
     if (!facility) return;
     setName(facility.name || "");
     setStatus(facility.status || "ACTIVE");
-    setType(facility.type || "GREENHOUSE");
+    setType(facility.type || firstType);
 
-    const schema = FACILITY_TYPES[facility.type]?.fields || [];
+    const t = byCode.get(facility.type || firstType);
+    const schema = Array.isArray(t?.schema) ? t.schema : [];
     const base = {};
     schema.forEach((f) => (base[f.key] = ""));
     const incoming = facility.attributes || facility.details || {};
@@ -42,9 +46,9 @@ export default function FacilityEditModal({
       if (k in base) merged[k] = v ?? "";
     }
     setAttrs(merged);
-  }, [facility]);
+  }, [facility, byCode, firstType]);
 
-  const typeLabel = FACILITY_TYPES[type]?.label || type;
+  const typeLabel = labelFor(type) || type;
   const orgLabel =
     facility?.orgName ||
     facility?.org?.name ||
@@ -255,7 +259,7 @@ export default function FacilityEditModal({
           </div>
 
           <div className={styles.grid}>
-            {(FACILITY_TYPES[type]?.fields || []).map((f) => (
+            {schemaFields.map((f) => (
               <div key={f.key} className={styles.field}>
                 <label className={styles.label}>
                   {f.label}

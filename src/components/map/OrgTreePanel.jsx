@@ -3,8 +3,9 @@ import Tree from "rc-tree";
 import "rc-tree/assets/index.css";
 import "./OrgTreePanel.css";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
+import { useFacilityTypes } from "../../hooks/useFacilityTypes";
 
-/** Faqat ruxsat etilgan 11 yo‘nalish uchun o‘zbekcha yorliqlar (fallback) */
+// Dynamic labels/order driven by FacilityTypes provider, with fallback.
 const DEFAULT_TYPE_LABELS = {
   GREENHOUSE: "Issiqxona",
   POULTRY_MEAT: "Tovuqxona (go‘sht)",
@@ -18,9 +19,7 @@ const DEFAULT_TYPE_LABELS = {
   BORDER_LAND: "Chegara oldi yeri",
   FISHPOND: "Baliqchilik ko‘li",
 };
-
-/** UI’da ko‘rsatish tartibi */
-const FRONT_ORDER = [
+const DEFAULT_ORDER = [
   "GREENHOUSE",
   "POULTRY_MEAT",
   "POULTRY_EGG",
@@ -128,13 +127,38 @@ export default function OrgTreePanel({
   selectedOrgId,
   hide = false,
   typeLabels, // ✅ MapView’dan kelgan o‘zbekcha yorliqlar (ixtiyoriy)
+  typeOrder, // ✅ Dinamik tartib (kodlar ro'yxati), bo'lmasa FRONT_ORDER ishlatiladi
   onRequestHide, // ✅ Panelni headerdan yopish uchun
 }) {
-  const LABELS = typeLabels || DEFAULT_TYPE_LABELS;
+  const { types, label } = useFacilityTypes();
+  const dynamicLabels =
+    typeLabels && Object.keys(typeLabels).length
+      ? typeLabels
+      : (() => {
+          const m = {};
+          if (Array.isArray(types)) {
+            for (const t of types)
+              if (t?.code) m[t.code] = t.nameUz || t.nameRu || t.code;
+          }
+          return Object.keys(m).length ? m : DEFAULT_TYPE_LABELS;
+        })();
+  const LABELS = dynamicLabels;
 
+  const ORDER =
+    Array.isArray(typeOrder) && typeOrder.length
+      ? typeOrder
+      : Array.isArray(types) && types.length
+      ? types
+          .slice()
+          .sort(
+            (a, b) =>
+              (a.sort ?? a.sortOrder ?? 0) - (b.sort ?? b.sortOrder ?? 0)
+          )
+          .map((t) => t.code)
+      : DEFAULT_ORDER;
   const allKeys = Object.keys(typeFilter || {});
-  const visibleKeys = FRONT_ORDER.filter((k) => allKeys.includes(k));
-  const extraKeys = allKeys.filter((k) => !FRONT_ORDER.includes(k));
+  const visibleKeys = ORDER.filter((k) => allKeys.includes(k));
+  const extraKeys = allKeys.filter((k) => !ORDER.includes(k));
 
   const toggleType = (k, val) =>
     setTypeFilter((s) => ({ ...s, [k]: val ?? !s[k] }));

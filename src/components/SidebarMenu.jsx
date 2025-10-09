@@ -1,10 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   LuLayoutDashboard,
   LuListChecks,
   LuMap,
   LuMonitorSmartphone,
   LuNetwork,
+  LuPackage,
+  LuExternalLink,
   LuSettings,
   LuShield,
   LuUser,
@@ -15,14 +17,34 @@ import { Link, useLocation } from "react-router-dom";
 import appLogo from "../assets/zamin-logo.png";
 import { useAuth } from "../hooks/useAuth";
 import styles from "./SidebarMenu.module.scss";
+import { useFacilityTypes } from "../hooks/useFacilityTypes";
 
-export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
+export default function SidebarMenu({
+  dark,
+  collapsed,
+  toggled,
+  setToggled,
+  width = "320px",
+}) {
   const { pathname } = useLocation();
   const { isAdmin /*, isAuthed*/ } = useAuth();
+  const { types, slugFor, label, emoji } = useFacilityTypes();
+
+  // Control "Inshootlar" submenu open state to avoid any auto-toggle quirks
+  const [facilitiesOpen, setFacilitiesOpen] = useState(
+    pathname.startsWith("/facilities")
+  );
 
   useEffect(() => {
     if (toggled) setToggled(false);
   }, [pathname, toggled, setToggled]);
+
+  // Keep facilities submenu open when user navigates within /facilities
+  useEffect(() => {
+    if (pathname.startsWith("/facilities")) {
+      setFacilitiesOpen(true);
+    }
+  }, [pathname]);
 
   const isActive = (to, exact = true) =>
     exact ? pathname === to : pathname.startsWith(to);
@@ -51,6 +73,9 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
     }),
   };
 
+  // Temporary: hide Settings submenu
+  const SHOW_SETTINGS = false;
+
   return (
     <div
       className={`${styles.wrapper} ${dark ? styles.dark : ""}`}
@@ -61,7 +86,7 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
         toggled={toggled}
         onBackdropClick={() => setToggled(false)}
         breakPoint="lg"
-        width="260px"
+        width={width}
         backgroundColor="var(--sb-bg)"
         rootStyles={{
           color: "var(--sb-fg)",
@@ -146,113 +171,71 @@ export default function SidebarMenu({ dark, collapsed, toggled, setToggled }) {
               >
                 <span className={styles.text}>Foydalanuvchilar</span>
               </MenuItem>
+              <MenuItem
+                icon={<LuPackage size={18} />}
+                component={<Link to="/admin/facility-types" />}
+                active={isActive("/admin/facility-types")}
+              >
+                <span className={styles.text}>Inshoot turlari</span>
+              </MenuItem>
             </SubMenu>
           )}
 
-          {/* Inshootlar: hamma uchun ochiq */}
+          {/* Inshootlar: dinamik */}
           <SubMenu
-            defaultOpen={isActive("/facilities", false)}
+            open={facilitiesOpen}
+            onOpenChange={setFacilitiesOpen}
             label={<span className={styles.text}>Inshootlar</span>}
-            icon={"🏭"}
+            icon={<LuPackage size={18} />}
           >
-            <MenuItem
-              active={isActive("/facilities/greenhouse")}
-              component={<Link to="/facilities/greenhouse" />}
-              icon={"🌿"}
-            >
-              <span className={styles.text}>Issiqxona</span>
-            </MenuItem>
-
-            <MenuItem
-              active={isActive("/facilities/poultry-meat")}
-              component={<Link to="/facilities/poultry-meat" />}
-              icon={"🍗"}
-            >
-              <span className={styles.text}>Tovuqxona (go‘sht)</span>
-            </MenuItem>
-            <MenuItem
-              active={isActive("/facilities/poultry-egg")}
-              component={<Link to="/facilities/poultry-egg" />}
-              icon={"🥚"}
-            >
-              <span className={styles.text}>Tovuqxona (tuxum)</span>
-            </MenuItem>
-
-            <MenuItem
-              active={isActive("/facilities/turkey")}
-              component={<Link to="/facilities/turkey" />}
-              icon={"🦃"}
-            >
-              <span className={styles.text}>Kurkaxona</span>
-            </MenuItem>
-            <MenuItem
-              active={isActive("/facilities/cowshed")}
-              component={<Link to="/facilities/cowshed" />}
-              icon={"🐄"}
-            >
-              <span className={styles.text}>Molxona</span>
-            </MenuItem>
-            <MenuItem
-              active={isActive("/facilities/sheepfold")}
-              component={<Link to="/facilities/sheepfold" />}
-              icon={"🐑"}
-            >
-              <span className={styles.text}>Qo‘yxona</span>
-            </MenuItem>
-
-            <MenuItem
-              active={isActive("/facilities/workshops-sausage")}
-              component={<Link to="/facilities/workshops-sausage" />}
-              icon={"🥓"}
-            >
-              <span className={styles.text}>
-                Ishlab chiqarish sexi (kolbasa)
-              </span>
-            </MenuItem>
-            <MenuItem
-              active={isActive("/facilities/workshops-cookie")}
-              component={<Link to="/facilities/workshops-cookie" />}
-              icon={"🍪"}
-            >
-              <span className={styles.text}>
-                Ishlab chiqarish sexi (pechenye)
-              </span>
-            </MenuItem>
-
-            <MenuItem
-              active={isActive("/facilities/aux-lands")}
-              component={<Link to="/facilities/aux-lands" />}
-              icon={"🌾"}
-            >
-              <span className={styles.text}>Yordamchi xo‘jalik yeri</span>
-            </MenuItem>
-            <MenuItem
-              active={isActive("/facilities/border-lands")}
-              component={<Link to="/facilities/border-lands" />}
-              icon={"🧭"}
-            >
-              <span className={styles.text}>Chegara oldi yeri</span>
-            </MenuItem>
-            <MenuItem
-              active={isActive("/facilities/fish-ponds")}
-              component={<Link to="/facilities/fish-ponds" />}
-              icon={"🐟"}
-            >
-              <span className={styles.text}>Baliqchilik ko‘llari</span>
-            </MenuItem>
+            {(types?.length ? types : [])
+              .slice()
+              .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+              .map((t) => {
+                const slug = slugFor(t.code);
+                const to = `/facilities/${slug}`;
+                const name = label(t.code);
+                const em = t.iconEmoji || emoji(t.code);
+                return (
+                  <MenuItem
+                    key={t.code}
+                    active={isActive(to)}
+                    component={<Link to={to} />}
+                    icon={em || "📍"}
+                  >
+                    <span className={styles.text}>{name}</span>
+                  </MenuItem>
+                );
+              })}
           </SubMenu>
 
-          <SubMenu
-            label={<span className={styles.text}>Sozlamalar</span>}
-            icon={<LuSettings size={18} />}
+          {/* External link to C4 system */}
+          <MenuItem
+            icon={<LuExternalLink size={18} />}
+            component={
+              <a
+                href="http://c4.uz"
+                target="_blank"
+                rel="noopener noreferrer"
+              />
+            }
           >
-            <MenuItem icon={<LuUser size={18} />}>
-              <span className={styles.text}>Profil</span>
-            </MenuItem>
-            <MenuItem icon={<LuShield size={18} />}>
-              <span className={styles.text}>Xavfsizlik</span>
-            </MenuItem>
-          </SubMenu>
+            <span className={styles.text}>C4 tizimi</span>
+          </MenuItem>
+
+          {SHOW_SETTINGS && (
+            <SubMenu
+              label={<span className={styles.text}>Sozlamalar</span>}
+              icon={<LuSettings size={18} />}
+            >
+              <MenuItem icon={<LuUser size={18} />}>
+                <span className={styles.text}>Profil</span>
+              </MenuItem>
+              <MenuItem icon={<LuShield size={18} />}>
+                <span className={styles.text}>Xavfsizlik</span>
+              </MenuItem>
+            </SubMenu>
+          )}
         </Menu>
       </Sidebar>
     </div>

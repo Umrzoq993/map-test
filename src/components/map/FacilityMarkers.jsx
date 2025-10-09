@@ -2,7 +2,7 @@
 import { Marker, Popup } from "react-leaflet";
 import { centroidOfGeometry } from "../../utils/geo";
 import { badgeIconFor } from "./mapIcons";
-import { FACILITY_TYPES } from "../../data/facilityTypes";
+import { useFacilityTypes } from "../../hooks/useFacilityTypes";
 import { useEffect, useState } from "react";
 
 export default function FacilityMarkers({
@@ -10,6 +10,7 @@ export default function FacilityMarkers({
   onOpenEdit,
   onOpenGallery,
 }) {
+  const { byCode, label: labelFor } = useFacilityTypes();
   const [isDark, setIsDark] = useState(false);
   useEffect(() => {
     const root = document.documentElement;
@@ -31,12 +32,15 @@ export default function FacilityMarkers({
         if (!pos) return null;
 
         const icon = badgeIconFor(f.type, 28);
-        const typeLabel = FACILITY_TYPES[f.type]?.label || f.type;
+        const typeLabel = labelFor(f.type) || f.type;
         const orgLabel =
           f.orgName ||
           f.org?.name ||
           (f.orgId != null ? `Org #${f.orgId}` : "—");
         const details = f.attributes || f.details || {};
+        const schema = Array.isArray(byCode.get(f.type)?.schema)
+          ? byCode.get(f.type).schema
+          : [];
 
         return (
           <Marker
@@ -59,7 +63,7 @@ export default function FacilityMarkers({
                 </div>
 
                 <div style={{ display: "grid", gap: 6 }}>
-                  {(FACILITY_TYPES[f.type]?.fields || []).map((fld) => {
+                  {schema.map((fld) => {
                     const v = valueOrDash(details[fld.key]);
                     if (v === "—") return null;
                     return (

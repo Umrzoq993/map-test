@@ -3,19 +3,20 @@ import OrgUnitSelect from "../../pages/admin/OrgUnitSelect";
 import MapPickerModal from "../map/MapPickerModal";
 import { getOrgUnit, locateOrg } from "../../api/org";
 import { toast } from "react-toastify";
+import { listActiveFacilityTypes } from "../../api/facilityTypes";
 
-const TYPE_OPTIONS = [
-  { value: "GREENHOUSE", label: "Issiqxona" },
-  { value: "POULTRY_MEAT", label: "Tovuqxona (go'sht)" },
-  { value: "POULTRY_EGG", label: "Tovuqxona (tuxum)" },
-  { value: "COWSHED", label: "Molxona" },
-  { value: "TURKEY", label: "Kurkaxona" },
-  { value: "SHEEPFOLD", label: "Qo‘yxona" },
-  { value: "WORKSHOP_SAUSAGE", label: "Ishlab chiqarish sexi (kolbasa)" },
-  { value: "WORKSHOP_COOKIE", label: "Ishlab chiqarish sexi (pechenye)" },
-  { value: "AUX_LAND", label: "Yordamchi xo‘jalik yeri" },
-  { value: "BORDER_LAND", label: "Chegara oldi yeri" },
-  { value: "FISHPOND", label: "Baliqchilik ko‘li" },
+const FALLBACK_TYPES = [
+  { code: "GREENHOUSE", nameUz: "Issiqxona" },
+  { code: "POULTRY_MEAT", nameUz: "Tovuqxona (go'sht)" },
+  { code: "POULTRY_EGG", nameUz: "Tovuqxona (tuxum)" },
+  { code: "COWSHED", nameUz: "Molxona" },
+  { code: "TURKEY", nameUz: "Kurkaxona" },
+  { code: "SHEEPFOLD", nameUz: "Qo‘yxona" },
+  { code: "WORKSHOP_SAUSAGE", nameUz: "Ishlab chiqarish sexi (kolbasa)" },
+  { code: "WORKSHOP_COOKIE", nameUz: "Ishlab chiqarish sexi (pechenye)" },
+  { code: "AUX_LAND", nameUz: "Yordamchi xo‘jalik yeri" },
+  { code: "BORDER_LAND", nameUz: "Chegara oldi yeri" },
+  { code: "FISHPOND", nameUz: "Baliqchilik ko‘li" },
 ];
 
 const STATUS_OPTIONS = [
@@ -24,7 +25,7 @@ const STATUS_OPTIONS = [
   { value: "UNDER_MAINTENANCE", label: "Maintenance" },
 ];
 
-/** type bo‘yicha atributlar */
+/** Fallback schema by type (used if server doesn't provide) */
 const ATTR_SCHEMAS = {
   GREENHOUSE: [
     {
@@ -139,6 +140,7 @@ function parseVal(raw, t) {
 }
 
 export default function FacilityForm({ initial, onSubmit, onCancel }) {
+  const [typeDefs, setTypeDefs] = useState(null); // [{code,nameUz, schema, color, iconEmoji,...}]
   const [orgId, setOrgId] = useState(initial?.orgId ?? null);
   const [orgObj, setOrgObj] = useState(null); // {id,name,code,parentId}
   const [name, setName] = useState(initial?.name ?? "");
@@ -155,7 +157,38 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerInit, setPickerInit] = useState(null); // {lat,lng,zoom} — modalga boshlang‘ich markaz
 
-  const schema = useMemo(() => ATTR_SCHEMAS[type] || [], [type]);
+  useEffect(() => {
+    let mounted = true;
+    listActiveFacilityTypes()
+      .then((list) => {
+        if (!mounted) return;
+        if (Array.isArray(list) && list.length) setTypeDefs(list);
+      })
+      .catch(() => {})
+      .finally(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const typeOptions = useMemo(() => {
+    if (Array.isArray(typeDefs) && typeDefs.length) {
+      return typeDefs.map((t) => ({
+        value: t.code,
+        label: t.nameUz || t.nameRu || t.code,
+      }));
+    }
+    return FALLBACK_TYPES.map((t) => ({ value: t.code, label: t.nameUz }));
+  }, [typeDefs]);
+
+  const typeSchema = useMemo(() => {
+    const found = Array.isArray(typeDefs)
+      ? typeDefs.find((t) => t.code === type)
+      : null;
+    if (found && found.schema && Array.isArray(found.schema))
+      return found.schema;
+    return ATTR_SCHEMAS[type] || [];
+  }, [type, typeDefs]);
 
   useEffect(() => {
     setAttributes((prev) => ({ ...prev })); // schema almashganda eski qiymatlar saqlansin
@@ -276,7 +309,7 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
             <div className="field">
               <label>Turi</label>
               <select value={type} onChange={(e) => setType(e.target.value)}>
-                {TYPE_OPTIONS.map((o) => (
+                {typeOptions.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -341,7 +374,7 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
           <div className="field">
             <label>Ma’lumotlar (type bo‘yicha)</label>
             <div className="grid3">
-              {schema.map((f) => (
+              {typeSchema.map((f) => (
                 <div className="field" key={f.key}>
                   <label>{f.label}</label>
                   <input

@@ -1,14 +1,17 @@
 //src/pages/MapPages.jsx
+// patched by cleanup task
 import { useEffect, useState } from "react";
 import { debugError } from "../utils/debug";
 import MapView from "../components/map/MapView";
 import { getOrgTree } from "../api/org";
+import { loadDynamicTypeColors } from "../components/map/mapIcons";
 
 export default function MapPage({ dark }) {
   const [orgTree, setOrgTree] = useState([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    loadDynamicTypeColors();
     (async () => {
       try {
         const data = await getOrgTree();

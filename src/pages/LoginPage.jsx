@@ -108,6 +108,12 @@ export default function LoginPage() {
       });
       if (ok) {
         toast.success("Muvaffaqiyatli kirildi");
+        try {
+          // Ensure backend refresh cookie is canonical (de-dup) before entering protected routes
+          // Safe no-op if not needed
+          const { refreshAccessToken } = await import("../api/auth");
+          await refreshAccessToken().catch(() => {});
+        } catch {}
         navigate(from, { replace: true });
       } else {
         setError("Kirish amalga oshmadi");
@@ -122,6 +128,28 @@ export default function LoginPage() {
       setBusy(false);
     }
   };
+
+  // Silent refresh on /login if user actually has a valid refresh cookie
+  useEffect(() => {
+    if (authed || forceSwitch) return; // already authed or explicitly showing form
+    let alive = true;
+    (async () => {
+      try {
+        const { refreshAccessToken } = await import("../api/auth");
+        await refreshAccessToken();
+        if (!alive) return;
+        // If refresh succeeded, navigate to destination
+        if (isAuthenticated()) {
+          navigate(from, { replace: true });
+        }
+      } catch {
+        // ignore; show login form
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [authed, forceSwitch, from, navigate]);
 
   // 1) Agar login bo‘lmagan bo‘lsa — oddiy login formani ko‘rsatamiz
   if (!authed) {

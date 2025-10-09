@@ -11,27 +11,7 @@ import FacilityForm from "../../components/facilities/FacilityForm";
 import { toast } from "react-toastify";
 import Modal from "../../components/ui/Modal";
 import "../../styles/_facility_modal.scss";
-import { TYPE_LABELS } from "../../constants/facilityTypes";
-
-/** URL slug -> enum (kanonik + legacy aliaslar) */
-const SLUG_TO_ENUM = {
-  greenhouse: "GREENHOUSE",
-  "poultry-meat": "POULTRY_MEAT",
-  "poultry-egg": "POULTRY_EGG",
-  poultry: "POULTRY_MEAT", // legacy: eski bookmarklar
-  turkey: "TURKEY",
-  cowshed: "COWSHED",
-  sheepfold: "SHEEPFOLD",
-  "workshops-sausage": "WORKSHOP_SAUSAGE",
-  "workshops-cookie": "WORKSHOP_COOKIE",
-  workshops: "WORKSHOP_SAUSAGE", // legacy
-  "aux-lands": "AUX_LAND",
-  "border-lands": "BORDER_LAND",
-  "fish-ponds": "FISHPOND",
-  "fish-farm": "FISHPOND", // legacy
-  "aux-land": "AUX_LAND",
-  "border-land": "BORDER_LAND",
-};
+import { useFacilityTypes } from "../../hooks/useFacilityTypes";
 
 const ROUTE_LABELS = {
   "poultry-meat": "Tovuqxona (go‘sht)",
@@ -45,35 +25,44 @@ export default function GenericFacilityPage() {
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
   const [type, setType] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  const {
+    types: typeDefs,
+    codeFromSlug,
+    label: labelFor,
+    codes,
+  } = useFacilityTypes();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [mode, setMode] = useState("create");
-  const [deleteTarget, setDeleteTarget] = useState(null); // facility object for delete confirm
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Pagination state
-  const [page, setPage] = useState(0); // zero-based
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
   const [total, setTotal] = useState(0);
   const totalPages = Math.max(1, Math.ceil(total / size));
 
+  const labelForType = (code) => labelFor(code) || code;
+
   const from = total ? page * size + 1 : 0;
   const to = Math.min(total, (page + 1) * size);
-
   const lockedByRoute = !!typeSlug;
 
   const typeOptions = useMemo(() => {
-    const allOpts = Object.entries(TYPE_LABELS).map(([v, l]) => ({
-      value: v,
-      label: l,
+    const allOpts = (Array.isArray(typeDefs) ? typeDefs : []).map((t) => ({
+      value: t.code,
+      label: t.nameUz || t.nameRu || t.code,
     }));
     if (lockedByRoute && type) {
-      return [{ value: type, label: TYPE_LABELS[type] || type }];
+      const found = allOpts.find((o) => o.value === type);
+      const label = found?.label || labelForType(type) || type;
+      return [{ value: type, label }];
     }
     return [{ value: "", label: "Barchasi" }, ...allOpts];
-  }, [lockedByRoute, type]);
+  }, [lockedByRoute, type, typeDefs]);
 
   const fetchData = async (over = {}) => {
     setLoading(true);
@@ -84,10 +73,8 @@ export default function GenericFacilityPage() {
           over.type !== undefined ? over.type || undefined : type || undefined,
         page: over.page ?? page,
         size: over.size ?? size,
-        // kerak bo‘lsa boshqa sortlar ham qo‘shish mumkin:
         sort: ["createdAt,desc"],
       });
-
       setItems(res?.content ?? []);
       setTotal(res?.totalElements ?? 0);
     } catch (e) {
@@ -104,11 +91,11 @@ export default function GenericFacilityPage() {
       fetchData({ type: "" });
       return;
     }
-    const enumVal = SLUG_TO_ENUM[(typeSlug || "").toLowerCase()] || "";
+    const enumVal = codeFromSlug(typeSlug) || "";
     setType(enumVal);
     fetchData({ type: enumVal });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeSlug]);
+  }, [typeSlug, codes.join("")]);
 
   useEffect(() => {
     if (!typeSlug) fetchData();
@@ -116,7 +103,6 @@ export default function GenericFacilityPage() {
   }, []);
 
   useEffect(() => {
-    // type (filtr), page, size o'zgarganda ro'yxatni qayta yuklaymiz
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, page, size]);
@@ -177,7 +163,7 @@ export default function GenericFacilityPage() {
 
   const headerLabel =
     ROUTE_LABELS[(typeSlug || "").toLowerCase()] ||
-    (type ? TYPE_LABELS[type] : "Barchasi");
+    (type ? labelForType(type) : "Barchasi");
 
   return (
     <div className="org-table-page">
@@ -230,7 +216,7 @@ export default function GenericFacilityPage() {
                 <th style={{ width: 60 }}>ID</th>
                 <th>Nomi</th>
                 <th>Turi</th>
-                <th>Tashk. ID</th>
+                <th>Tashkilot</th>
                 <th>Koordinata</th>
                 <th style={{ width: 220 }}>Amallar</th>
               </tr>
@@ -257,8 +243,23 @@ export default function GenericFacilityPage() {
                   <tr key={row.id}>
                     <td className="num">{row.id}</td>
                     <td>{row.name}</td>
-                    <td>{TYPE_LABELS[row.type] || row.type}</td>
-                    <td className="num">{row.orgId}</td>
+                    <td>{labelForType(row.type)}</td>
+                    <td>
+                      {row.orgId != null ? (
+                        <a
+                          href={`/orgs-table?focus=${row.orgId}`}
+                          title={`Org #${row.orgId}`}
+                        >
+                          {row.orgName && String(row.orgName).trim().length
+                            ? row.orgName
+                            : `#${row.orgId}`}
+                        </a>
+                      ) : row.orgName && String(row.orgName).trim().length ? (
+                        row.orgName
+                      ) : (
+                        "\u2014"
+                      )}
+                    </td>
                     <td className="muted">
                       {row.lat != null && row.lng != null
                         ? `${row.lat.toFixed(4)}, ${row.lng.toFixed(4)}`
@@ -393,13 +394,28 @@ export default function GenericFacilityPage() {
               </div>
               <div className="row">
                 <span className="k">Tur:</span>
-                <span>
-                  {TYPE_LABELS[deleteTarget.type] || deleteTarget.type}
-                </span>
+                <span>{labelForType(deleteTarget.type)}</span>
               </div>
               <div className="row">
                 <span className="k">Org:</span>
-                <span>{deleteTarget.orgId}</span>
+                <span>
+                  {deleteTarget.orgId != null ? (
+                    <a
+                      href={`/orgs-table?focus=${deleteTarget.orgId}`}
+                      title={`Org #${deleteTarget.orgId}`}
+                    >
+                      {deleteTarget.orgName &&
+                      String(deleteTarget.orgName).trim().length
+                        ? deleteTarget.orgName
+                        : `#${deleteTarget.orgId}`}
+                    </a>
+                  ) : deleteTarget.orgName &&
+                    String(deleteTarget.orgName).trim().length ? (
+                    deleteTarget.orgName
+                  ) : (
+                    "\u2014"
+                  )}
+                </span>
               </div>
               {deleteTarget.lat != null && deleteTarget.lng != null && (
                 <div className="row">

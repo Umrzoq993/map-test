@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { debugWarn } from "../../utils/debug";
-import { MapContainer, Marker, useMapEvents } from "react-leaflet";
+import {
+  LayersControl,
+  MapContainer,
+  Marker,
+  useMapEvents,
+} from "react-leaflet";
 import Modal from "../ui/Modal";
 import MapTiles from "./MapTiles";
 
@@ -91,6 +96,14 @@ export default function MapPickerModal({
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
+
+  // ====== Base layers (Vesat default, OSM.uz alternative) ======
+  const OSMUZ_URL = "https://osm.uz/tile/{z}/{x}/{y}.png";
+  const VESAT_BASE = import.meta.env.VITE_TILE_VESAT_BASE || "https://vesat.uz";
+  const VESAT_EXT = import.meta.env.VITE_TILE_VESAT_EXT || "jpg";
+  const VESAT_TMS =
+    (import.meta.env.VITE_TILE_VESAT_TMS ?? "true").toString().toLowerCase() ===
+    "true";
 
   return (
     <Modal
@@ -186,7 +199,35 @@ export default function MapPickerModal({
               whenCreated={setMap}
               style={{ height: "100%", width: "100%" }}
             >
-              <MapTiles tms={tms} />
+              <LayersControl position="topright">
+                <LayersControl.BaseLayer checked name="Vesat (Gibrid)">
+                  <MapTiles
+                    key="vesat-xyz-picker"
+                    url={`${VESAT_BASE}/{z}/{x}/{y}.${VESAT_EXT}`}
+                    minZoom={0}
+                    maxZoom={19}
+                    tms={VESAT_TMS}
+                    noWrap={true}
+                    updateWhenIdle={true}
+                    keepBuffer={2}
+                    attribution="&copy; Vesat"
+                  />
+                </LayersControl.BaseLayer>
+                <LayersControl.BaseLayer name="OSM.uz (XYZ)">
+                  <MapTiles
+                    key="osm-uz-xyz-picker"
+                    url={OSMUZ_URL}
+                    minZoom={0}
+                    maxZoom={19}
+                    maxNativeZoom={19}
+                    tms={false}
+                    noWrap={false}
+                    updateWhenIdle={true}
+                    keepBuffer={2}
+                    attribution="&copy; OSM.uz & OpenStreetMap contributors"
+                  />
+                </LayersControl.BaseLayer>
+              </LayersControl>
               <ClickCapture onPick={setPos} />
               {pos && <Marker position={pos} />}
             </MapContainer>
