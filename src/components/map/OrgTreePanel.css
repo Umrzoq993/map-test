@@ -105,6 +105,13 @@
   font-weight: 700;
   margin-bottom: 8px;
 }
+.otp-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
 
 .otp-actions {
   display: flex;

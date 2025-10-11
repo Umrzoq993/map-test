@@ -411,7 +411,20 @@ export default function MapView({
     setNavTarget({ lat, lng, zoom: z, ts: Date.now(), fast: !!fast });
   }, []);
 
-  const [panelHidden, setPanelHidden] = useState(!hideTree);
+  const PANEL_HIDDEN_LS_KEY = "orgTree.panelHidden";
+  const [panelHidden, setPanelHidden] = useState(() => {
+    try {
+      const raw = localStorage.getItem(PANEL_HIDDEN_LS_KEY);
+      if (raw === "1" || raw === "true") return true;
+      if (raw === "0" || raw === "false") return false;
+    } catch {}
+    return !hideTree;
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(PANEL_HIDDEN_LS_KEY, panelHidden ? "1" : "0");
+    } catch {}
+  }, [panelHidden]);
   const togglePanel = useCallback(() => {
     setPanelHidden((v) => !v);
   }, []);

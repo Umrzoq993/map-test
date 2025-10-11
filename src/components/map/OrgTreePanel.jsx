@@ -4,6 +4,7 @@ import "rc-tree/assets/index.css";
 import "./OrgTreePanel.css";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { useFacilityTypes } from "../../hooks/useFacilityTypes";
+import { useEffect, useState } from "react";
 
 // Dynamic labels/order driven by FacilityTypes provider, with fallback.
 const DEFAULT_TYPE_LABELS = {
@@ -180,6 +181,21 @@ export default function OrgTreePanel({
 
   useDebouncedValue(searchInput, 400);
 
+  const TYPES_OPEN_LS_KEY = "orgTree.typesOpen";
+  const [typesOpen, setTypesOpen] = useState(() => {
+    try {
+      const raw = localStorage.getItem(TYPES_OPEN_LS_KEY);
+      if (raw === "0" || raw === "false") return false;
+      if (raw === "1" || raw === "true") return true;
+    } catch {}
+    return true;
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(TYPES_OPEN_LS_KEY, typesOpen ? "1" : "0");
+    } catch {}
+  }, [typesOpen]);
+
   return (
     <div className={`org-tree-card ${hide ? "is-hidden" : ""}`}>
       {/* Sarlavha + qidiruv */}
@@ -249,74 +265,93 @@ export default function OrgTreePanel({
       {/* Izoh / holat */}
       {/* Turlar filtri */}
       <div className="org-tree-card__body org-tree-card__body--border-top">
-        <div className="otp-section-title">Obyekt turlari</div>
-
-        <div className="otp-actions">
-          <button type="button" className="otp-btn" onClick={turnOnAll}>
-            Barchasini yoqish
-          </button>
+        <div className="otp-section-head">
+          <div className="otp-section-title">Obyekt turlari</div>
           <button
             type="button"
             className="otp-btn otp-btn--soft"
-            onClick={turnOffAll}
+            onClick={() => setTypesOpen((v) => !v)}
+            aria-expanded={typesOpen}
+            aria-controls="otp-types-section"
+            title={typesOpen ? "Yopish" : "Ko‘rsatish"}
           >
-            Barchasini o‘chirish
+            {typesOpen ? "Yopish" : "Ko‘rsatish"}
           </button>
         </div>
 
-        <div className="otp-grid">
-          {visibleKeys.map((k) => (
-            <label key={k} className="otp-check">
+        {typesOpen && (
+          <div id="otp-types-section">
+            <div className="otp-actions">
+              <button type="button" className="otp-btn" onClick={turnOnAll}>
+                Barchasini yoqish
+              </button>
+              <button
+                type="button"
+                className="otp-btn otp-btn--soft"
+                onClick={turnOffAll}
+              >
+                Barchasini o‘chirish
+              </button>
+            </div>
+
+            <div className="otp-grid">
+              {visibleKeys.map((k) => (
+                <label key={k} className="otp-check">
+                  <input
+                    type="checkbox"
+                    checked={!!typeFilter[k]}
+                    onChange={(e) => toggleType(k, e.target.checked)}
+                  />
+                  <span>{LABELS[k] || k}</span>
+                </label>
+              ))}
+
+              {extraKeys.length > 0 &&
+                extraKeys.map((k) => (
+                  <label
+                    key={`extra_${k}`}
+                    className="otp-check otp-check--dim"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!typeFilter[k]}
+                      onChange={(e) => toggleType(k, e.target.checked)}
+                    />
+                    <span>{k}</span>
+                  </label>
+                ))}
+            </div>
+
+            <div className="otp-toggle">
               <input
+                id="show-polys"
                 type="checkbox"
-                checked={!!typeFilter[k]}
-                onChange={(e) => toggleType(k, e.target.checked)}
+                checked={showPolys}
+                onChange={(e) => setShowPolys(e.target.checked)}
               />
-              <span>{LABELS[k] || k}</span>
-            </label>
-          ))}
+              <label htmlFor="show-polys">Poligonlarni ko‘rsatish</label>
+            </div>
 
-          {extraKeys.length > 0 &&
-            extraKeys.map((k) => (
-              <label key={`extra_${k}`} className="otp-check otp-check--dim">
-                <input
-                  type="checkbox"
-                  checked={!!typeFilter[k]}
-                  onChange={(e) => toggleType(k, e.target.checked)}
-                />
-                <span>{k}</span>
-              </label>
-            ))}
-        </div>
+            <div className="otp-foot">
+              Belgilangan bo‘limlar:{" "}
+              {Array.isArray(checkedKeys) ? checkedKeys.length : 0} ta
+              {selectedOrgId != null ? (
+                <> • Tanlangan ID: {String(selectedOrgId)}</>
+              ) : null}
+            </div>
 
-        <div className="otp-toggle">
-          <input
-            id="show-polys"
-            type="checkbox"
-            checked={showPolys}
-            onChange={(e) => setShowPolys(e.target.checked)}
-          />
-          <label htmlFor="show-polys">Poligonlarni ko‘rsatish</label>
-        </div>
-
-        <div className="otp-foot">
-          Belgilangan bo‘limlar:{" "}
-          {Array.isArray(checkedKeys) ? checkedKeys.length : 0} ta
-          {selectedOrgId != null ? (
-            <> • Tanlangan ID: {String(selectedOrgId)}</>
-          ) : null}
-        </div>
-
-        {/* Izoh / holat pastga ko‘chirildi */}
-        <div className="org-tree-card__hint" style={{ marginTop: 8 }}>
-          <div className="otp-muted">
-            ✔ Poligonlar turiga ko‘ra ranglanadi, markazida ikon ko‘rinadi.
+            {/* Izoh / holat pastga ko‘chirildi */}
+            <div className="org-tree-card__hint" style={{ marginTop: 8 }}>
+              <div className="otp-muted">
+                ✔ Poligonlar turiga ko‘ra ranglanadi, markazida ikon ko‘rinadi.
+              </div>
+              <BboxPretty bbox={bbox} />
+              <div className="otp-muted">
+                Xaritadagi obyektlar: {facilitiesCount ?? 0} ta
+              </div>
+            </div>
           </div>
-          <BboxPretty bbox={bbox} />
-          <div className="otp-muted">
-            Xaritadagi obyektlar: {facilitiesCount ?? 0} ta
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
