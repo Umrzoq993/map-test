@@ -386,6 +386,7 @@ export default function UsersPage() {
               <th>Holat</th>
               <th>Tashk. birligi</th>
               <th>Bo‘lim</th>
+              <th>Maks. sessiyalar</th>
               <th>Kontakt</th>
               <th>Harakatlar</th>
             </tr>
@@ -429,6 +430,9 @@ export default function UsersPage() {
                     {orgName || "-"}
                   </td>
                   <td>{u.department || "-"}</td>
+                  <td title="Ruxsat etilgan aktiv sessiyalar soni">
+                    {Math.max(1, Number(u.maxSessions || 1))}
+                  </td>
                   <td>
                     <div className={styles.muted}>{u.phone || "-"}</div>
                   </td>
