@@ -225,85 +225,11 @@ export default function FacilityGeoLayer({
       const id = feature?.properties?.id;
       const f = id != null ? facilityById.get(id) : null;
       if (!f) return;
-
-      const typeLabel = labelFor(f.type) || f.type;
-      const orgLabel =
-        f.orgName || f.org?.name || (f.orgId != null ? `Org #${f.orgId}` : "—");
-      const details = f.attributes || f.details || {};
-
-      // 🔢 Hisoblangan maydon (m²/ga)
-      let areaBlock = "";
-      try {
-        const a = areaOfGeometryM2(f.geometry);
-        if (Number.isFinite(a)) {
-          const m2 = Math.round(a).toLocaleString();
-          const ha = Number((a / 10000).toFixed(4)).toLocaleString();
-          areaBlock = `
-            <div style="display:inline-flex;align-items:center;gap:8px;padding:4px 8px;border:1px solid #e5e7eb;border-radius:999px;background:#f8fafc;font-size:12px;margin:6px 0 8px;">
-              <strong>Maydon:</strong>
-              <span>${m2} m² <span style="opacity:.7">(${ha} ga)</span></span>
-            </div>
-          `;
-        }
-      } catch {}
-
-      const rows = (
-        Array.isArray(byCode.get(f.type)?.schema)
-          ? byCode.get(f.type).schema
-          : []
-      )
-        .map((fld) => {
-          const val = details[fld.key];
-          if (val === null || val === undefined || String(val).trim?.() === "")
-            return "";
-          const suffix = fld.suffix ? ` (${fld.suffix})` : "";
-          return `
-            <div style="display:grid;grid-template-columns:1fr auto;gap:10px;font-size:13px;">
-              <div style="color:#64748b">${escapeHtml(fld.label)}${suffix}</div>
-              <div style="font-weight:600">${escapeHtml(String(val))}</div>
-            </div>`;
-        })
-        .filter(Boolean)
-        .join("");
-
-      const html = `
-        <div style="min-width:240px">
-          <div style="font-weight:700;font-size:15px;margin-bottom:2px">
-            ${escapeHtml(f.name || "Obyekt")}
-          </div>
-          <div style="font-size:12px;opacity:.8;margin-bottom:6px">
-            ${escapeHtml(typeLabel)}${
-        f.status ? " • " + escapeHtml(f.status) : ""
-      }<br/>
-            <span style="opacity:.9">Bo‘lim:</span> ${escapeHtml(orgLabel)}
-          </div>
-          ${areaBlock}
-          ${rows}
-          <div style="margin-top:8px; display:flex; gap:8px;">
-            <button class="pp-edit" data-id="${id}" style="padding:6px 10px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;cursor:pointer">Tahrirlash</button>
-            <button class="pp-zoom" data-id="${id}" style="padding:6px 10px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;cursor:pointer">Zoom</button>
-          </div>
-        </div>
-      `;
-
-      layer.bindPopup(html);
       try {
         layer.bringToFront();
       } catch {}
-
-      layer.on("popupopen", (e) => {
-        const el = e.popup?._contentNode;
-        if (!el) return;
-        const btnEdit = el.querySelector(".pp-edit");
-        const btnZoom = el.querySelector(".pp-zoom");
-        if (btnEdit) btnEdit.addEventListener("click", () => onOpenEdit?.(f)); // ✅ obyekt
-        if (btnZoom) {
-          const c = centroidOfGeometry(f.geometry);
-          if (c && isValidLatLng(c) && onFlyTo) onFlyTo([c.lat, c.lng], 17);
-        }
-      });
     },
-    [facilityById, onFlyTo, onOpenEdit, byCode, labelFor]
+    [facilityById]
   );
 
   return (
@@ -321,12 +247,4 @@ export default function FacilityGeoLayer({
       {showPolys && centroidBadges}
     </>
   );
-}
-
-function escapeHtml(s) {
-  return String(s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
