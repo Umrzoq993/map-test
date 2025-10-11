@@ -1090,8 +1090,8 @@ export default function MapView({
 
       {/* Side-by-side search controls (org code + facility name) */}
       <div className="map-float-controls">
-  <CodeJumpBox orgTree={orgTree} onJump={handleCodeJump} />
-  <FacilitySearchBox onJump={handleFacilityJumpFromSearch} />
+        <CodeJumpBox orgTree={orgTree} onJump={handleCodeJump} />
+        <FacilitySearchBox onJump={handleFacilityJumpFromSearch} />
       </div>
       <style>{`
         /* Place both inputs horizontally at bottom-left */
