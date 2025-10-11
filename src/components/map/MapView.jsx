@@ -40,6 +40,7 @@ import FacilitySearchBox from "./FacilitySearchBox";
 import CreateFacilityDrawer from "./CreateFacilityDrawer";
 import FacilityEditModal from "./FacilityEditModal";
 import FacilityGalleryPanel from "./FacilityGalleryPanel";
+import FacilityDetailsModal from "./FacilityDetailsModal";
 import { listFacilityImages } from "../../api/facilityImages";
 import FacilityGeoLayer from "./FacilityGeoLayer";
 import FacilityMarkers from "./FacilityMarkers";
@@ -704,6 +705,8 @@ export default function MapView({
   // Edit modal
   const [editOpen, setEditOpen] = useState(false);
   const [editFacility, setEditFacility] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsFacility, setDetailsFacility] = useState(null);
   const [galleryFacility, setGalleryFacility] = useState(null); // gallery panel
   const handleOpenEdit = (f) => {
     setEditFacility(f);
@@ -1250,6 +1253,10 @@ export default function MapView({
           facilities={visibleFacilities}
           onOpenEdit={handleOpenEdit}
           onOpenGallery={(f) => setGalleryFacility(f)}
+          onOpenDetails={(f) => {
+            setDetailsFacility(f);
+            setDetailsOpen(true);
+          }}
           popupFacilityId={popupFacilityId}
         />
 
@@ -1369,6 +1376,13 @@ export default function MapView({
         facility={editFacility}
         onClose={() => setEditOpen(false)}
         onSaved={() => setReloadKey((k) => k + 1)}
+        dark={dark}
+      />
+
+      <FacilityDetailsModal
+        open={detailsOpen}
+        facility={detailsFacility}
+        onClose={() => setDetailsOpen(false)}
         dark={dark}
       />
 

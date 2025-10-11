@@ -27,6 +27,7 @@ export default function FacilityMarkers({
   facilities,
   onOpenEdit,
   onOpenGallery,
+  onOpenDetails,
   popupFacilityId,
 }) {
   const { byCode, label: labelFor, color: colorFor } = useFacilityTypes();
@@ -154,7 +155,7 @@ export default function FacilityMarkers({
                   })}
                 </div>
 
-                {/* Popup pastida tahrirlash tugmasi */}
+                {/* Pastki amallar: Rasmlar, Tahrirlash, Tafsilotlar (ℹ️) */}
                 <div style={{ display: "flex", marginTop: 10, gap: 8 }}>
                   <button
                     className="btn"
@@ -173,13 +174,32 @@ export default function FacilityMarkers({
                   >
                     Rasmlar
                   </button>
-                  <div style={{ flex: 1 }} />
                   <button
                     className="btn primary"
                     style={{ padding: "6px 10px", borderRadius: 10 }}
                     onClick={() => onOpenEdit?.(f)}
                   >
                     Tahrirlash
+                  </button>
+                  <div style={{ flex: 1 }} />
+                  <button
+                    className="btn"
+                    title="Tafsilotlarni ochish"
+                    aria-label="Tafsilotlar"
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 10,
+                      background: isDark ? "#1e293b" : "#f1f5f9",
+                      color: isDark ? "#e2e8f0" : "#0f172a",
+                      border: `1px solid ${isDark ? "#334155" : "#cbd5e1"}`,
+                      boxShadow: isDark
+                        ? "0 2px 6px -2px rgba(0,0,0,.6)"
+                        : "0 2px 6px -2px rgba(0,0,0,.15)",
+                      fontWeight: 600,
+                    }}
+                    onClick={() => onOpenDetails?.(f)}
+                  >
+                    ℹ️
                   </button>
                 </div>
               </div>
