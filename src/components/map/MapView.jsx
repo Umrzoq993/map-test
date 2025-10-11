@@ -1301,7 +1301,16 @@ export default function MapView({
         selectedKeys={selectedKeys}
         expandedKeys={expandedKeys}
         onTreeExpand={setExpandedKeys}
-        onTreeCheck={(keys) => setCheckedKeys(keys.map(String))}
+        onTreeCheck={(keysOrInfo) => {
+          // rc-tree onCheck returns array when checkStrictly, object when cascade
+          if (Array.isArray(keysOrInfo)) {
+            setCheckedKeys(keysOrInfo.map(String));
+          } else if (keysOrInfo && Array.isArray(keysOrInfo.checked)) {
+            setCheckedKeys(keysOrInfo.checked.map(String));
+          } else if (keysOrInfo && Array.isArray(keysOrInfo.checkedKeys)) {
+            setCheckedKeys(keysOrInfo.checkedKeys.map(String));
+          }
+        }}
         onTreeSelect={onTreeSelect}
         searchInput={searchInput}
         setSearchInput={setSearchInput}

@@ -244,7 +244,6 @@ export default function OrgTreePanel({
         {rcData?.length ? (
           <Tree
             checkable
-            checkStrictly
             selectable
             treeData={rcData}
             checkedKeys={checkedKeys}
