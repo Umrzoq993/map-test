@@ -40,6 +40,7 @@ import FacilitySearchBox from "./FacilitySearchBox";
 import CreateFacilityDrawer from "./CreateFacilityDrawer";
 import FacilityEditModal from "./FacilityEditModal";
 import FacilityGalleryPanel from "./FacilityGalleryPanel";
+import { listFacilityImages } from "../../api/facilityImages";
 import FacilityGeoLayer from "./FacilityGeoLayer";
 import FacilityMarkers from "./FacilityMarkers";
 import MapFlyer from "./MapFlyer";
@@ -939,6 +940,26 @@ export default function MapView({
     [enabledTypes, orgTree, flatNodes, collectAncestorsKeys]
   );
 
+  // For quick search only: open gallery alongside popup if there is at least one image
+  const lastGalleryCheckRef = useRef(0);
+  const handleFacilityJumpFromSearch = useCallback(
+    (f) => {
+      handleFacilityJump(f);
+      if (!f?.id) return;
+      const reqId = Date.now();
+      lastGalleryCheckRef.current = reqId;
+      listFacilityImages(f.id)
+        .then((imgs) => {
+          if (lastGalleryCheckRef.current !== reqId) return; // ignore stale
+          if (Array.isArray(imgs) && imgs.length > 0) {
+            setGalleryFacility(f);
+          }
+        })
+        .catch(() => void 0);
+    },
+    [handleFacilityJump]
+  );
+
   // Filtered tree for panel
   const [expandedKeys, setExpandedKeys] = useState(undefined);
   // Facilities index for tree augmentation and selection
@@ -1069,8 +1090,8 @@ export default function MapView({
 
       {/* Side-by-side search controls (org code + facility name) */}
       <div className="map-float-controls">
-        <CodeJumpBox orgTree={orgTree} onJump={handleCodeJump} />
-        <FacilitySearchBox onJump={handleFacilityJump} />
+  <CodeJumpBox orgTree={orgTree} onJump={handleCodeJump} />
+  <FacilitySearchBox onJump={handleFacilityJumpFromSearch} />
       </div>
       <style>{`
         /* Place both inputs horizontally at bottom-left */
