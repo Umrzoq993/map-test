@@ -154,11 +154,7 @@ function bufferBBoxStr(bboxStr, ratio = 0.2) {
     dh = (n - s) * ratio;
   return [w - dw, s - dh, e + dw, n + dh].join(",");
 }
-function envBool(v, def = false) {
-  if (v === undefined || v === null) return def;
-  const s = String(v).trim().toLowerCase();
-  return s === "1" || s === "true" || s === "yes";
-}
+//
 
 /** Overlay yoqish/o‘chirish hodisasi */
 function LayersToggle({ onEnable, onDisable }) {
@@ -225,7 +221,13 @@ export default function MapView({
   userRole = "user",
   homeTarget = null,
 }) {
-  const { types: typeDefs } = useFacilityTypes();
+  const {
+    types: typeDefs,
+    label: labelForType,
+    emoji: emojiForType,
+    iconUrl: iconUrlForType,
+    color: colorForType,
+  } = useFacilityTypes();
   const typeLabels = useMemo(() => {
     const m = {};
     if (Array.isArray(typeDefs)) {
@@ -258,6 +260,62 @@ export default function MapView({
     ];
   }, [typeDefs]);
   const featureGroupRef = useRef(null);
+  // Tree: per-organization facility pagination (page count per org)
+  const FAC_PAGE_SIZE = 25;
+  const [facPageByOrg, setFacPageByOrg] = useState({});
+
+  // Leaf rendering helpers for rc-tree
+  const statusColors = useCallback((s) => {
+    const val = String(s || "").toLowerCase();
+    const mk = (bg, fg, bd) => ({ bg, fg, bd });
+    if (!val) return mk("#e5e7eb", "#0f172a", "#d1d5db");
+    if (/(active|approved|ok|ready|running|work)/.test(val))
+      return mk("#dcfce7", "#166534", "#86efac");
+    if (/(pending|new|draft|review)/.test(val))
+      return mk("#fef9c3", "#854d0e", "#fde68a");
+    if (/(error|rejected|failed|blocked|inactive|closed)/.test(val))
+      return mk("#fee2e2", "#991b1b", "#fecaca");
+    return mk("#e5e7eb", "#334155", "#d1d5db");
+  }, []);
+  const renderFacilityLeaf = useCallback(
+    (f) => {
+      const type = f.type;
+      const name = f.name || "(nomlanmagan)";
+      const status = f.status;
+      const iconUrl = iconUrlForType(type);
+      const emoji = emojiForType(type) || "📍";
+      const typeCol = colorForType(type) || "#64748b";
+      const sc = statusColors(status);
+      return (
+        <span className="otp-leaf">
+          <span className="otp-leaf__icon" title={labelForType(type)}>
+            {iconUrl ? (
+              <img src={iconUrl} alt="" />
+            ) : (
+              <span className="em" style={{ color: typeCol }}>
+                {emoji}
+              </span>
+            )}
+          </span>
+          <span className="otp-leaf__name">{name}</span>
+          {status ? (
+            <span
+              className="otp-leaf__status"
+              title={`Status: ${status}`}
+              style={{
+                background: sc.bg,
+                color: sc.fg,
+                borderColor: sc.bd,
+              }}
+            >
+              {status}
+            </span>
+          ) : null}
+        </span>
+      );
+    },
+    [labelForType, emojiForType, iconUrlForType, colorForType, statusColors]
+  );
   const lastDrawnLayerRef = useRef(null);
 
   // Draw state
@@ -412,10 +470,32 @@ export default function MapView({
     () => checkedKeys.map((k) => Number(k)).filter((n) => Number.isFinite(n)),
     [checkedKeys]
   );
-  const visibleFacilities = useMemo(
+  const selectedFacilityIds = useMemo(() => {
+    const s = new Set();
+    for (const k of checkedKeys) {
+      const ks = String(k);
+      if (ks.startsWith("f:")) {
+        const id = Number(ks.slice(2));
+        if (Number.isFinite(id)) s.add(id);
+      }
+    }
+    return s;
+  }, [checkedKeys]);
+  const checkedOrgIdSet = useMemo(
+    () => new Set(checkedOrgIds),
+    [checkedOrgIds]
+  );
+  const typedFacilities = useMemo(
     () => facilities.filter((f) => enabledTypes.includes(f.type)),
     [facilities, enabledTypes]
   );
+  const visibleFacilities = useMemo(() => {
+    if (selectedFacilityIds.size > 0)
+      return typedFacilities.filter((f) => selectedFacilityIds.has(f.id));
+    if (checkedOrgIds.length > 0)
+      return typedFacilities.filter((f) => checkedOrgIdSet.has(f.orgId));
+    return [];
+  }, [typedFacilities, selectedFacilityIds, checkedOrgIds, checkedOrgIdSet]);
   const [reloadKey, setReloadKey] = useState(0);
   const [showPolys, setShowPolys] = useState(true);
 
@@ -616,11 +696,31 @@ export default function MapView({
     setEditOpen(true);
   };
 
-  // Select (flyTo)
+  // Select (flyTo) — supports org nodes and facility leaves
   const onTreeSelect = (keys) => {
     setSelectedKeys(keys);
     const k = keys?.[0] ? String(keys[0]) : null;
     if (!k) return;
+    if (k.startsWith("more:")) {
+      const orgKey = k.slice(5);
+      setFacPageByOrg((prev) => ({
+        ...prev,
+        [orgKey]: Math.max(1, (prev[orgKey] || 1) + 1),
+      }));
+      setExpandedKeys((prev) => {
+        const arr = prev ? prev.map(String) : [];
+        return Array.from(new Set([...arr, orgKey]));
+      });
+      // Clear selection so highlight doesn't stay on the pseudo node
+      setSelectedKeys([]);
+      return; // do not fly
+    }
+    if (k.startsWith("f:")) {
+      const id = Number(k.slice(2));
+      const f = facById.get(id);
+      if (f) handleFacilityJump(f);
+      return;
+    }
     const n = flatNodes.find((x) => String(x.key) === k);
     if (n?.pos && Array.isArray(n.pos)) {
       setNavTarget({
@@ -828,6 +928,22 @@ export default function MapView({
 
   // Filtered tree for panel
   const [expandedKeys, setExpandedKeys] = useState(undefined);
+  // Facilities index for tree augmentation and selection
+  const facByOrg = useMemo(() => {
+    const m = new Map();
+    for (const f of typedFacilities || []) {
+      if (!Number.isFinite(f.orgId)) continue;
+      const k = String(f.orgId);
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push(f);
+    }
+    return m;
+  }, [typedFacilities]);
+  const facById = useMemo(() => {
+    const m = new Map();
+    for (const f of typedFacilities || []) m.set(f.id, f);
+    return m;
+  }, [typedFacilities]);
   const { rcData, visibleKeySet } = useMemo(() => {
     const q = query.toLowerCase();
     const visible = new Set();
@@ -850,16 +966,53 @@ export default function MapView({
       return res;
     };
     const filtered = prune(orgTree);
-    const mapNode = (n) => ({
-      key: String(n.key),
-      title: n.title,
-      children: n.children ? n.children.map(mapNode) : undefined,
-    });
+    const mapNode = (n) => {
+      const key = String(n.key);
+      const orgChildren = n.children ? n.children.map(mapNode) : undefined;
+      const facs = facByOrg.get(key) || [];
+      // Paginate facilities under this org
+      const page = Math.max(1, Number(facPageByOrg[key]) || 1);
+      const limit = page * FAC_PAGE_SIZE;
+      const hasMore = facs.length > limit;
+      const visibleFacs = hasMore ? facs.slice(0, limit) : facs;
+      const facChildren = visibleFacs.map((f) => ({
+        key: `f:${f.id}`,
+        title: renderFacilityLeaf(f),
+        isLeaf: true,
+        disableCheckbox: false,
+        selectable: true,
+        isFacility: true,
+        facilityId: f.id,
+        facilityType: f.type,
+        facilityStatus: f.status,
+      }));
+      if (hasMore) {
+        const remaining = facs.length - visibleFacs.length;
+        facChildren.push({
+          key: `more:${key}`,
+          title: (
+            <span className="otp-more">Yana {remaining} ta ko‘rsatish…</span>
+          ),
+          isLeaf: true,
+          disableCheckbox: true,
+          selectable: true,
+          isMoreNode: true,
+          relOrgKey: key,
+          remaining,
+        });
+      }
+      const children = [...(orgChildren || []), ...facChildren];
+      return {
+        key,
+        title: n.title,
+        children: children.length ? children : undefined,
+      };
+    };
     return {
       rcData: (filtered || []).map(mapNode),
       visibleKeySet: q ? visible : null,
     };
-  }, [orgTree, query]);
+  }, [orgTree, query, facByOrg, facPageByOrg, renderFacilityLeaf]);
 
   useEffect(() => {
     if (visibleKeySet) setExpandedKeys(Array.from(visibleKeySet));

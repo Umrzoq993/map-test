@@ -215,6 +215,52 @@
   color: var(--otp-muted);
 }
 
+/* Facility leaf with emoji/icon and status chip */
+.org-tree-card .otp-leaf {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.org-tree-card .otp-leaf__icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.org-tree-card .otp-leaf__icon img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  display: block;
+}
+.org-tree-card .otp-leaf__icon .em {
+  font-size: 16px;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+.org-tree-card .otp-leaf__name {
+  font-weight: 600;
+}
+.org-tree-card .otp-leaf__status {
+  margin-left: 6px;
+  font-size: 11px;
+  padding: 1px 6px;
+  border: 1px solid var(--otp-border);
+  border-color: currentColor;
+  border-radius: 999px;
+}
+.org-tree-card .otp-more {
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.org-tree-card .rc-tree-treenode:hover .otp-more {
+  color: #1d4ed8;
+}
+
 /* DARK THEME OVERRIDES */
 html.dark .org-tree-card,
 [data-theme="dark"] .org-tree-card {

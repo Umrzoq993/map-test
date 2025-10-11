@@ -130,7 +130,7 @@ export default function OrgTreePanel({
   typeOrder, // ✅ Dinamik tartib (kodlar ro'yxati), bo'lmasa FRONT_ORDER ishlatiladi
   onRequestHide, // ✅ Panelni headerdan yopish uchun
 }) {
-  const { types, label } = useFacilityTypes();
+  const { types } = useFacilityTypes();
   const dynamicLabels =
     typeLabels && Object.keys(typeLabels).length
       ? typeLabels
@@ -178,7 +178,7 @@ export default function OrgTreePanel({
     });
   };
 
-  const debouncedSearch = useDebouncedValue(searchInput, 400);
+  useDebouncedValue(searchInput, 400);
 
   return (
     <div className={`org-tree-card ${hide ? "is-hidden" : ""}`}>
@@ -228,6 +228,7 @@ export default function OrgTreePanel({
         {rcData?.length ? (
           <Tree
             checkable
+            checkStrictly
             selectable
             treeData={rcData}
             checkedKeys={checkedKeys}
