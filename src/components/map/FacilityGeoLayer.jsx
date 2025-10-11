@@ -11,6 +11,7 @@ export default function FacilityGeoLayer({
   showPolys = true,
   onFlyTo,
   onOpenEdit, // popupdagi "Tahrirlash" va marker kliklari uchun
+  flashId = null,
 }) {
   const { byCode, label: labelFor } = useFacilityTypes();
   const geoJsonRef = useRef(null);
@@ -227,13 +228,27 @@ export default function FacilityGeoLayer({
       if (!f) return;
       try {
         layer.bringToFront();
+        if (flashId && id === flashId) {
+          // apply a temporary highlight stroke
+          const orig = layer.options && { ...layer.options };
+          layer.setStyle({ color: "#f59e0b", weight: 4, dashArray: null });
+          setTimeout(() => {
+            try {
+              if (orig) layer.setStyle(orig);
+            } catch {}
+          }, 1200);
+        }
       } catch {}
     },
-    [facilityById]
+    [facilityById, flashId]
   );
 
   return (
     <>
+      <style>{`
+        @keyframes poly-flash { 0% { opacity: .7 } 50% { opacity: 1 } 100% { opacity: .7 } }
+        .poly-flash { animation: poly-flash 1.2s ease-in-out 1; }
+      `}</style>
       {showPolys && fc.features.length > 0 && (
         <GeoJSON
           key={geoKey}

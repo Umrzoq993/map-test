@@ -28,6 +28,7 @@ export default function FacilityMarkers({
   onOpenEdit,
   onOpenGallery,
   onOpenDetails,
+  onStartGeomEdit,
   popupFacilityId,
 }) {
   const { byCode, label: labelFor, color: colorFor } = useFacilityTypes();
@@ -156,7 +157,14 @@ export default function FacilityMarkers({
                 </div>
 
                 {/* Pastki amallar: Rasmlar, Tahrirlash, Tafsilotlar (ℹ️) */}
-                <div style={{ display: "flex", marginTop: 10, gap: 8 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    marginTop: 10,
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
                   <button
                     className="btn"
                     style={{
@@ -180,6 +188,24 @@ export default function FacilityMarkers({
                     onClick={() => onOpenEdit?.(f)}
                   >
                     Tahrirlash
+                  </button>
+                  <button
+                    className="btn"
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 10,
+                      background: isDark ? "#1e293b" : "#f1f5f9",
+                      color: isDark ? "#e2e8f0" : "#0f172a",
+                      border: `1px solid ${isDark ? "#334155" : "#cbd5e1"}`,
+                      boxShadow: isDark
+                        ? "0 2px 6px -2px rgba(0,0,0,.6)"
+                        : "0 2px 6px -2px rgba(0,0,0,.15)",
+                      fontWeight: 600,
+                    }}
+                    onClick={() => onStartGeomEdit?.(f)}
+                    title="Mavjud poligon geometriyasini tahrirlash"
+                  >
+                    Geom tahrirlash
                   </button>
                   <div style={{ flex: 1 }} />
                   <button

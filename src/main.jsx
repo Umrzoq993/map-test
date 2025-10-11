@@ -11,6 +11,8 @@ import "./leaflet.fix.js";
 // Leaflet CSS
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
+import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
+import "@geoman-io/leaflet-geoman-free";
 
 // ✅ Faqat umumiy SCSS kirish fayli:
 import "./styles/index.scss";

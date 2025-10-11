@@ -49,6 +49,7 @@ import OrgTreePanel from "./OrgTreePanel";
 import ViewportWatcher from "./ViewportWatcher";
 import ZoomIndicator from "./ZoomIndicator";
 import { useFacilityTypes } from "../../hooks/useFacilityTypes";
+import "@geoman-io/leaflet-geoman-free";
 
 // ✅ GeoJSON’ni bundlega qo‘shamiz (fetch O‘RNIGA import)
 import uzBorders from "../../assets/uz_lines.json";
@@ -206,6 +207,53 @@ function IntroFlight({ enabled, delayMs, target }) {
     }, Math.max(0, Number(delayMs) || 0));
     return () => clearTimeout(tid);
   }, [enabled, delayMs, target, map]);
+  return null;
+}
+
+// Helper: enable Leaflet.Draw edit mode programmatically so vertices show up
+function AutoEnableEditMode({ featureGroupRef, enabled }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!enabled) return;
+    const fg = featureGroupRef.current;
+    if (!map || !fg) return;
+    // Prefer Geoman for reliable vertex handles
+    try {
+      // enable geoman globally on map
+      map.pm?.addControls?.({
+        position: "topleft",
+        drawCircle: false,
+        drawCircleMarker: false,
+        drawMarker: false,
+        drawPolyline: false,
+        drawRectangle: !enabled,
+        drawPolygon: !enabled,
+        editMode: true,
+        dragMode: true,
+        cutPolygon: false,
+        rotateMode: false,
+        removalMode: false,
+      });
+      // Enable edit mode for existing layers
+      fg.eachLayer((lyr) => {
+        try {
+          if (lyr.pm) {
+            lyr.pm.enable({ allowSelfIntersection: false });
+          }
+        } catch {}
+      });
+    } catch {}
+    return () => {
+      try {
+        fg.eachLayer((lyr) => {
+          try {
+            lyr.pm?.disable?.();
+          } catch {}
+        });
+        map.pm?.removeControls?.();
+      } catch {}
+    };
+  }, [enabled, map, featureGroupRef]);
   return null;
 }
 
@@ -390,6 +438,23 @@ export default function MapView({
         lng: Number.isFinite(c?.lng) ? c.lng : null,
       });
       toast.success("Geometriya saqlandi!");
+      // 1) Local state update so UI reflects immediately
+      setFacilities((prev) => {
+        const latVal = Number.isFinite(c?.lat) ? c.lat : null;
+        const lngVal = Number.isFinite(c?.lng) ? c.lng : null;
+        return (prev || []).map((f) =>
+          f.id === geomEdit.facilityId
+            ? { ...f, geometry, lat: latVal ?? f.lat, lng: lngVal ?? f.lng }
+            : f
+        );
+      });
+      // Flash highlight on the updated polygon for visual feedback
+      _setFlashPolyId(geomEdit.facilityId);
+      setTimeout(() => _setFlashPolyId(null), 1600);
+      // 2) Invalidate cache so next fetch gets fresh data
+      try {
+        facCacheRef.current?.clear?.();
+      } catch {}
       exitGeomEdit();
       setReloadKey((k) => k + 1);
     } catch (e) {
@@ -397,6 +462,40 @@ export default function MapView({
       toast.error("Geometriyani saqlashda xatolik yuz berdi.");
     }
   }, [geomEdit?.facilityId, exitGeomEdit]);
+
+  // Start geometry edit for an existing facility polygon without drawing a new one
+  const startFacilityGeomEdit = useCallback((f) => {
+    if (!f) return;
+    setGeomEdit({ facilityId: f.id, geometry: f.geometry || null });
+    const fg = featureGroupRef.current;
+    if (!fg) return;
+    try {
+      fg.clearLayers();
+      if (f.geometry) {
+        L.geoJSON({ type: "Feature", geometry: f.geometry }).eachLayer(
+          (lyr) => {
+            fg.addLayer(lyr);
+          }
+        );
+      }
+      setDrawEnabled(true);
+      // enable editing handles on existing layers so vertices are visible
+      setTimeout(() => {
+        try {
+          fg.eachLayer((lyr) => {
+            if (typeof lyr.editing?.enable === "function") {
+              lyr.editing.enable();
+            }
+          });
+        } catch {}
+      }, 0);
+      toast.info(
+        "Geometriya tahrirlash rejimi yoqildi: mavjud poligonni tahrirlang."
+      );
+    } catch (err) {
+      debugError("Start facility geom edit failed", err);
+    }
+  }, []);
 
   // Tree & nav
   const [checkedKeys, setCheckedKeys] = useState([]);
@@ -512,6 +611,7 @@ export default function MapView({
     return [];
   }, [typedFacilities, selectedFacilityIds, checkedOrgIds, checkedOrgIdSet]);
   const [reloadKey, setReloadKey] = useState(0);
+  const [flashPolyId, _setFlashPolyId] = useState(null);
   const [showPolys, setShowPolys] = useState(true);
 
   // Facility jump handler (from name search)
@@ -1247,12 +1347,14 @@ export default function MapView({
           showPolys={showPolys}
           onFlyTo={flyTo}
           onOpenEdit={handleOpenEdit}
+          flashId={flashPolyId}
         />
 
         <FacilityMarkers
           facilities={visibleFacilities}
           onOpenEdit={handleOpenEdit}
           onOpenGallery={(f) => setGalleryFacility(f)}
+          onStartGeomEdit={startFacilityGeomEdit}
           onOpenDetails={(f) => {
             setDetailsFacility(f);
             setDetailsOpen(true);
@@ -1287,12 +1389,18 @@ export default function MapView({
                 onDeleted={onDeleted}
                 draw={{
                   polyline: false,
-                  polygon: true,
-                  rectangle: true,
+                  // In edit mode, disable creating new shapes; allow only edit of existing
+                  polygon: !geomEdit,
+                  rectangle: !geomEdit,
                   circle: false,
                   circlemarker: false,
                   marker: !geomEdit,
                 }}
+              />
+              {/* Force edit mode so existing layers show vertices immediately */}
+              <AutoEnableEditMode
+                featureGroupRef={featureGroupRef}
+                enabled={!!geomEdit}
               />
             </Suspense>
           )}
