@@ -6,8 +6,13 @@ export default function MapFlyer({ target } = {}) {
   const map = useMap();
   useEffect(() => {
     if (!target || typeof target !== "object") return;
-    const { lat, lng, zoom = 13 } = target;
+    const { lat, lng, zoom = 13, fast = false } = target;
     if (typeof lat !== "number" || typeof lng !== "number") return;
+
+    if (fast) {
+      map.flyTo([lat, lng], zoom, { duration: 0.9, animate: true });
+      return;
+    }
 
     const curZoom = map.getZoom();
     const midZoom = Math.max(3, curZoom - 3);

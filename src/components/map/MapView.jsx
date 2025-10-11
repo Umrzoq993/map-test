@@ -342,13 +342,15 @@ export default function MapView({
   const [checkedKeys, setCheckedKeys] = useState([]);
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [navTarget, setNavTarget] = useState(null);
+  const [popupFacilityId, setPopupFacilityId] = useState(null);
+  const popupClearTidRef = useRef(null);
   const [orgForPopup, setOrgForPopup] = useState(null);
 
-  const flyTo = useCallback((latLng, z = 17) => {
+  const flyTo = useCallback((latLng, z = 17, fast = false) => {
     if (!Array.isArray(latLng) || latLng.length < 2) return;
     const [lat, lng] = latLng;
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-    setNavTarget({ lat, lng, zoom: z, ts: Date.now() });
+    setNavTarget({ lat, lng, zoom: z, ts: Date.now(), fast: !!fast });
   }, []);
 
   const [panelHidden, setPanelHidden] = useState(!hideTree);
@@ -369,11 +371,11 @@ export default function MapView({
   // Facilities
   const [facilities, setFacilities] = useState([]);
   const [typeFilter, setTypeFilter] = useState(() => {
-    // Initialize from dynamic types; default true for first 8, then false
+    // Initialize from dynamic types; default to true for all types
     const init = {};
     const order = typeOrder;
-    order.forEach((code, idx) => {
-      init[code] = idx < 8; // heuristic: show first N by default
+    order.forEach((code) => {
+      init[code] = true;
     });
     return init;
   });
@@ -384,7 +386,8 @@ export default function MapView({
       let changed = false;
       for (const code of typeOrder) {
         if (!(code in next)) {
-          next[code] = Object.keys(next).length < 8; // default on for first few
+          // Enable any newly discovered types by default
+          next[code] = true;
           changed = true;
         }
       }
@@ -782,7 +785,19 @@ export default function MapView({
         }
       }
       if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        setNavTarget({ lat, lng, zoom: z, ts: Date.now() });
+        setNavTarget({ lat, lng, zoom: z, ts: Date.now(), fast: true });
+        // Immediately clear previous highlight and set new one
+        if (popupClearTidRef.current) {
+          clearTimeout(popupClearTidRef.current);
+          popupClearTidRef.current = null;
+        }
+        setPopupFacilityId(null);
+        requestAnimationFrame(() => setPopupFacilityId(f.id));
+        // Clear highlight after a delay (popup remains open)
+        popupClearTidRef.current = setTimeout(
+          () => setPopupFacilityId((cur) => (cur === f.id ? null : cur)),
+          5000
+        );
       } else if (f.orgId) {
         // Fallback: try org node position
         const n = flatNodes.find((x) => String(x.key) === String(f.orgId));
@@ -793,7 +808,18 @@ export default function MapView({
             lng: n.pos[1],
             zoom: z2,
             ts: Date.now(),
+            fast: true,
           });
+          if (popupClearTidRef.current) {
+            clearTimeout(popupClearTidRef.current);
+            popupClearTidRef.current = null;
+          }
+          setPopupFacilityId(null);
+          requestAnimationFrame(() => setPopupFacilityId(f.id));
+          popupClearTidRef.current = setTimeout(
+            () => setPopupFacilityId((cur) => (cur === f.id ? null : cur)),
+            5000
+          );
         }
       }
     },
@@ -1037,6 +1063,7 @@ export default function MapView({
           facilities={visibleFacilities}
           onOpenEdit={handleOpenEdit}
           onOpenGallery={(f) => setGalleryFacility(f)}
+          popupFacilityId={popupFacilityId}
         />
 
         {orgForPopup && <OrgMarker org={orgForPopup} open />}
