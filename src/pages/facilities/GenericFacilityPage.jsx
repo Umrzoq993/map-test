@@ -13,13 +13,6 @@ import Modal from "../../components/ui/Modal";
 import "../../styles/_facility_modal.scss";
 import { useFacilityTypes } from "../../hooks/useFacilityTypes";
 
-const ROUTE_LABELS = {
-  "poultry-meat": "Tovuqxona (go‘sht)",
-  "poultry-egg": "Tovuqxona (tuxum)",
-  "workshops-sausage": "Ishlab chiqarish sexi (kolbasa)",
-  "workshops-cookie": "Ishlab chiqarish sexi (pechenye)",
-};
-
 export default function GenericFacilityPage() {
   const { type: typeSlug } = useParams();
   const [items, setItems] = useState([]);
@@ -164,9 +157,7 @@ export default function GenericFacilityPage() {
     }
   };
 
-  const headerLabel =
-    ROUTE_LABELS[(typeSlug || "").toLowerCase()] ||
-    (type ? labelForType(type) : "Barchasi");
+  const headerLabel = type ? labelForType(type) : "Barchasi";
 
   return (
     <div className="org-table-page">

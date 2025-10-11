@@ -13,6 +13,7 @@ import { toast } from "react-toastify";
 function emptyForm() {
   return {
     code: "",
+    slug: "",
     nameUz: "",
     nameRu: "",
     iconEmoji: "",
@@ -24,7 +25,7 @@ function emptyForm() {
   };
 }
 
-function SchemaEditor({ value, onChange }) {
+function SchemaEditor({ value, onChange, onRawTextChange }) {
   const [text, setText] = useState(() => JSON.stringify(value ?? [], null, 2));
   useEffect(() => {
     setText(JSON.stringify(value ?? [], null, 2));
@@ -43,7 +44,18 @@ function SchemaEditor({ value, onChange }) {
       <textarea
         rows={10}
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value;
+          setText(v);
+          onRawTextChange?.(v);
+        }}
+        onBlur={apply}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+            e.preventDefault();
+            apply();
+          }
+        }}
         style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
       />
       <div style={{ display: "flex", gap: 8 }}>
@@ -67,6 +79,9 @@ export default function FacilityTypesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm());
+  const [schemaText, setSchemaText] = useState(() =>
+    JSON.stringify([], null, 2)
+  );
 
   const totalPages = Math.max(1, Math.ceil(total / size));
 
@@ -95,12 +110,14 @@ export default function FacilityTypesPage() {
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm());
+    setSchemaText(JSON.stringify([], null, 2));
     setOpen(true);
   };
   const openEdit = (row) => {
     setEditing(row);
     setForm({
       code: row.code ?? "",
+      slug: row.slug ?? "",
       nameUz: row.nameUz ?? "",
       nameRu: row.nameRu ?? "",
       iconEmoji: row.iconEmoji ?? "",
@@ -111,6 +128,7 @@ export default function FacilityTypesPage() {
       schema: row.schema ?? [],
       id: row.id,
     });
+    setSchemaText(JSON.stringify(row.schema ?? [], null, 2));
     setOpen(true);
   };
   const onDelete = async (row) => {
@@ -127,11 +145,29 @@ export default function FacilityTypesPage() {
   const onSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Ensure latest schema text is parsed and applied
+      let parsedSchema = form.schema;
+      if (schemaText && typeof schemaText === "string") {
+        try {
+          const obj = JSON.parse(schemaText);
+          parsedSchema = obj;
+        } catch (err) {
+          toast.error("Schema JSON xato: " + err.message);
+          return;
+        }
+      }
       const payload = {
         ...form,
         code: String(form.code || "")
           .trim()
           .toUpperCase(),
+        slug: String(form.slug || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9-]+/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-|-$/g, ""),
+        schema: parsedSchema,
       };
       if (!payload.code) {
         toast.warn("Code majburiy");
@@ -169,6 +205,7 @@ export default function FacilityTypesPage() {
               <tr>
                 <th style={{ width: 60 }}>ID</th>
                 <th style={{ width: 120 }}>Code</th>
+                <th style={{ width: 160 }}>Slug</th>
                 <th>Nomi</th>
                 <th>Icon</th>
                 <th>Rang</th>
@@ -200,6 +237,9 @@ export default function FacilityTypesPage() {
                     <td className="num">{row.id}</td>
                     <td>
                       <code>{row.code}</code>
+                    </td>
+                    <td>
+                      <code>{row.slug || ""}</code>
                     </td>
                     <td>{row.nameUz || row.nameRu || row.code}</td>
                     <td>
@@ -318,6 +358,14 @@ export default function FacilityTypesPage() {
                 />
               </div>
               <div className="field">
+                <label>Slug (ixtiyoriy)</label>
+                <input
+                  value={form.slug ?? ""}
+                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                  placeholder="e.g. greenhouse"
+                />
+              </div>
+              <div className="field">
                 <label>Nomi (uz)</label>
                 <input
                   value={form.nameUz ?? ""}
@@ -432,6 +480,7 @@ export default function FacilityTypesPage() {
             <SchemaEditor
               value={form.schema ?? []}
               onChange={(v) => setForm({ ...form, schema: v })}
+              onRawTextChange={setSchemaText}
             />
           </div>
 

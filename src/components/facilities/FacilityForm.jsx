@@ -5,131 +5,13 @@ import { getOrgUnit, locateOrg } from "../../api/org";
 import { toast } from "react-toastify";
 import { listActiveFacilityTypes } from "../../api/facilityTypes";
 
-const FALLBACK_TYPES = [
-  { code: "GREENHOUSE", nameUz: "Issiqxona" },
-  { code: "POULTRY_MEAT", nameUz: "Tovuqxona (go'sht)" },
-  { code: "POULTRY_EGG", nameUz: "Tovuqxona (tuxum)" },
-  { code: "COWSHED", nameUz: "Molxona" },
-  { code: "TURKEY", nameUz: "Kurkaxona" },
-  { code: "SHEEPFOLD", nameUz: "Qo‘yxona" },
-  { code: "WORKSHOP_SAUSAGE", nameUz: "Ishlab chiqarish sexi (kolbasa)" },
-  { code: "WORKSHOP_COOKIE", nameUz: "Ishlab chiqarish sexi (pechenye)" },
-  { code: "AUX_LAND", nameUz: "Yordamchi xo‘jalik yeri" },
-  { code: "BORDER_LAND", nameUz: "Chegara oldi yeri" },
-  { code: "FISHPOND", nameUz: "Baliqchilik ko‘li" },
-];
-
 const STATUS_OPTIONS = [
   { value: "ACTIVE", label: "Active" },
   { value: "INACTIVE", label: "Inactive" },
   { value: "UNDER_MAINTENANCE", label: "Maintenance" },
 ];
 
-/** Fallback schema by type (used if server doesn't provide) */
-const ATTR_SCHEMAS = {
-  GREENHOUSE: [
-    {
-      key: "totalAreaHa",
-      label: "Umumiy yer maydoni (gektar)",
-      type: "number",
-    },
-    { key: "heatingType", label: "Isitish tizimi turi", type: "text" },
-    {
-      key: "expectedYield",
-      label: "Olinadigan hosildorlik miqdori",
-      type: "number",
-    },
-    {
-      key: "expectedRevenue",
-      label: "Olinadigan daromad miqdori",
-      type: "number",
-    },
-    { key: "netProfit", label: "Olingan sof foyda", type: "number" },
-  ],
-  POULTRY: [
-    { key: "areaM2", label: "Umumiy yer maydoni (m²)", type: "number" },
-    { key: "capacity", label: "Umumiy sig‘imi (son)", type: "int" },
-    { key: "current", label: "Hozirda mavjud (son)", type: "int" },
-    {
-      key: "productAmount",
-      label: "Olinadigan mahsulot (kg / dona)",
-      type: "number",
-    },
-    { key: "productUnit", label: "Mahsulot birligi (kg | pcs)", type: "text" },
-    { key: "expectedRevenue", label: "Olinadigan daromad", type: "number" },
-    { key: "netProfit", label: "Olingan sof foyda", type: "number" },
-  ],
-  COWSHED: [
-    { key: "areaM2", label: "Umumiy yer maydoni (m²)", type: "number" },
-    { key: "capacity", label: "Umumiy sig‘imi (son)", type: "int" },
-    { key: "current", label: "Hozirda mavjud (son)", type: "int" },
-    { key: "productAmount", label: "Olinadigan mahsulot (kg)", type: "number" },
-    { key: "expectedRevenue", label: "Olinadigan daromad", type: "number" },
-    { key: "netProfit", label: "Olingan sof foyda", type: "number" },
-  ],
-  TURKEY: [
-    { key: "areaM2", label: "Umumiy yer maydoni (m²)", type: "number" },
-    { key: "capacity", label: "Umumiy sig‘imi (son)", type: "int" },
-    { key: "current", label: "Hozirda mavjud (son)", type: "int" },
-    { key: "productAmount", label: "Olinadigan mahsulot (kg)", type: "number" },
-    { key: "expectedRevenue", label: "Olinadigan daromad", type: "number" },
-    { key: "netProfit", label: "Olingan sof foyda", type: "number" },
-  ],
-  SHEEPFOLD: [
-    { key: "areaM2", label: "Umumiy yer maydoni (m²)", type: "number" },
-    { key: "capacity", label: "Umumiy sig‘imi (son)", type: "int" },
-    { key: "current", label: "Hozirda mavjud (son)", type: "int" },
-    { key: "productAmount", label: "Olinadigan mahsulot (kg)", type: "number" },
-    { key: "expectedRevenue", label: "Olinadigan daromad", type: "number" },
-    { key: "netProfit", label: "Olingan sof foyda", type: "number" },
-  ],
-  WORKSHOP: [
-    { key: "areaM2", label: "Umumiy yer maydoni (m²)", type: "number" },
-    { key: "productAmount", label: "Olinadigan mahsulot (kg)", type: "number" },
-    { key: "expectedRevenue", label: "Olinadigan daromad", type: "number" },
-    { key: "netProfit", label: "Olingan sof foyda", type: "number" },
-  ],
-  AUX_LAND: [
-    { key: "areaM2", label: "Umumiy yer maydoni (m²)", type: "number" },
-    { key: "expectedYield", label: "Olinadigan hosil miqdori", type: "number" },
-    {
-      key: "expectedRevenue",
-      label: "Olinadigan daromad miqdori",
-      type: "number",
-    },
-    { key: "netProfit", label: "Olingan sof foyda", type: "number" },
-    { key: "tenant", label: "Ijarachi", type: "text" },
-    { key: "govDecision", label: "Hukumat qarori", type: "text" },
-  ],
-  BORDER_LAND: [
-    { key: "areaM2", label: "Umumiy yer maydoni (m²)", type: "number" },
-    { key: "expectedYield", label: "Olinadigan hosil miqdori", type: "number" },
-    {
-      key: "expectedRevenue",
-      label: "Olinadigan daromad miqdori",
-      type: "number",
-    },
-    { key: "netProfit", label: "Olingan sof foyda", type: "number" },
-    { key: "tenant", label: "Ijarachi", type: "text" },
-    { key: "govDecision", label: "Hukumat qarori", type: "text" },
-  ],
-  FISHPOND: [
-    { key: "areaM2", label: "Umumiy yer maydoni (m²)", type: "number" },
-    {
-      key: "productAmount",
-      label: "Olinadigan mahsulot miqdori (kg)",
-      type: "number",
-    },
-    {
-      key: "expectedRevenue",
-      label: "Olinadigan daromad miqdori",
-      type: "number",
-    },
-    { key: "netProfit", label: "Olingan sof foyda", type: "number" },
-    { key: "tenant", label: "Ijarachi", type: "text" },
-    { key: "govDecision", label: "Hukumat qarori", type: "text" },
-  ],
-};
+/** No hardcoded fallback schemas; only dynamic schema from FacilityTypeDef */
 
 function parseVal(raw, t) {
   if (raw === "" || raw === null || raw === undefined) return null;
@@ -144,7 +26,7 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
   const [orgId, setOrgId] = useState(initial?.orgId ?? null);
   const [orgObj, setOrgObj] = useState(null); // {id,name,code,parentId}
   const [name, setName] = useState(initial?.name ?? "");
-  const [type, setType] = useState(initial?.type ?? "GREENHOUSE");
+  const [type, setType] = useState(initial?.type ?? "");
   const [status, setStatus] = useState(initial?.status ?? "ACTIVE");
   const [lat, setLat] = useState(initial?.lat ?? "");
   const [lng, setLng] = useState(initial?.lng ?? "");
@@ -162,7 +44,7 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
     listActiveFacilityTypes()
       .then((list) => {
         if (!mounted) return;
-        if (Array.isArray(list) && list.length) setTypeDefs(list);
+        if (Array.isArray(list)) setTypeDefs(list);
       })
       .catch(() => {})
       .finally(() => {});
@@ -171,6 +53,13 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
     };
   }, []);
 
+  // Select first available type when creating and none chosen yet
+  useEffect(() => {
+    if (!initial?.type && !type && Array.isArray(typeDefs) && typeDefs.length) {
+      setType(typeDefs[0].code);
+    }
+  }, [initial?.type, type, typeDefs]);
+
   const typeOptions = useMemo(() => {
     if (Array.isArray(typeDefs) && typeDefs.length) {
       return typeDefs.map((t) => ({
@@ -178,7 +67,7 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
         label: t.nameUz || t.nameRu || t.code,
       }));
     }
-    return FALLBACK_TYPES.map((t) => ({ value: t.code, label: t.nameUz }));
+    return [];
   }, [typeDefs]);
 
   const typeSchema = useMemo(() => {
@@ -187,7 +76,7 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
       : null;
     if (found && found.schema && Array.isArray(found.schema))
       return found.schema;
-    return ATTR_SCHEMAS[type] || [];
+    return [];
   }, [type, typeDefs]);
 
   useEffect(() => {
@@ -199,6 +88,7 @@ export default function FacilityForm({ initial, onSubmit, onCancel }) {
 
   const canSave =
     orgId != null &&
+    type &&
     name.trim().length > 0 &&
     String(lat).length > 0 &&
     String(lng).length > 0;

@@ -12,24 +12,9 @@ import { listActiveFacilityTypes } from "../api/facilityTypes";
 
 const FacilityTypesContext = createContext(null);
 
-// Legacy aliases for backward-compatible slugs in routes
+// Legacy aliases for backward-compatible slugs in routes (kept for existing links)
 const LEGACY_SLUG_TO_CODE = {
-  greenhouse: "GREENHOUSE",
-  "poultry-meat": "POULTRY_MEAT",
-  "poultry-egg": "POULTRY_EGG",
-  poultry: "POULTRY_MEAT", // legacy
-  turkey: "TURKEY",
-  cowshed: "COWSHED",
-  sheepfold: "SHEEPFOLD",
-  "workshops-sausage": "WORKSHOP_SAUSAGE",
-  "workshops-cookie": "WORKSHOP_COOKIE",
-  workshops: "WORKSHOP_SAUSAGE", // legacy
-  "aux-lands": "AUX_LAND",
-  "border-lands": "BORDER_LAND",
-  "fish-ponds": "FISHPOND",
-  "fish-farm": "FISHPOND", // legacy
-  "aux-land": "AUX_LAND",
-  "border-land": "BORDER_LAND",
+  // Intentionally left mostly empty; primary mapping now comes from DB slug
 };
 
 // Preferred slug generator for codes
@@ -87,6 +72,13 @@ export function FacilityTypesProvider({ children }) {
     return m;
   }, [types]);
 
+  const bySlug = useMemo(() => {
+    const m = new Map();
+    for (const t of types)
+      if (t?.slug) m.set(String(t.slug).toLowerCase(), t.code);
+    return m;
+  }, [types]);
+
   const codes = useMemo(() => types.map((t) => t.code), [types]);
 
   const label = useCallback(
@@ -118,10 +110,23 @@ export function FacilityTypesProvider({ children }) {
     },
     [byCode]
   );
-  const slugFor = useCallback((code) => defaultSlugFor(code), []);
+  const slugFor = useCallback(
+    (code) => {
+      if (!code) return "";
+      const t = byCode.get(code);
+      // Prefer backend-provided slug; fallback to derived
+      return t?.slug || defaultSlugFor(code);
+    },
+    [byCode]
+  );
   const codeFromSlug = useCallback(
-    (slug) => parseSlugToCode(slug, codes),
-    [codes]
+    (slug) => {
+      if (!slug) return "";
+      const lower = String(slug).toLowerCase();
+      if (bySlug.has(lower)) return bySlug.get(lower);
+      return parseSlugToCode(slug, codes);
+    },
+    [codes, bySlug]
   );
 
   const value = useMemo(
@@ -130,6 +135,7 @@ export function FacilityTypesProvider({ children }) {
       loading,
       error,
       byCode,
+      bySlug,
       codes,
       label,
       color,
@@ -143,6 +149,7 @@ export function FacilityTypesProvider({ children }) {
       loading,
       error,
       byCode,
+      bySlug,
       codes,
       label,
       color,
