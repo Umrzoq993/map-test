@@ -408,6 +408,49 @@ function Lightbox({ images, index, onClose, onNavigate }) {
   const dragRef = useRef(null);
   const fsRef = useRef(null);
   const [isFs, setIsFs] = useState(false);
+  const [hideCursor, setHideCursor] = useState(false);
+
+  const toggleFullscreen = useCallback(() => {
+    try {
+      if (!document.fullscreenElement) {
+        fsRef.current?.requestFullscreen?.();
+      } else {
+        document.exitFullscreen?.();
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const onFs = () => setIsFs(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  // Auto-hide cursor on inactivity in fullscreen
+  useEffect(() => {
+    if (!isFs) {
+      setHideCursor(false);
+      return;
+    }
+    const el = fsRef.current || document.documentElement;
+    let tid = null;
+    const arm = () => {
+      if (tid) clearTimeout(tid);
+      tid = setTimeout(() => setHideCursor(true), 2000);
+    };
+    const onMove = () => {
+      setHideCursor(false);
+      arm();
+    };
+    el.addEventListener("mousemove", onMove);
+    el.addEventListener("mousedown", onMove);
+    arm();
+    return () => {
+      if (tid) clearTimeout(tid);
+      el.removeEventListener("mousemove", onMove);
+      el.removeEventListener("mousedown", onMove);
+    };
+  }, [isFs]);
 
   if (!img) return null;
 
@@ -448,27 +491,12 @@ function Lightbox({ images, index, onClose, onNavigate }) {
     setOffset({ x: 0, y: 0 });
   };
 
-  const toggleFullscreen = useCallback(() => {
-    try {
-      if (!document.fullscreenElement) {
-        fsRef.current?.requestFullscreen?.();
-      } else {
-        document.exitFullscreen?.();
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    const onFs = () => setIsFs(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", onFs);
-    return () => document.removeEventListener("fullscreenchange", onFs);
-  }, []);
-
   return (
     <div
       className={styles.lightbox}
       ref={fsRef}
       data-fullscreen={isFs || undefined}
+      data-hide-cursor={hideCursor || undefined}
       onClick={onClose}
     >
       <div className={styles.lightboxTop} onClick={(e) => e.stopPropagation()}>
