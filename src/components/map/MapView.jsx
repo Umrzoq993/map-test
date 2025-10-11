@@ -27,6 +27,7 @@ const EditControlLazy = lazy(() =>
 
 import "../../styles/leaflet-theme.css";
 import MapTiles from "./MapTiles";
+import { getBaseLayers } from "../../config/mapLayers";
 
 import * as drawingsApi from "../../api/drawings";
 import { listFacilities, patchFacility } from "../../api/facilities";
@@ -728,13 +729,8 @@ export default function MapView({
     [orgTree, collectAncestorsKeys]
   );
 
-  // Tiles env
-  const OSMUZ_URL = "https://osm.uz/tile/{z}/{x}/{y}.png";
-
-  // ✅ Vesat (SAS Planet store) sozlamalari
-  const VESAT_BASE = import.meta.env.VITE_TILE_VESAT_BASE || "https://vesat.uz";
-  const VESAT_EXT = import.meta.env.VITE_TILE_VESAT_EXT || "jpg";
-  const VESAT_TMS = envBool(import.meta.env.VITE_TILE_VESAT_TMS, true);
+  // Base layers from .env
+  const baseLayers = useMemo(() => getBaseLayers(), []);
 
   // Org-tree flatten + depth
   const flatNodes = useMemo(() => {
@@ -844,43 +840,25 @@ export default function MapView({
         />
 
         <LayersControl position="bottomright">
-          {/* ✅ Sun'iy yo‘ldosh (Gibrid) */}
-          <LayersControl.BaseLayer checked name="Sun'iy yo‘ldosh (Gibrid)">
-            <MapTiles
-              key="vesat-xyz"
-              url={`${VESAT_BASE}/{z}/{x}/{y}.${VESAT_EXT}`}
-              minZoom={0}
-              maxZoom={19}
-              tms={VESAT_TMS}
-              noWrap={true}
-              updateWhenIdle={true}
-              keepBuffer={2}
-              attribution="&copy; Vesat"
-              eventHandlers={{
-                // Vesat tanlanganda O‘zbekiston chegaralarini ko‘rsatmaymiz
-                add: () => setIsSatellite(false),
-              }}
-            />
-          </LayersControl.BaseLayer>
-
-          {/* ✅ OSM.uz (XYZ) */}
-          <LayersControl.BaseLayer name="OSM.uz (XYZ)">
-            <MapTiles
-              key="osm-uz-xyz"
-              url={OSMUZ_URL}
-              minZoom={0}
-              maxZoom={19}
-              maxNativeZoom={19}
-              tms={false}
-              noWrap={false}
-              updateWhenIdle={true}
-              keepBuffer={2}
-              attribution="&copy; OSM.uz & OpenStreetMap contributors"
-              eventHandlers={{
-                add: () => setIsSatellite(false),
-              }}
-            />
-          </LayersControl.BaseLayer>
+          {baseLayers.map((ly, idx) => (
+            <LayersControl.BaseLayer
+              key={`main-base-${idx}`}
+              checked={!!ly.checked && idx === 0 ? true : ly.checked}
+              name={ly.name}
+            >
+              <MapTiles
+                url={ly.url}
+                minZoom={ly.minZoom ?? 0}
+                maxZoom={ly.maxZoom ?? 19}
+                tms={!!ly.tms}
+                noWrap={!!ly.tms}
+                updateWhenIdle={true}
+                keepBuffer={2}
+                attribution={ly.attr}
+                eventHandlers={{ add: () => setIsSatellite(false) }}
+              />
+            </LayersControl.BaseLayer>
+          ))}
 
           <LayersControl.Overlay name="Chizish rejimi (toolbar)">
             <LayersToggle

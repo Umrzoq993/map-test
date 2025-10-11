@@ -9,6 +9,7 @@ import {
 } from "react-leaflet";
 import Modal from "../ui/Modal";
 import MapTiles from "./MapTiles";
+import { getBaseLayers } from "../../config/mapLayers";
 
 const DEFAULT_CENTER = [41.311081, 69.240562];
 const DEFAULT_ZOOM = 12;
@@ -97,13 +98,8 @@ export default function MapPickerModal({
     );
   };
 
-  // ====== Base layers (Vesat default, OSM.uz alternative) ======
-  const OSMUZ_URL = "https://osm.uz/tile/{z}/{x}/{y}.png";
-  const VESAT_BASE = import.meta.env.VITE_TILE_VESAT_BASE || "https://vesat.uz";
-  const VESAT_EXT = import.meta.env.VITE_TILE_VESAT_EXT || "jpg";
-  const VESAT_TMS =
-    (import.meta.env.VITE_TILE_VESAT_TMS ?? "true").toString().toLowerCase() ===
-    "true";
+  // ====== Base layers from env (.env controls) ======
+  const baseLayers = useMemo(() => getBaseLayers(), []);
 
   return (
     <Modal
@@ -200,33 +196,24 @@ export default function MapPickerModal({
               style={{ height: "100%", width: "100%" }}
             >
               <LayersControl position="topright">
-                <LayersControl.BaseLayer checked name="Vesat (Gibrid)">
-                  <MapTiles
-                    key="vesat-xyz-picker"
-                    url={`${VESAT_BASE}/{z}/{x}/{y}.${VESAT_EXT}`}
-                    minZoom={0}
-                    maxZoom={19}
-                    tms={VESAT_TMS}
-                    noWrap={true}
-                    updateWhenIdle={true}
-                    keepBuffer={2}
-                    attribution="&copy; Vesat"
-                  />
-                </LayersControl.BaseLayer>
-                <LayersControl.BaseLayer name="OSM.uz (XYZ)">
-                  <MapTiles
-                    key="osm-uz-xyz-picker"
-                    url={OSMUZ_URL}
-                    minZoom={0}
-                    maxZoom={19}
-                    maxNativeZoom={19}
-                    tms={false}
-                    noWrap={false}
-                    updateWhenIdle={true}
-                    keepBuffer={2}
-                    attribution="&copy; OSM.uz & OpenStreetMap contributors"
-                  />
-                </LayersControl.BaseLayer>
+                {baseLayers.map((ly, idx) => (
+                  <LayersControl.BaseLayer
+                    key={`picker-base-${idx}`}
+                    checked={!!ly.checked && idx === 0 ? true : ly.checked}
+                    name={ly.name}
+                  >
+                    <MapTiles
+                      url={ly.url}
+                      minZoom={ly.minZoom ?? 0}
+                      maxZoom={ly.maxZoom ?? 19}
+                      tms={!!ly.tms}
+                      noWrap={!!ly.tms}
+                      updateWhenIdle={true}
+                      keepBuffer={2}
+                      attribution={ly.attr}
+                    />
+                  </LayersControl.BaseLayer>
+                ))}
               </LayersControl>
               <ClickCapture onPick={setPos} />
               {pos && <Marker position={pos} />}
