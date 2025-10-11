@@ -59,6 +59,7 @@ export default function UsersPage() {
     avatarUrl: "",
     orgId: null, // number|null
     department: "",
+    maxSessions: 1,
   };
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
@@ -129,6 +130,7 @@ export default function UsersPage() {
       avatarUrl: u.avatarUrl || "",
       orgId: u.orgId ?? null,
       department: u.department || "",
+      maxSessions: Math.max(1, Number(u.maxSessions || 1)),
     });
     setOpenEdit(true);
   }
@@ -138,6 +140,10 @@ export default function UsersPage() {
     try {
       const payload = { ...form };
       if (payload.orgId == null) delete payload.orgId;
+      // Normalizatsiya va validatsiya
+      const ms = Number(payload.maxSessions);
+      if (!Number.isFinite(ms) || ms < 1) payload.maxSessions = 1;
+      else payload.maxSessions = Math.floor(ms);
       if (editId) {
         if (!payload.password) delete payload.password;
         await updateUser(editId, payload);
@@ -660,6 +666,22 @@ export default function UsersPage() {
               className={styles.input}
               value={form.department}
               onChange={(e) => setForm({ ...form, department: e.target.value })}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label>Maks. sessiyalar</label>
+            <input
+              className={styles.input}
+              type="number"
+              min={1}
+              value={form.maxSessions}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  maxSessions: Math.max(1, Number(e.target.value || 1)),
+                })
+              }
             />
           </div>
         </div>
