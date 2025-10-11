@@ -36,6 +36,7 @@ import { centroidOfGeometry } from "../../utils/geo";
 import OrgMarker from "./OrgMarker";
 
 import CodeJumpBox from "./CodeJumpBox";
+import FacilitySearchBox from "./FacilitySearchBox";
 import CreateFacilityDrawer from "./CreateFacilityDrawer";
 import FacilityEditModal from "./FacilityEditModal";
 import FacilityGalleryPanel from "./FacilityGalleryPanel";
@@ -415,6 +416,9 @@ export default function MapView({
   const [reloadKey, setReloadKey] = useState(0);
   const [showPolys, setShowPolys] = useState(true);
 
+  // Facility jump handler (from name search)
+  // (moved below after flatNodes init)
+
   // Draft overlay
   const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
   const [draftVisible, setDraftVisible] = useState(false);
@@ -745,6 +749,57 @@ export default function MapView({
     return out;
   }, [orgTree]);
 
+  // Facility jump handler (from name search) – placed after flatNodes
+  const handleFacilityJump = useCallback(
+    (f) => {
+      if (!f) return;
+      // Ensure facility type is visible
+      if (f.type && !enabledTypes.includes(f.type)) {
+        setTypeFilter((prev) => ({ ...prev, [f.type]: true }));
+      }
+      // Expand/select owning org in tree if present
+      if (Number.isFinite(f.orgId)) {
+        const idStr = String(f.orgId);
+        setCheckedKeys((prev) =>
+          prev.includes(idStr) ? prev : [...prev, idStr]
+        );
+        setSelectedKeys([idStr]);
+        const ancestors = collectAncestorsKeys(orgTree, idStr) || [];
+        setExpandedKeys((prev) => {
+          const prevArr = prev ? prev.map(String) : [];
+          return Array.from(new Set([...prevArr, ...ancestors, idStr]));
+        });
+      }
+      // Determine map target
+      let lat = Number(f.lat),
+        lng = Number(f.lng),
+        z = Number.isFinite(f.zoom) ? f.zoom : 17;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        const c = centroidOfGeometry(f.geometry);
+        if (c && Number.isFinite(c.lat) && Number.isFinite(c.lng)) {
+          lat = c.lat;
+          lng = c.lng;
+        }
+      }
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        setNavTarget({ lat, lng, zoom: z, ts: Date.now() });
+      } else if (f.orgId) {
+        // Fallback: try org node position
+        const n = flatNodes.find((x) => String(x.key) === String(f.orgId));
+        if (n?.pos) {
+          const z2 = Number.isFinite(n.zoom) ? n.zoom : 15;
+          setNavTarget({
+            lat: n.pos[0],
+            lng: n.pos[1],
+            zoom: z2,
+            ts: Date.now(),
+          });
+        }
+      }
+    },
+    [enabledTypes, orgTree, flatNodes, collectAncestorsKeys]
+  );
+
   // Filtered tree for panel
   const [expandedKeys, setExpandedKeys] = useState(undefined);
   const { rcData, visibleKeySet } = useMemo(() => {
@@ -820,7 +875,33 @@ export default function MapView({
     <div className="map-wrapper map-ui" style={{ position: "relative" }}>
       <style>{darkDrawerCss}</style>
 
-      <CodeJumpBox orgTree={orgTree} onJump={handleCodeJump} />
+      {/* Side-by-side search controls (org code + facility name) */}
+      <div className="map-float-controls">
+        <CodeJumpBox orgTree={orgTree} onJump={handleCodeJump} />
+        <FacilitySearchBox onJump={handleFacilityJump} />
+      </div>
+      <style>{`
+        /* Place both inputs horizontally at bottom-left */
+        .map-float-controls {
+          position: absolute;
+          left: 12px;
+          bottom: 50px;
+          z-index: 1000;
+          display: flex;
+          flex-direction: row;
+          gap: 12px;
+          align-items: flex-start;
+        }
+        /* Override internal absolute positioning of child widgets */
+        .map-float-controls .code-jump,
+        .map-float-controls .fac-search {
+          position: relative !important;
+          left: auto !important;
+          bottom: auto !important;
+          right: auto !important;
+          top: auto !important;
+        }
+      `}</style>
 
       <MapContainer
         center={center}

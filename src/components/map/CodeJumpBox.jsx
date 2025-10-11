@@ -60,8 +60,16 @@ export default function CodeJumpBox({ orgTree, onJump }) {
         zoom: org.zoom ?? 12,
       };
       const pathIds = pathToRoot(org.id); // self + filial + root
-      onJump?.(org, pathIds, target);
-      setValue("");
+      try {
+        // onJump ixtiyoriy va sinxron/asinxron bo'lishi mumkin
+        const maybePromise = onJump?.(org, pathIds, target);
+        if (maybePromise && typeof maybePromise.then === "function") {
+          await maybePromise;
+        }
+      } finally {
+        // Muvaffaqiyatli topilganda doimo tozalaymiz (onJump xatoga uchrasa ham)
+        setValue("");
+      }
     } catch {
       setError("Kod bo‘yicha org topilmadi");
     } finally {
@@ -105,13 +113,23 @@ export default function CodeJumpBox({ orgTree, onJump }) {
           padding: 0 10px;
           outline: none;
           font-size: 16px;
+          /* Light mode explicit colors */
+          background: #ffffff;
+          color: #0f172a;
+          caret-color: #0f172a;
         }
+        .code-jump input::placeholder { color: #64748b; }
         .code-jump input:disabled { opacity: .6; }
         .code-jump .err { color: #b42318; font-size: 12px; }
+        /* App-level dark mode */
+        html.dark .code-jump { background: rgba(28,28,30,0.9); }
+        html.dark .code-jump input { background: #1c1c1e; color: #f2f2f7; border-color: #3a3a3c; }
+        html.dark .code-jump .err { color: #ff453a; }
+        /* Only honor OS dark scheme when app also set html.dark */
         @media (prefers-color-scheme: dark) {
-          .code-jump { background: rgba(28,28,30,0.9); }
-          .code-jump input { background: #1c1c1e; color: #f2f2f7; border-color: #3a3a3c; }
-          .code-jump .err { color: #ff453a; }
+          html.dark .code-jump { background: rgba(28,28,30,0.9); }
+          html.dark .code-jump input { background: #1c1c1e; color: #f2f2f7; border-color: #3a3a3c; }
+          html.dark .code-jump .err { color: #ff453a; }
         }
       `}</style>
     </div>
