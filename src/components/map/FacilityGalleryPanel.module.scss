@@ -271,6 +271,27 @@ html.dark .empty,
   padding: 10px 16px;
   color: #f1f5f9;
 }
+.lightboxTopLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lightboxTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+.lightboxSub {
+  font-size: 12px;
+  opacity: 0.8;
+}
+.lightboxBottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  color: #f1f5f9;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
 .lightboxImgWrap {
   flex: 1;
   display: flex;

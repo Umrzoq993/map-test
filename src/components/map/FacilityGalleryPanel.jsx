@@ -85,7 +85,7 @@ export default function FacilityGalleryPanel({
         setImages((prev) => [
           {
             id: tempId,
-            url: objUrl, // temporary
+            url: objUrl,
             originalName: file.name,
             sizeBytes: file.size,
             contentType: file.type,
@@ -406,8 +406,19 @@ function Lightbox({ images, index, onClose, onNavigate }) {
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const dragRef = useRef(null);
+  const fsRef = useRef(null);
+  const [isFs, setIsFs] = useState(false);
 
   if (!img) return null;
+
+  const uploadedAt = (() => {
+    try {
+      const d = new Date(img.createdAt);
+      return isNaN(d) ? "" : d.toLocaleString();
+    } catch {
+      return "";
+    }
+  })();
 
   const onWheel = (e) => {
     e.preventDefault();
@@ -437,12 +448,63 @@ function Lightbox({ images, index, onClose, onNavigate }) {
     setOffset({ x: 0, y: 0 });
   };
 
+  const toggleFullscreen = useCallback(() => {
+    try {
+      if (!document.fullscreenElement) {
+        fsRef.current?.requestFullscreen?.();
+      } else {
+        document.exitFullscreen?.();
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const onFs = () => setIsFs(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
   return (
-    <div className={styles.lightbox} onClick={onClose}>
+    <div
+      className={styles.lightbox}
+      ref={fsRef}
+      data-fullscreen={isFs || undefined}
+      onClick={onClose}
+    >
       <div className={styles.lightboxTop} onClick={(e) => e.stopPropagation()}>
-        <div style={{ fontSize: 14, fontWeight: 500 }}>
-          {img.originalName || `Image ${index + 1}`}
+        <div className={styles.lightboxTopLeft}>
+          <div className={styles.lightboxTitle}>
+            {img.originalName || `Image ${index + 1}`}
+          </div>
+          {uploadedAt && <div className={styles.lightboxSub}>{uploadedAt}</div>}
         </div>
+      </div>
+      <div
+        className={styles.lightboxImgWrap}
+        onClick={(e) => e.stopPropagation()}
+        onWheel={onWheel}
+        onMouseDown={onMouseDown}
+        style={{ cursor: zoom !== 1 ? "grab" : "default" }}
+      >
+        <img
+          className={styles.lightboxImg}
+          src={img.__src}
+          alt={img.originalName || `Image ${index + 1}`}
+          style={{
+            transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+            transition: dragRef.current ? "none" : "transform .08s",
+            cursor: dragRef.current
+              ? "grabbing"
+              : zoom !== 1
+              ? "grab"
+              : "default",
+          }}
+        />
+      </div>
+      <div
+        className={styles.lightboxBottom}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div style={{ display: "flex", gap: 8 }}>
           <button
             className={styles.navBtn}
@@ -470,34 +532,20 @@ function Lightbox({ images, index, onClose, onNavigate }) {
           </button>
           <button
             className={styles.navBtn}
+            onClick={toggleFullscreen}
+            aria-label={isFs ? "Butun ekran rejimidan chiqish" : "Butun ekran"}
+            title={isFs ? "Butun ekrandan chiqish" : "Butun ekranda ko‘rsatish"}
+          >
+            {isFs ? "⤢" : "⛶"}
+          </button>
+          <button
+            className={styles.navBtn}
             onClick={onClose}
             aria-label="Yopish"
           >
             ×
           </button>
         </div>
-      </div>
-      <div
-        className={styles.lightboxImgWrap}
-        onClick={(e) => e.stopPropagation()}
-        onWheel={onWheel}
-        onMouseDown={onMouseDown}
-        style={{ cursor: zoom !== 1 ? "grab" : "default" }}
-      >
-        <img
-          className={styles.lightboxImg}
-          src={img.__src}
-          alt={img.originalName || `Image ${index + 1}`}
-          style={{
-            transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
-            transition: dragRef.current ? "none" : "transform .08s",
-            cursor: dragRef.current
-              ? "grabbing"
-              : zoom !== 1
-              ? "grab"
-              : "default",
-          }}
-        />
       </div>
     </div>
   );
