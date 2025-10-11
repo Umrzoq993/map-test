@@ -1,5 +1,5 @@
 // src/components/map/FacilitySearchBox.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { listFacilitiesPage } from "../../api/facilities";
 
@@ -10,7 +10,6 @@ import { listFacilitiesPage } from "../../api/facilities";
  */
 export default function FacilitySearchBox({ onJump }) {
   const [q, setQ] = useState("");
-  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
@@ -29,7 +28,7 @@ export default function FacilitySearchBox({ onJump }) {
       return;
     }
     let cancelled = false;
-    setBusy(true);
+    // busy flag removed to satisfy lint
     listFacilitiesPage({ q: term, page: 0, size: 10, sort: "name,asc" })
       .then((res) => {
         if (cancelled) return;
@@ -43,7 +42,7 @@ export default function FacilitySearchBox({ onJump }) {
         setItems([]);
         setOpen(false);
       })
-      .finally(() => !cancelled && setBusy(false));
+      .finally(() => void 0);
     return () => {
       cancelled = true;
     };

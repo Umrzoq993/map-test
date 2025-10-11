@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "../../api/http";
 import {
   createFacilityTypeDef,
   deleteFacilityTypeDef,
@@ -7,7 +8,7 @@ import {
 } from "../../api/facilityTypes";
 import Modal from "../../components/ui/Modal";
 import { toast } from "react-toastify";
-import { api } from "../../api/http";
+// import { api } from "../../api/http"; // not used
 
 function emptyForm() {
   return {
@@ -79,7 +80,7 @@ export default function FacilityTypesPage() {
       });
       setItems(res?.content ?? []);
       setTotal(res?.totalElements ?? res?.total ?? 0);
-    } catch (e) {
+    } catch {
       toast.error("Yuklashda xatolik");
     } finally {
       setLoading(false);

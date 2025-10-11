@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 // src/hooks/useFacilityTypes.jsx
 import React, {
   createContext,
@@ -5,6 +6,7 @@ import React, {
   useEffect,
   useMemo,
   useState,
+  useCallback,
 } from "react";
 import { listActiveFacilityTypes } from "../api/facilityTypes";
 
@@ -87,25 +89,40 @@ export function FacilityTypesProvider({ children }) {
 
   const codes = useMemo(() => types.map((t) => t.code), [types]);
 
-  const label = (code) => {
-    if (!code) return "";
-    const t = byCode.get(code);
-    return t?.nameUz || t?.nameRu || code;
-  };
-  const color = (code) => {
-    const t = byCode.get(code);
-    return t?.color || "#64748b";
-  };
-  const emoji = (code) => {
-    const t = byCode.get(code);
-    return t?.iconEmoji || "📍";
-  };
-  const iconUrl = (code) => {
-    const t = byCode.get(code);
-    return t?.iconUrl || null;
-  };
-  const slugFor = (code) => defaultSlugFor(code);
-  const codeFromSlug = (slug) => parseSlugToCode(slug, codes);
+  const label = useCallback(
+    (code) => {
+      if (!code) return "";
+      const t = byCode.get(code);
+      return t?.nameUz || t?.nameRu || code;
+    },
+    [byCode]
+  );
+  const color = useCallback(
+    (code) => {
+      const t = byCode.get(code);
+      return t?.color || "#64748b";
+    },
+    [byCode]
+  );
+  const emoji = useCallback(
+    (code) => {
+      const t = byCode.get(code);
+      return t?.iconEmoji || "📍";
+    },
+    [byCode]
+  );
+  const iconUrl = useCallback(
+    (code) => {
+      const t = byCode.get(code);
+      return t?.iconUrl || null;
+    },
+    [byCode]
+  );
+  const slugFor = useCallback((code) => defaultSlugFor(code), []);
+  const codeFromSlug = useCallback(
+    (slug) => parseSlugToCode(slug, codes),
+    [codes]
+  );
 
   const value = useMemo(
     () => ({
@@ -121,7 +138,19 @@ export function FacilityTypesProvider({ children }) {
       slugFor,
       codeFromSlug,
     }),
-    [types, loading, error, byCode, codes]
+    [
+      types,
+      loading,
+      error,
+      byCode,
+      codes,
+      label,
+      color,
+      emoji,
+      iconUrl,
+      slugFor,
+      codeFromSlug,
+    ]
   );
 
   return (

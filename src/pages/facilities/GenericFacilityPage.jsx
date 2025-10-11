@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { debugError } from "../../utils/debug";
 import { useParams } from "react-router-dom";
 import {
@@ -45,7 +45,10 @@ export default function GenericFacilityPage() {
   const [total, setTotal] = useState(0);
   const totalPages = Math.max(1, Math.ceil(total / size));
 
-  const labelForType = (code) => labelFor(code) || code;
+  const labelForType = useCallback(
+    (code) => labelFor(code) || code,
+    [labelFor]
+  );
 
   const from = total ? page * size + 1 : 0;
   const to = Math.min(total, (page + 1) * size);
@@ -62,7 +65,7 @@ export default function GenericFacilityPage() {
       return [{ value: type, label }];
     }
     return [{ value: "", label: "Barchasi" }, ...allOpts];
-  }, [lockedByRoute, type, typeDefs]);
+  }, [lockedByRoute, type, typeDefs, labelForType]);
 
   const fetchData = async (over = {}) => {
     setLoading(true);

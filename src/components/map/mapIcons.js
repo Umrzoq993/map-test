@@ -81,7 +81,7 @@ export const badgeIconFor = (type = "GREENHOUSE", size = 28) => {
             )}px;height:${Math.round(
               size * 0.8
             )}px;object-fit:contain;filter:drop-shadow(0 1px 1px rgba(0,0,0,.2))" />`
-          : `<span style=\"transform:translateY(-1px);padding:${pad}px\">${emoji}</span>`
+          : `<span style="transform:translateY(-1px);padding:${pad}px">${emoji}</span>`
       }
       </div>`,
     iconSize: [size, size],

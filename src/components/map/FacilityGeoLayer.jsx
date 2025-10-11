@@ -204,7 +204,7 @@ export default function FacilityGeoLayer({
         );
       })
       .filter(Boolean);
-  }, [facilities, onFlyTo, onOpenEdit]);
+  }, [facilities, onFlyTo, onOpenEdit, byCode, labelFor]);
 
   /* ---------------------------- GeoJSON style ---------------------------- */
   const style = useCallback((feature) => {
