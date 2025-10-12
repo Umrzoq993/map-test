@@ -56,6 +56,17 @@ import uzBorders from "../../assets/uz_lines.json";
 
 // Persisted UI toggle for Uzbekistan border lines overlay
 const UZ_LINES_LS_KEY = "map.showUzLines";
+const parseBool = (v, defVal = true) => {
+  if (v === undefined || v === null) return defVal;
+  const s = String(v).trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(s)) return true;
+  if (["0", "false", "no", "off"].includes(s)) return false;
+  return defVal;
+};
+const UZ_LINES_DEFAULT = parseBool(
+  import.meta.env?.VITE_UZ_LINES_DEFAULT,
+  true
+);
 
 /* 🔧 DARK MODE PATCH */
 const darkDrawerCss = `
@@ -402,6 +413,8 @@ export default function MapView({
   const lastDrawnLayerRef = useRef(null);
   // Track active Leaflet.Draw tool to disable it cleanly when done
   const drawToolRef = useRef(null);
+  // Guard to prevent UzLines overlay 'remove' event from reverting state during keyboard toggle
+  const uzLinesToggleGuardRef = useRef(false);
 
   // Draw state
   const [geojson, setGeojson] = useState(null);
@@ -923,16 +936,37 @@ export default function MapView({
     }
   };
 
+  // UzLines overlay state (env-driven default + localStorage persistence)
+  const [showUzLines, setShowUzLines] = useState(() => {
+    try {
+      const raw = localStorage.getItem(UZ_LINES_LS_KEY);
+      if (raw === "1" || raw === "true") return true;
+      if (raw === "0" || raw === "false") return false;
+    } catch {}
+    return UZ_LINES_DEFAULT; // default from env (fallback true)
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(UZ_LINES_LS_KEY, showUzLines ? "1" : "0");
+    } catch {}
+  }, [showUzLines]);
+
   // Keyboard T
   useEffect(() => {
     const onKey = (e) => {
       const tag = (e.target?.tagName || "").toLowerCase();
       if (tag === "input" || tag === "textarea") return;
-      if (e.key.toLowerCase() === "t") togglePanel();
+      const key = String(e.key || "").toLowerCase();
+      if (key === "t") togglePanel();
+      if (key === "u") {
+        // prevent old overlay 'remove' event from flipping state back
+        uzLinesToggleGuardRef.current = true;
+        setShowUzLines((prev) => !prev);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [togglePanel]);
+  }, [togglePanel, setShowUzLines]);
 
   /** Ancestors keys */
   const collectAncestorsKeys = useCallback((nodes, targetKey, trail = []) => {
@@ -1271,19 +1305,6 @@ export default function MapView({
      O‘ZBEKISTON CHEGARASI LINIYALARI (faqat “satellite” turida)
      ========================= */
   // Removed satellite-only dependency; border overlay is independent of base layer
-  const [showUzLines, setShowUzLines] = useState(() => {
-    try {
-      const raw = localStorage.getItem(UZ_LINES_LS_KEY);
-      if (raw === "1" || raw === "true") return true;
-      if (raw === "0" || raw === "false") return false;
-    } catch {}
-    return true; // default ON
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem(UZ_LINES_LS_KEY, showUzLines ? "1" : "0");
-    } catch {}
-  }, [showUzLines]);
 
   return (
     <div className="map-wrapper map-ui" style={{ position: "relative" }}>
@@ -1333,6 +1354,12 @@ export default function MapView({
           delayMs={introDelayMs}
           target={computedHome}
         />
+
+        {/* Panes must be declared before any layers that use them */}
+        <Pane name="facilities-polys" style={{ zIndex: 410 }} />
+        <Pane name="facilities-centroids" style={{ zIndex: 420 }} />
+        <Pane name="facilities-markers" style={{ zIndex: 430 }} />
+        <Pane name="borders-lines" style={{ zIndex: 300 }} />
 
         <LayersControl position="bottomright">
           {baseLayers.map((ly, idx) => (
@@ -1399,10 +1426,18 @@ export default function MapView({
           <LayersControl.Overlay
             name="O‘zbekiston chegaralari (chiziqlar)"
             checked={!!showUzLines}
+            key={`uz-lines-${showUzLines ? 1 : 0}`}
           >
             <LayersToggle
               onEnable={() => setShowUzLines(true)}
-              onDisable={() => setShowUzLines(false)}
+              onDisable={() => {
+                if (uzLinesToggleGuardRef.current) {
+                  // ignore this programmatic remove from remount cycle
+                  uzLinesToggleGuardRef.current = false;
+                  return;
+                }
+                setShowUzLines(false);
+              }}
             >
               {uzBorders && (
                 <GeoJSON
@@ -1426,12 +1461,6 @@ export default function MapView({
           onTogglePanel={() => setPanelHidden((v) => !v)}
         />
         <ZoomIndicator position="bottomright" />
-
-        {/* Panes */}
-        <Pane name="facilities-polys" style={{ zIndex: 410 }} />
-        <Pane name="facilities-centroids" style={{ zIndex: 420 }} />
-        <Pane name="facilities-markers" style={{ zIndex: 430 }} />
-        <Pane name="borders-lines" style={{ zIndex: 300 }} />
 
         <ViewportWatcher onBboxChange={setBbox} />
         <MapFlyer target={navTarget} />
