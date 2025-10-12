@@ -244,13 +244,20 @@ export default function OrgTreePanel({
         {rcData?.length ? (
           <Tree
             checkable
+            checkStrictly
             selectable
             treeData={rcData}
             checkedKeys={checkedKeys}
             selectedKeys={selectedKeys}
             expandedKeys={expandedKeys}
             onExpand={onTreeExpand}
-            onCheck={(k) => onTreeCheck(Array.isArray(k) ? k : k.checked)}
+            onCheck={(checkedKeys, info) =>
+              onTreeCheck(
+                Array.isArray(checkedKeys)
+                  ? checkedKeys
+                  : { checkedKeys: checkedKeys?.checked ?? [], info }
+              )
+            }
             onSelect={(k) => onTreeSelect(k)}
             defaultExpandAll
             autoExpandParent

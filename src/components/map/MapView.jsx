@@ -499,6 +499,9 @@ export default function MapView({
 
   // Tree & nav
   const [checkedKeys, setCheckedKeys] = useState([]);
+  const [excludedFacilityIds, setExcludedFacilityIds] = useState(
+    () => new Set()
+  );
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [navTarget, setNavTarget] = useState(null);
   const [popupFacilityId, setPopupFacilityId] = useState(null);
@@ -604,12 +607,22 @@ export default function MapView({
     [facilities, enabledTypes]
   );
   const visibleFacilities = useMemo(() => {
+    // If specific facilities are checked, show only them
     if (selectedFacilityIds.size > 0)
       return typedFacilities.filter((f) => selectedFacilityIds.has(f.id));
+    // Else show by checked orgs, but exclude individually unchecked facilities
     if (checkedOrgIds.length > 0)
-      return typedFacilities.filter((f) => checkedOrgIdSet.has(f.orgId));
+      return typedFacilities.filter(
+        (f) => checkedOrgIdSet.has(f.orgId) && !excludedFacilityIds.has(f.id)
+      );
     return [];
-  }, [typedFacilities, selectedFacilityIds, checkedOrgIds, checkedOrgIdSet]);
+  }, [
+    typedFacilities,
+    selectedFacilityIds,
+    checkedOrgIds,
+    checkedOrgIdSet,
+    excludedFacilityIds,
+  ]);
   const [reloadKey, setReloadKey] = useState(0);
   const [flashPolyId, _setFlashPolyId] = useState(null);
   const [showPolys, setShowPolys] = useState(true);
@@ -888,6 +901,33 @@ export default function MapView({
       }
     }
     return null;
+  }, []);
+
+  /** Descendants keys (for manual cascade when checkStrictly) */
+  const getDescendantKeys = useCallback((nodes, rootKey) => {
+    const out = [];
+    const walk = (ns) => {
+      for (const n of ns || []) {
+        const key = String(n.key);
+        if (key === String(rootKey)) {
+          const pushChildren = (arr) => {
+            for (const c of arr || []) {
+              const ck = String(c.key);
+              out.push(ck);
+              if (c.children && c.children.length) pushChildren(c.children);
+            }
+          };
+          if (n.children && n.children.length) pushChildren(n.children);
+          return true; // found
+        }
+        if (n.children && n.children.length) {
+          if (walk(n.children)) return true;
+        }
+      }
+      return false;
+    };
+    walk(nodes || []);
+    return out;
   }, []);
 
   /** Code jump -> locate */
@@ -1437,14 +1477,79 @@ export default function MapView({
         selectedKeys={selectedKeys}
         expandedKeys={expandedKeys}
         onTreeExpand={setExpandedKeys}
-        onTreeCheck={(keysOrInfo) => {
-          // rc-tree onCheck returns array when checkStrictly, object when cascade
-          if (Array.isArray(keysOrInfo)) {
-            setCheckedKeys(keysOrInfo.map(String));
-          } else if (keysOrInfo && Array.isArray(keysOrInfo.checked)) {
-            setCheckedKeys(keysOrInfo.checked.map(String));
-          } else if (keysOrInfo && Array.isArray(keysOrInfo.checkedKeys)) {
-            setCheckedKeys(keysOrInfo.checkedKeys.map(String));
+        onTreeCheck={(payload) => {
+          // With checkStrictly, rc-tree gives either array or an object { checkedKeys, info }
+          if (Array.isArray(payload)) {
+            setCheckedKeys(payload.map(String));
+            setExcludedFacilityIds(new Set());
+            return;
+          }
+          const info = payload?.info;
+          const baseChecked = Array.isArray(payload?.checkedKeys)
+            ? payload.checkedKeys.map(String)
+            : Array.isArray(payload?.checked)
+            ? payload.checked.map(String)
+            : [];
+
+          // Facility leaf toggled: keep baseChecked and update exclusions
+          if (info && info.node && info.node.isFacility) {
+            setCheckedKeys(baseChecked);
+            const idStr = String(info.node.key).replace(/^f:/, "");
+            const id = Number(idStr);
+            if (Number.isFinite(id)) {
+              setExcludedFacilityIds((prev) => {
+                const next = new Set(prev);
+                if (info.checked === false) next.add(id);
+                else next.delete(id);
+                return next;
+              });
+            }
+            return;
+          }
+
+          // Org node toggled (not a facility, not a 'more' pseudo node)
+          const nodeKey = String(info?.node?.key || "");
+          if (!nodeKey) {
+            setCheckedKeys(baseChecked);
+            setExcludedFacilityIds(new Set());
+            return;
+          }
+          if (nodeKey.startsWith("more:")) {
+            // ignore pseudo pagination nodes
+            setCheckedKeys(baseChecked);
+            return;
+          }
+
+          const descendants = getDescendantKeys(rcData, nodeKey);
+          const allToggleKeys = new Set([nodeKey, ...descendants]);
+          const prevSet = new Set(checkedKeys.map(String));
+          if (info?.checked) {
+            // add org + descendants
+            for (const k of allToggleKeys) prevSet.add(k);
+          } else {
+            // remove org + descendants
+            for (const k of allToggleKeys) prevSet.delete(k);
+          }
+          const finalChecked = Array.from(prevSet);
+          setCheckedKeys(finalChecked);
+
+          // Maintain exclusions for facilities under this org
+          const touchedFacilityIds = descendants
+            .filter((k) => String(k).startsWith("f:"))
+            .map((k) => Number(String(k).slice(2)))
+            .filter((n) => Number.isFinite(n));
+          if (touchedFacilityIds.length) {
+            setExcludedFacilityIds((prev) => {
+              const next = new Set(prev);
+              if (info?.checked) {
+                // clearing exclusions when parent is checked
+                for (const id of touchedFacilityIds) next.delete(id);
+              } else {
+                // cleanup exclusions for ids that are no longer relevant
+                for (const id of touchedFacilityIds) next.delete(id);
+              }
+              return next;
+            });
           }
         }}
         onTreeSelect={onTreeSelect}
