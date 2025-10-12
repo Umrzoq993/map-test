@@ -20,6 +20,7 @@ import OnlineUsersPage from "./pages/admin/OnlineUsersPage";
 import FacilityTypesPage from "./pages/admin/FacilityTypesPage";
 import Forbidden from "./pages/Forbidden";
 import FirstFacilityRedirect from "./components/facilities/FirstFacilityRedirect";
+import UzLinesFixer from "./tools/UzLinesFixer";
 
 function useIsMobile(query = "(max-width: 1024px)") {
   const [isMobile, setIsMobile] = useState(false);
@@ -155,6 +156,11 @@ export default function App() {
                     <Route path="/orgs" element={<OrgManager />} />
                     <Route path="/orgs-table" element={<OrgTablePage />} />
                     <Route path="/forbidden" element={<Forbidden />} />
+                    {/* Dev tool: lokal uz_lines.json fixer */}
+                    <Route
+                      path="/tools/uz-lines-fixer"
+                      element={<UzLinesFixer />}
+                    />
 
                     {/* Admin – faqat ADMIN roli */}
                     <Route
