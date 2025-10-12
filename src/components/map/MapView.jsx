@@ -54,6 +54,9 @@ import "@geoman-io/leaflet-geoman-free";
 // ✅ GeoJSON’ni bundlega qo‘shamiz (fetch O‘RNIGA import)
 import uzBorders from "../../assets/uz_lines.json";
 
+// Persisted UI toggle for Uzbekistan border lines overlay
+const UZ_LINES_LS_KEY = "map.showUzLines";
+
 /* 🔧 DARK MODE PATCH */
 const darkDrawerCss = `
 html.dark :where([class*="drawer"], [class*="Drawer"], .drawer, .drawer-card, .sheet, .slide-over) {
@@ -160,7 +163,7 @@ function bufferBBoxStr(bboxStr, ratio = 0.2) {
 //
 
 /** Overlay yoqish/o‘chirish hodisasi */
-function LayersToggle({ onEnable, onDisable }) {
+function LayersToggle({ onEnable, onDisable, children }) {
   const ref = useRef(null);
   useEffect(() => {
     const layer = ref.current;
@@ -174,7 +177,7 @@ function LayersToggle({ onEnable, onDisable }) {
       layer.off("remove", handleRemove);
     };
   }, [onEnable, onDisable]);
-  return <LayerGroup ref={ref} />;
+  return <LayerGroup ref={ref}>{children}</LayerGroup>;
 }
 
 /** Intro flight */
@@ -226,8 +229,8 @@ function AutoEnableEditMode({ featureGroupRef, enabled }) {
         drawCircleMarker: false,
         drawMarker: false,
         drawPolyline: false,
-        drawRectangle: !enabled,
-        drawPolygon: !enabled,
+        drawRectangle: false,
+        drawPolygon: false,
         editMode: true,
         dragMode: true,
         cutPolygon: false,
@@ -254,6 +257,36 @@ function AutoEnableEditMode({ featureGroupRef, enabled }) {
       } catch {}
     };
   }, [enabled, map, featureGroupRef]);
+  return null;
+}
+
+// helper: geometriya bo'lmasa polygon chizishni avtomatik yoqish
+function AutoStartPolygonWhenEmpty({ featureGroupRef, enabled, drawToolRef }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!enabled) return;
+    const fg = featureGroupRef.current;
+    if (!map || !fg) return;
+    const hasLayers =
+      typeof fg.getLayers === "function" && fg.getLayers().length > 0;
+    if (hasLayers) return;
+
+    try {
+      const draw = new L.Draw.Polygon(map, {
+        showArea: true,
+        allowIntersection: false,
+      });
+      draw.enable();
+      if (drawToolRef) drawToolRef.current = draw;
+    } catch {}
+    return () => {
+      try {
+        const cur = drawToolRef?.current;
+        if (cur && typeof cur.disable === "function") cur.disable();
+      } catch {}
+      if (drawToolRef) drawToolRef.current = null;
+    };
+  }, [enabled, featureGroupRef, map, drawToolRef]);
   return null;
 }
 
@@ -367,6 +400,8 @@ export default function MapView({
     [labelForType, emojiForType, iconUrlForType, colorForType, statusColors]
   );
   const lastDrawnLayerRef = useRef(null);
+  // Track active Leaflet.Draw tool to disable it cleanly when done
+  const drawToolRef = useRef(null);
 
   // Draw state
   const [geojson, setGeojson] = useState(null);
@@ -404,6 +439,11 @@ export default function MapView({
   const exitGeomEdit = useCallback(() => {
     const fg = featureGroupRef.current;
     if (fg) fg.clearLayers();
+    try {
+      // Disable any active draw tool to remove lingering tooltips
+      drawToolRef.current?.disable?.();
+    } catch {}
+    drawToolRef.current = null;
     setGeomEdit(null);
   }, []);
   const saveGeomEdit = useCallback(async () => {
@@ -776,6 +816,11 @@ export default function MapView({
       updateGeoJSON();
       const layer = e.layer,
         type = e.layerType;
+      // Stop programmatic draw tool after one creation
+      try {
+        drawToolRef.current?.disable?.();
+      } catch {}
+      drawToolRef.current = null;
       if (geomEdit && ["polygon", "rectangle"].includes(type)) {
         const fg = featureGroupRef.current;
         if (fg) {
@@ -1225,7 +1270,20 @@ export default function MapView({
   /* =========================
      O‘ZBEKISTON CHEGARASI LINIYALARI (faqat “satellite” turida)
      ========================= */
-  const [isSatellite, setIsSatellite] = useState(false);
+  // Removed satellite-only dependency; border overlay is independent of base layer
+  const [showUzLines, setShowUzLines] = useState(() => {
+    try {
+      const raw = localStorage.getItem(UZ_LINES_LS_KEY);
+      if (raw === "1" || raw === "true") return true;
+      if (raw === "0" || raw === "false") return false;
+    } catch {}
+    return true; // default ON
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(UZ_LINES_LS_KEY, showUzLines ? "1" : "0");
+    } catch {}
+  }, [showUzLines]);
 
   return (
     <div className="map-wrapper map-ui" style={{ position: "relative" }}>
@@ -1292,7 +1350,7 @@ export default function MapView({
                 updateWhenIdle={true}
                 keepBuffer={2}
                 attribution={ly.attr}
-                eventHandlers={{ add: () => setIsSatellite(false) }}
+                // no-op; overlay is independent of base layer choice now
               />
             </LayersControl.BaseLayer>
           ))}
@@ -1305,16 +1363,15 @@ export default function MapView({
           </LayersControl.Overlay>
 
           <LayersControl.Overlay name="Oxirgi chizma (draft)">
-            <>
-              <LayersToggle
-                onEnable={() => {
-                  setDraftVisible(true);
-                  void loadDraftIfFresh();
-                }}
-                onDisable={() => {
-                  setDraftVisible(false);
-                }}
-              />
+            <LayersToggle
+              onEnable={() => {
+                setDraftVisible(true);
+                void loadDraftIfFresh();
+              }}
+              onDisable={() => {
+                setDraftVisible(false);
+              }}
+            >
               {draftGeoJSON && (
                 <GeoJSON
                   ref={draftLayerRef}
@@ -1328,7 +1385,7 @@ export default function MapView({
                   pane="facilities-polys"
                 />
               )}
-            </>
+            </LayersToggle>
           </LayersControl.Overlay>
 
           <LayersControl.Overlay name="GeoJSON tools">
@@ -1336,6 +1393,31 @@ export default function MapView({
               onEnable={() => setShowGeoTools(true)}
               onDisable={() => setShowGeoTools(false)}
             />
+          </LayersControl.Overlay>
+
+          {/* Overlay: Uzbekistan border lines (assets/uz_lines.json) */}
+          <LayersControl.Overlay
+            name="O‘zbekiston chegaralari (chiziqlar)"
+            checked={!!showUzLines}
+          >
+            <LayersToggle
+              onEnable={() => setShowUzLines(true)}
+              onDisable={() => setShowUzLines(false)}
+            >
+              {uzBorders && (
+                <GeoJSON
+                  data={uzBorders}
+                  pane="borders-lines"
+                  interactive={false}
+                  style={() => ({
+                    color: "#1b2440",
+                    weight: 4,
+                    opacity: 1,
+                    dashArray: "6 3",
+                  })}
+                />
+              )}
+            </LayersToggle>
           </LayersControl.Overlay>
         </LayersControl>
 
@@ -1404,20 +1486,7 @@ export default function MapView({
 
         {orgForPopup && <OrgMarker org={orgForPopup} open />}
 
-        {/* ✅ O‘zbekiston chegaralari: Satellite yoki Vesat tanlanganda ko‘rinadi */}
-        {isSatellite && uzBorders && (
-          <GeoJSON
-            data={uzBorders}
-            pane="borders-lines"
-            interactive={false}
-            style={() => ({
-              color: "#1b2440",
-              weight: 4,
-              opacity: 1,
-              dashArray: "6 3",
-            })}
-          />
-        )}
+        {/* O‘zbekiston chegaralari endi UI overlay orqali boshqariladi (LayersControl) */}
 
         <FeatureGroup ref={featureGroupRef}>
           {(drawEnabled || geomEdit) && (
@@ -1430,8 +1499,12 @@ export default function MapView({
                 draw={{
                   polyline: false,
                   // In edit mode, disable creating new shapes; allow only edit of existing
-                  polygon: !geomEdit,
-                  rectangle: !geomEdit,
+                  polygon:
+                    !geomEdit ||
+                    featureGroupRef.current?.getLayers?.().length === 0,
+                  rectangle:
+                    !geomEdit ||
+                    featureGroupRef.current?.getLayers?.().length === 0,
                   circle: false,
                   circlemarker: false,
                   marker: !geomEdit,
@@ -1441,6 +1514,12 @@ export default function MapView({
               <AutoEnableEditMode
                 featureGroupRef={featureGroupRef}
                 enabled={!!geomEdit}
+              />
+              {/* If geometry is empty in edit mode, auto-start polygon drawing */}
+              <AutoStartPolygonWhenEmpty
+                featureGroupRef={featureGroupRef}
+                enabled={!!geomEdit}
+                drawToolRef={drawToolRef}
               />
             </Suspense>
           )}
