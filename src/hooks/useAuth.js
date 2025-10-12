@@ -32,8 +32,19 @@ export function useAuth() {
         setIsAuthed(isAuthenticated());
       }
     };
+
+    // Custom event from tokenStore (same-tab updates)
+    const onTokenChanged = () => {
+      setPayload(decodeJWT());
+      setIsAuthed(isAuthenticated());
+    };
+
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("auth:token-changed", onTokenChanged);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("auth:token-changed", onTokenChanged);
+    };
   }, []);
 
   // Har bir renderda ham tekshirib turamiz (bir tabli holatlar uchun)
