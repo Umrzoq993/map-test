@@ -243,7 +243,7 @@ function AutoEnableEditMode({ featureGroupRef, enabled }) {
         drawRectangle: false,
         drawPolygon: false,
         editMode: true,
-        dragMode: true,
+        dragMode: false,
         cutPolygon: false,
         rotateMode: false,
         removalMode: false,
@@ -283,6 +283,9 @@ function AutoStartPolygonWhenEmpty({ featureGroupRef, enabled, drawToolRef }) {
     if (hasLayers) return;
 
     try {
+      // Ensure Geoman global modes are off while Leaflet.Draw is active to avoid event conflicts
+      map.pm?.disableGlobalEditMode?.();
+      map.pm?.disableGlobalDragMode?.();
       const draw = new L.Draw.Polygon(map, {
         showArea: true,
         allowIntersection: false,
@@ -298,6 +301,38 @@ function AutoStartPolygonWhenEmpty({ featureGroupRef, enabled, drawToolRef }) {
       if (drawToolRef) drawToolRef.current = null;
     };
   }, [enabled, featureGroupRef, map, drawToolRef]);
+  return null;
+}
+
+// Guard: while Leaflet.Draw is active, disable doubleClickZoom and Geoman global modes
+function DrawInteractionGuard({ enabled }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!enabled || !map) return;
+    const onStart = () => {
+      try {
+        map.doubleClickZoom?.disable?.();
+        map.pm?.disableGlobalEditMode?.();
+        map.pm?.disableGlobalDragMode?.();
+      } catch {}
+    };
+    const onStop = () => {
+      try {
+        map.doubleClickZoom?.enable?.();
+      } catch {}
+    };
+    map.on("draw:drawstart", onStart);
+    map.on("draw:created", onStop);
+    map.on("draw:drawstop", onStop);
+    return () => {
+      map.off("draw:drawstart", onStart);
+      map.off("draw:created", onStop);
+      map.off("draw:drawstop", onStop);
+      try {
+        map.doubleClickZoom?.enable?.();
+      } catch {}
+    };
+  }, [enabled, map]);
   return null;
 }
 
@@ -1544,6 +1579,8 @@ export default function MapView({
                 featureGroupRef={featureGroupRef}
                 enabled={!!geomEdit}
               />
+              {/* Prevent accidental finish by disabling dblclick zoom during drawing */}
+              <DrawInteractionGuard enabled={!!geomEdit} />
               {/* If geometry is empty in edit mode, auto-start polygon drawing */}
               <AutoStartPolygonWhenEmpty
                 featureGroupRef={featureGroupRef}
