@@ -105,6 +105,15 @@ function GeomanInit() {
   return null;
 }
 
+/* Map instansiyasini yuqori komponentga chiqarish uchun */
+function MapRefBinder({ mapRef }) {
+  const map = useMap();
+  useEffect(() => {
+    mapRef.current = map;
+  }, [map, mapRef]);
+  return null;
+}
+
 /* ---------- Map darajasida posbon (begona/klon qatlamlarni tozalash) ---------- */
 function MapDedupeGuard({ featureGroupRef, registryRef }) {
   const map = useMap();
@@ -300,9 +309,35 @@ function buildJsonFromRegistry(registry, propsByIdRef, baseMeta = {}) {
   };
 }
 
+/* ---------- Vertex o‘chirish yordamchilari ---------- */
+function getNearestVertexIndex(lyr, latlng, map) {
+  // map.latLngToLayerPoint ishlashi uchun map kerak
+  if (!map || !(lyr instanceof L.Polyline)) return { idx: -1, dist: Infinity };
+  const pts = lyr.getLatLngs?.();
+  if (!Array.isArray(pts) || pts.length < 1) return { idx: -1, dist: Infinity };
+  const clickP = map.latLngToLayerPoint(latlng);
+  let best = { idx: -1, dist: Infinity };
+  for (let i = 0; i < pts.length; i++) {
+    const p = map.latLngToLayerPoint(pts[i]);
+    const d = p.distanceTo(clickP);
+    if (d < best.dist) best = { idx: i, dist: d };
+  }
+  return best;
+}
+function refreshPmUI(lyr) {
+  try {
+    const enabled = !!lyr.pm?._enabled;
+    if (enabled) {
+      lyr.pm.disable();
+      lyr.pm.enable({ allowSelfIntersection: true, snappable: false });
+    }
+  } catch {}
+}
+
 /* ---------- Komponent ---------- */
 export default function UzLinesFixer() {
   const fgRef = useRef(null);
+  const mapRef = useRef(null);
   const propsByIdRef = useRef(new Map());
   const fileHandleRef = useRef(null);
   const activeRef = useRef(null);
@@ -316,6 +351,8 @@ export default function UzLinesFixer() {
   });
   const [fitVersion, setFitVersion] = useState(0);
   const [mode, setMode] = useState("single"); // single | all
+  const [delMode, setDelMode] = useState(false); // ← Vertex o‘chirish rejimi
+  const delModeRef = useRef(false);
 
   const canvasRenderer = useMemo(() => L.canvas({ padding: 0.5 }), []);
   const style = useMemo(
@@ -387,7 +424,7 @@ export default function UzLinesFixer() {
     })();
   }, [style, canvasRenderer]);
 
-  /* 3) Rejimga mos vertex yoqish + qatlam posboni */
+  /* 3) Rejimga mos vertex yoqish + qatlam posboni + vertex o‘chirish hodisalari */
   useEffect(() => {
     const fg = fgRef.current;
     if (!fg) return;
@@ -412,8 +449,9 @@ export default function UzLinesFixer() {
     function enableAll() {
       try {
         fg.eachLayer((lyr) => {
-          if (lyr instanceof L.Polyline && lyr[OWN] === true)
+          if (lyr instanceof L.Polyline && lyr[OWN] === true) {
             lyr.pm?.enable?.({ allowSelfIntersection: true, snappable: false });
+          }
         });
       } catch {}
     }
@@ -427,6 +465,28 @@ export default function UzLinesFixer() {
         });
       } catch {}
       activeRef.current = null;
+    }
+
+    // Bitta qatlamga o‘rnatiladigan handlerlar
+    function attachLayerHandlers(lyr) {
+      if (!(lyr instanceof L.Polyline)) return;
+
+      // Click: single rejimda aktivlashtirish
+      lyr.on("click", (ev) => {
+        if (mode === "single") enableOne(lyr);
+        // ALT/SHIFT tugmasi bilan bosgan bo‘lsangiz — shu qatlamda eng yaqin vertexni o‘chirib yuboramiz
+        if (
+          ev?.originalEvent &&
+          (ev.originalEvent.altKey || ev.originalEvent.shiftKey)
+        ) {
+          handleDeleteOnLayerAtLatLng(lyr, ev.latlng);
+        }
+      });
+
+      // Right-click (contextmenu): o‘sha qatlamdagi eng yaqin vertexni o‘chirish
+      lyr.on("contextmenu", (ev) => {
+        handleDeleteOnLayerAtLatLng(lyr, ev.latlng);
+      });
     }
 
     function onLayerAddToFG(e) {
@@ -449,9 +509,7 @@ export default function UzLinesFixer() {
         }
         registryRef.current.set(key, lyr);
       }
-      lyr.on("click", () => {
-        if (mode === "single") enableOne(lyr);
-      });
+      attachLayerHandlers(lyr);
     }
 
     // mavjud qatlamlarga bog‘lash
@@ -470,13 +528,30 @@ export default function UzLinesFixer() {
         fg.off("layeradd", onLayerAddToFG);
       } catch {}
       try {
-        fg.getLayers().forEach((lyr) => lyr.off("click"));
+        fg.getLayers().forEach((lyr) => lyr.off("click").off("contextmenu"));
       } catch {}
       try {
         disableAll();
       } catch {}
     };
   }, [mode, style]);
+
+  /* Vertex o‘chirish rejimi: map click orqali eng yaqin vertexni o‘chirish */
+  useEffect(() => {
+    delModeRef.current = delMode;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const onMapClickDelete = (e) => {
+      if (!delModeRef.current) return;
+      handleDeleteNearestAt(e.latlng);
+    };
+
+    map.on("click", onMapClickDelete);
+    return () => {
+      map.off("click", onMapClickDelete);
+    };
+  }, [delMode]);
 
   // Bir marta ruxsat berish
   const oneTimeBind = useCallback(async () => {
@@ -555,7 +630,7 @@ export default function UzLinesFixer() {
     }
   }, [baseMeta, oneTimeBind]);
 
-  // Cmd/Ctrl+S
+  // Cmd/Ctrl+S va D (delete-mode toggle)
   useEffect(() => {
     function onKey(e) {
       const isMac = navigator.platform.toUpperCase().includes("MAC");
@@ -566,10 +641,58 @@ export default function UzLinesFixer() {
         e.preventDefault();
         saveDirect();
       }
+      if (e.key === "d" || e.key === "D") {
+        setDelMode((v) => !v);
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [saveDirect]);
+
+  /* ---- Vertex o‘chirish funksiyalari ---- */
+
+  const handleDeleteOnLayerAtLatLng = useCallback((lyr, latlng) => {
+    const map = mapRef.current;
+    if (!map || !(lyr instanceof L.Polyline) || lyr[OWN] !== true) return;
+
+    // Eng yaqin vertexni topamiz
+    const { idx, dist } = getNearestVertexIndex(lyr, latlng, map);
+    if (idx < 0) return;
+
+    // 12px dan yaqin bo'lmasa — foydalanuvchi vertexga niyat qilmagan deb qabul qilamiz
+    if (dist > 12) return;
+
+    const pts = lyr.getLatLngs();
+    if (!Array.isArray(pts)) return;
+
+    // Polyline kamida 2 nuqta bo‘lishi kerak
+    if (pts.length <= 2) return;
+
+    pts.splice(idx, 1);
+    lyr.setLatLngs(pts);
+    refreshPmUI(lyr); // pm markerlarni yangilash
+  }, []);
+
+  const handleDeleteNearestAt = useCallback((latlng) => {
+    const map = mapRef.current;
+    const reg = registryRef.current;
+    if (!map || !reg || reg.size === 0) return;
+
+    let best = { lyr: null, idx: -1, dist: Infinity };
+    for (const [, lyr] of reg.entries()) {
+      if (!(lyr instanceof L.Polyline) || lyr[OWN] !== true) continue;
+      const { idx, dist } = getNearestVertexIndex(lyr, latlng, map);
+      if (idx >= 0 && dist < best.dist) best = { lyr, idx, dist };
+    }
+    if (!best.lyr || best.idx < 0 || best.dist > 12) return;
+
+    const pts = best.lyr.getLatLngs();
+    if (!Array.isArray(pts) || pts.length <= 2) return;
+
+    pts.splice(best.idx, 1);
+    best.lyr.setLatLngs(pts);
+    refreshPmUI(best.lyr);
+  }, []);
 
   return (
     <div className="card" style={{ padding: 12, gap: 12, display: "grid" }}>
@@ -583,6 +706,13 @@ export default function UzLinesFixer() {
       >
         <button className="btn btn-primary" onClick={saveDirect}>
           💾 Saqlash (Cmd/Ctrl+S)
+        </button>
+        <button
+          className={delMode ? "btn btn-danger" : "btn"}
+          onClick={() => setDelMode((v) => !v)}
+          title="Vertex o‘chirish rejimi (D)"
+        >
+          🗑️ Vertex o‘chirish {delMode ? "— ON" : "— OFF"} (D)
         </button>
         {status !== "bound" && (
           <button
@@ -602,7 +732,35 @@ export default function UzLinesFixer() {
         </div>
       </div>
 
-      <div style={{ height: "80vh", borderRadius: 8, overflow: "hidden" }}>
+      <div
+        style={{
+          height: "80vh",
+          borderRadius: 8,
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
+        {/* Delete rejim indikator chizig‘i */}
+        {delMode && (
+          <div
+            style={{
+              position: "absolute",
+              zIndex: 1000,
+              right: 12,
+              top: 12,
+              background: "#fee2e2",
+              color: "#991b1b",
+              border: "1px solid #fecaca",
+              borderRadius: 8,
+              padding: "6px 10px",
+              fontSize: 12,
+            }}
+          >
+            🗑️ Vertex o‘chirish: ON — chap bosish (12px ichida) yoki right-click
+            bilan o‘chiring
+          </div>
+        )}
+
         <MapContainer
           center={[41, 64]}
           zoom={6}
@@ -614,6 +772,7 @@ export default function UzLinesFixer() {
           <GeomanInit />
           <MapDedupeGuard featureGroupRef={fgRef} registryRef={registryRef} />
           <FitOnLayers featureGroupRef={fgRef} version={fitVersion} />
+          <MapRefBinder mapRef={mapRef} />
         </MapContainer>
       </div>
 
@@ -626,6 +785,10 @@ export default function UzLinesFixer() {
           background: #fff !important;
           border: 1px solid #1d4ed8 !important;
           box-shadow: 0 0 0 2px rgba(29,78,216,.25) !important;
+        }
+        .btn-danger {
+          background: #dc2626;
+          color: #fff;
         }
       `}</style>
     </div>
